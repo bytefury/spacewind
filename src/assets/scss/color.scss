@@ -1,0 +1,33 @@
+// Colors
+// -------------------------
+
+:root {
+  // Brand
+  --color-primary: #5851d8;
+  --color-primary-light: #817ae3;
+  --color-primary-very-light: rgba(88, 81, 216, 0.2);
+  --color-secondary: #55547a;
+
+  --color-black: #040405;
+  --color-black-light: #263b5e;
+
+  // Gray
+  --color-gray-very-light: #f9fbff;
+  --color-gray-light: #eaf1fb;
+  --color-gray: #b9c1d1;
+  --color-gray-dark: #a5acc1;
+  --color-very-dark: #595959;
+
+  // Status
+  --color-success: #d5eed0;
+  --color-danger: #fb7178;
+  --color-warning: #f3af4e;
+  --color-info: #c9e3ec;
+  --color-status-secondary: #f8edcb;
+  --color-status-danger: #fed7d7;
+  --color-status-tertiary: rgba(246, 208, 154, 0.4);
+  --color-status-declined: #e1e0ea;
+
+  // Misc
+  --color-overlay: rgba(4, 4, 5, 0.1);
+}
