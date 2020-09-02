@@ -1,4 +1,4 @@
-<img src="https://res.cloudinary.com/bytefury/image/upload/v1599028270/Spacewind/spacewind-frame.png">
+<img src="https://res.cloudinary.com/bytefury/image/upload/v1599028433/Spacewind/spacewind-frame-2.png">
 
 ## Introduction
 
