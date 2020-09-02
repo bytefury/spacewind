@@ -1,3 +1,5 @@
+<img src="https://res.cloudinary.com/bytefury/image/upload/v1599026985/Spacewind/spacewind-logo.png">
+
 ## Introduction
 
 Spacewind is a Vue Component Library for TailwindCSS.
