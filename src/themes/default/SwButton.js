@@ -2,7 +2,9 @@ export default {
   classes: {
     button:
       'inline-flex items-center justify-center text-white transition duration-150 ease-in-out border border-transparent focus:outline-none bg-gray-dark',
-    disabledClass: 'cursor-not-allowed'
+    disabledClass: 'cursor-not-allowed',
+    loadingIconContainer: 'pr-3',
+    loadingIcon: 'w-6 h-6 text-white animate-spin'
   },
   sizes: {
     xs: {

@@ -1,10 +1,10 @@
 <template>
-  <div :class="classes" />
+  <div :class="classes.divider" />
 </template>
 
 <script>
-import SwDropdownDivider from '../../themes/default/dropdown/SwDropdownDivider'
-const { classes } = SwDropdownDivider
+import SwDropdown from '../../themes/default/SwDropdown'
+const { classes } = SwDropdown
 
 export default {
   name: 'SwDropdownDivider',

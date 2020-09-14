@@ -86,7 +86,7 @@ export default {
   components: {
     TableColumnHeader,
     TableRow,
-    Pagination,
+    Pagination
   },
 
   props: {
@@ -94,10 +94,10 @@ export default {
 
     classes: {
       type: Object,
-      default: () => classes,
+      default: () => classes
     },
-    showFilter: { type: Boolean, default: true },
-    showCaption: { type: Boolean, default: true },
+    showFilter: { type: Boolean, default: false },
+    showCaption: { type: Boolean, default: false },
 
     sortBy: { default: '', type: String },
     sortOrder: { default: '', type: String },
@@ -110,7 +110,7 @@ export default {
     tbodyClass: { default: () => settings.tbodyClass },
     filterInputClass: { default: () => settings.filterInputClass },
     filterPlaceholder: { default: () => settings.filterPlaceholder },
-    filterNoResults: { default: () => settings.filterNoResults },
+    filterNoResults: { default: () => settings.filterNoResults }
   },
 
   data: () => ({
@@ -119,12 +119,12 @@ export default {
     filter: '',
     sort: {
       fieldName: '',
-      order: '',
+      order: ''
     },
     pagination: null,
 
     loading: false,
-    localSettings: {},
+    localSettings: {}
   }),
 
   computed: {
@@ -146,9 +146,8 @@ export default {
 
     ariaCaption() {
       if (this.sort.fieldName === '') {
-        return 'Table not sorted'
+        return ''
       }
-
       return (
         `Table sorted by ${this.sort.fieldName} ` +
         (this.sort.order === 'asc' ? '(ascending)' : '(descending)')
@@ -168,11 +167,11 @@ export default {
         return this.sortedRows
       }
 
-      if (!this.columns.filter((column) => column.isFilterable()).length) {
+      if (!this.columns.filter(column => column.isFilterable()).length) {
         return this.sortedRows
       }
 
-      return this.sortedRows.filter((row) => row.passesFilter(this.filter))
+      return this.sortedRows.filter(row => row.passesFilter(this.filter))
     },
 
     sortedRows() {
@@ -202,7 +201,7 @@ export default {
     },
 
     filterableColumnExists() {
-      return this.columns.filter((c) => c.isFilterable()).length > 0
+      return this.columns.filter(c => c.isFilterable()).length > 0
     },
 
     storageKey() {
@@ -234,7 +233,7 @@ export default {
     },
     emptyTableMessageStyle() {
       return this.classes.emptyTableMessage
-    },
+    }
   },
 
   watch: {
@@ -250,7 +249,7 @@ export default {
       if (this.usesLocalData) {
         this.mapDataToRows()
       }
-    },
+    }
   },
 
   created() {
@@ -262,15 +261,15 @@ export default {
   async mounted() {
     this.sort.fieldName = this.sortBy
     const columnComponents = this.$slots.default
-      .filter((column) => column.componentInstance)
-      .map((column) => column.componentInstance)
+      .filter(column => column.componentInstance)
+      .map(column => column.componentInstance)
 
-    this.columns = columnComponents.map((column) => new Column(column))
+    this.columns = columnComponents.map(column => new Column(column))
 
-    columnComponents.forEach((columnCom) => {
-      Object.keys(columnCom.$options.props).forEach((prop) =>
+    columnComponents.forEach(columnCom => {
+      Object.keys(columnCom.$options.props).forEach(prop =>
         columnCom.$watch(prop, () => {
-          this.columns = columnComponents.map((column) => new Column(column))
+          this.columns = columnComponents.map(column => new Column(column))
         })
       )
     })
@@ -293,11 +292,11 @@ export default {
       let rowId = 0
 
       this.rows = data
-        .map((rowData) => {
+        .map(rowData => {
           rowData.vueTableComponentInternalRowId = rowId++
           return rowData
         })
-        .map((rowData) => new Row(rowData, this.columns))
+        .map(rowData => new Row(rowData, this.columns))
     },
 
     prepareLocalData() {
@@ -313,7 +312,7 @@ export default {
       const response = await this.data({
         filter: this.filter,
         sort: this.sort,
-        page: page,
+        page: page
       })
 
       this.pagination = response.pagination
@@ -344,7 +343,7 @@ export default {
     },
 
     getColumn(columnName) {
-      return this.columns.find((column) => column.show === columnName)
+      return this.columns.find(column => column.show === columnName)
     },
 
     saveState() {
@@ -371,8 +370,8 @@ export default {
     emitRowClick(row) {
       this.$emit('rowClick', row)
       this.$emit('row-click', row)
-    },
-  },
+    }
+  }
 }
 </script>
 
@@ -403,7 +402,7 @@ export default {
 .table-component__th--sort-asc:after,
 .table-component__th--sort-desc:after {
   position: absolute;
-  left: 0.25em;
+  left: 0px;
   display: inline-block;
   color: #bbb;
 }
@@ -511,12 +510,12 @@ table.full-width {
         border-top-right-radius: 5px !important;
       }
 
-      &:last-child {
-        position: unset;
-        visibility: hidden;
-        height: 0px !important;
-        padding: 0px !important;
-      }
+      // &:last-child {
+      //   position: unset;
+      //   visibility: hidden;
+      //   height: 0px !important;
+      //   padding: 0px !important;
+      // }
 
       &:nth-last-child(3) {
         border-bottom-left-radius: 5px !important;

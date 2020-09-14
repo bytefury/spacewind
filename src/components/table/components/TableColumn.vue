@@ -21,12 +21,12 @@ export default {
     sortAs: { default: null },
     filterOn: { default: null },
 
-    formatter: { default: (v) => v, type: Function },
+    formatter: { default: v => v, type: Function },
 
     hidden: { default: false, type: Boolean },
 
     cellClass: { default: settings.cellClass },
-    headerClass: { default: settings.headerClass },
-  },
+    headerClass: { default: settings.headerClass }
+  }
 }
 </script>

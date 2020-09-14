@@ -4,7 +4,10 @@
       {{ label }}
       <span v-show="required" :class="inputGroupStyle.requiredSign"> *</span>
     </sw-label>
-    <label v-if="horizontal && !label" :class="inputGroupStyle.label"></label>
+    <sw-label
+      v-if="variant === 'horizontal' && !label"
+      :class="inputGroupStyle.label"
+    ></sw-label>
     <div :class="inputGroupStyle.inputContainer">
       <slot></slot>
       <span v-if="error" :class="inputGroupStyle.errorText">
@@ -34,10 +37,6 @@ export default {
       default: ''
     },
     required: {
-      type: Boolean,
-      default: false
-    },
-    horizontal: {
       type: Boolean,
       default: false
     },

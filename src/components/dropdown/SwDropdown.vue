@@ -1,34 +1,14 @@
 <template>
-  <div
-    :class="[
-      classes.base,
-      { active: toggle || isActive() },
-      { 'has-child': hasChild },
-      { 'toggle-arrow': hasChild && showArrow },
-      { 'dropdown-light': themeLight }
-    ]"
-  >
-    <div class="dropdown-activator" @click.stop.prevent="showDropdown">
+  <div :class="dropdownStyle.container" v-click-outside="clickOutsideMenu">
+    <div @click.stop.prevent="showDropdown" :class="dropdownStyle.activator">
       <slot name="activator" />
     </div>
-    <transition name="bounce">
+    <transition :enter-active-class="dropdownStyle.animation">
       <div
         v-show="toggle"
-        v-if="hasChild"
         ref="dropdownItems"
-        :class="[
-          classes.itemContainer,
-          {
-            rightAlignStyle: rightAlign,
-            block: toggle || isActive(),
-            hidden: !(toggle || isActive())
-          }
-        ]"
-        style="
-          min-width: 10rem;
-          margin: 0.125rem 0 0 0.125rem;
-          background-clip: padding-box;
-        "
+        :class="dropdownStyle.itemContainer"
+        :style="itemContainerStyle"
         @click="closeOnSelectDropdownItem"
       >
         <slot />
@@ -38,86 +18,99 @@
 </template>
 
 <script>
-import SwDropdown from '../../themes/default/dropdown/SwDropdown'
-const { classes } = SwDropdown
+import SwDropdown from '../../themes/default/SwDropdown'
+import { findByKey } from '../../helpers/utilities'
+import vClickOutside from 'v-click-outside'
+const { classes, variants } = SwDropdown
 
 export default {
+  name: 'SwDrodown',
+  directives: {
+    clickOutside: vClickOutside.directive
+  },
   props: {
+    variant: {
+      type: String,
+      default: null
+    },
+    variants: {
+      type: Object,
+      default: () => variants
+    },
     classes: {
-      type: [String, Object],
+      type: Object,
       default: () => classes
     },
-    activeUrl: {
+    openDirection: {
       type: String,
-      require: true,
-      default: String
+      default: ''
     },
-    showArrow: {
-      type: Boolean,
-      require: true,
-      default: true
-    },
-    themeLight: {
-      type: Boolean,
-      require: true,
-      default: false
-    },
-    closeOnSelect: {
-      type: Boolean,
-      require: true,
-      default: true
+    maxHeight: {
+      type: Number,
+      default: 180
     }
   },
   data() {
     return {
-      toggle: true,
-      hasChild: true,
-      rightAlign: false
+      toggle: false,
+      preferredOpenDirection: 'below',
+      optimizedHeight: null
     }
   },
   computed: {
-    rightAlignStyle() {
-      return this.classes.rightAlign
+    isAbove() {
+      if (this.openDirection === 'above' || this.openDirection === 'top') {
+        return true
+      } else if (
+        this.openDirection === 'below' ||
+        this.openDirection === 'bottom'
+      ) {
+        return false
+      } else {
+        return this.preferredOpenDirection === 'above'
+      }
+    },
+    itemContainerStyle() {
+      return this.isAbove
+        ? { bottom: '100%', minWidth: '10rem', backgroundClip: 'padding-box' }
+        : { minWidth: '10rem', backgroundClip: 'padding-box' }
+    },
+    dropdownStyle() {
+      let dir = this.variant
+
+      if (this.isAbove) {
+        dir = this.variant ? 'above-' + this.variant : 'above'
+      }
+
+      let style = findByKey(dir, this.variants)
+
+      return { ...this.classes, ...style }
     }
   },
-  mounted() {
-    this.$nextTick(() => {
-      this.setDropdownPosition()
-      window.addEventListener('resize', e => {
-        if (this.toggle === true) {
-          this.setDropdownPosition()
-        }
-        console.log(e)
-      })
-      if (!this.$slots.default) {
-        this.hasChild = false
-      }
-      this.toggle = false
-    })
-  },
   methods: {
-    setDropdownPosition() {
-      let rect = this.$refs.dropdownItems.getBoundingClientRect()
+    adjustPosition() {
+      if (typeof window === 'undefined') return
 
-      let offsetPos = rect.width - this.$el.offsetWidth
-      let itemPos = rect.right + rect.width + offsetPos
+      const spaceAbove = this.$el.getBoundingClientRect().top
+      const spaceBelow =
+        window.innerHeight - this.$el.getBoundingClientRect().bottom
+      const hasEnoughSpaceBelow = spaceBelow > this.maxHeight
 
-      if (itemPos > window.innerWidth) {
-        this.rightAlign = true
-      }
-      itemPos += offsetPos + rect.width + offsetPos
-      if (itemPos < window.innerWidth) {
-        this.rightAlign = false
+      if (
+        hasEnoughSpaceBelow ||
+        spaceBelow > spaceAbove ||
+        this.openDirection === 'below' ||
+        this.openDirection === 'bottom'
+      ) {
+        this.preferredOpenDirection = 'below'
+        this.optimizedHeight = Math.min(spaceBelow - 40, this.maxHeight)
+      } else {
+        this.preferredOpenDirection = 'above'
+        this.optimizedHeight = Math.min(spaceAbove - 40, this.maxHeight)
       }
     },
-    isActive() {
-      if (this.activeUrl) {
-        return this.$route.path.indexOf(this.activeUrl) > -1
-      }
-      return false
-    },
-    showDropdown() {
-      this.toggle = !this.toggle
+    clickOutsideMenu() {
+      this.toggle = false
     },
     closeOnSelectDropdownItem() {
       if (this.closeOnSelect === false) {
@@ -126,47 +119,10 @@ export default {
         this.toggle = false
       }
     },
-    closeDropdown() {
-      this.toggle = false
+    showDropdown() {
+      this.adjustPosition()
+      this.toggle = !this.toggle
     }
   }
 }
 </script>
-<style>
-.dropdown-item {
-  background: transparent;
-  transform-origin: top;
-  position: relative;
-  color: #040405;
-  animation-name: example;
-  animation-duration: 1s;
-  animation-iteration-count: 1;
-  animation-direction: alternate;
-}
-.bounce-enter-active {
-  /* zoom: 1; */
-  transform-origin: top right;
-  margin-top: 5px;
-  animation: bounce-in 0.4s;
-}
-.bounce-leave-active {
-  animation: bounce-in 1s reverse;
-}
-
-@keyframes example {
-  0% {
-    color: #ffffff;
-  }
-  100% {
-    color: #040405;
-  }
-}
-
-@keyframes bounce-in {
-  from {
-    transform: scale(0);
-  }
-  to {
-  }
-}
-</style>

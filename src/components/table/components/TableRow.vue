@@ -17,37 +17,37 @@ const { classes } = SwTable
 
 export default {
   components: {
-    TableCell,
+    TableCell
   },
   props: {
     columns: {
       type: [String, Object, Array],
-      default: null,
+      default: null
     },
     row: {
       type: [String, Object, Array],
-      default: null,
+      default: null
     },
     classes: {
       type: Object,
-      default: () => classes,
-    },
+      default: () => classes
+    }
   },
   computed: {
     visibleColumns() {
-      return this.columns.filter((column) => !column.hidden)
+      return this.columns.filter(column => !column.hidden)
     },
     rowStyle() {
       return this.classes.trStyles
-    },
+    }
   },
   methods: {
     onClick(e) {
       this.$emit('rowClick', {
         e,
-        row: this.row,
+        row: this.row
       })
-    },
-  },
+    }
+  }
 }
 </script>

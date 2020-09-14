@@ -4,24 +4,19 @@
       <li
         v-for="(tab, index) in tabs"
         :key="index"
-        :class="[
-          tab.isActive ? classes.activeTab : classes.defaultTab,
-          classes.tab
-        ]"
+        :class="tab.isActive ? classes.tabNavItemActive : classes.tabNavItem"
         :aria-selected="tab.isActive"
         @click="setTab(tab)"
       >
         {{ tab.title }}
       </li>
     </ul>
-    <div>
-      <slot></slot>
-    </div>
+    <slot />
   </div>
 </template>
 
 <script>
-import SwTabs from '../../themes/default/tabs/SwTabs'
+import SwTabs from '../../themes/default/SwTab'
 import { installComponent } from '../../helpers/utilities'
 const { classes } = SwTabs
 
@@ -44,7 +39,7 @@ export default {
   },
   computed: {
     tabsContailerStyle() {
-      return [this.classes.tabsContainer]
+      return [this.classes.tabNavContainer]
     }
   },
   watch: {

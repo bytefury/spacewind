@@ -27,12 +27,12 @@ export default {
     )
 
     let tdData = {
-      class: classes.tdStyles,
+      class: classes.tdStyles
     }
 
     return createElement('td', tdData, [
       createElement('span', props.responsiveLabel),
-      data.domProps.innerHTML,
+      data.domProps.innerHTML
     ])
-  },
+  }
 }

@@ -4,48 +4,66 @@
  |--------------------------------------------------------------------------|
  */
 
-import SwButton from './SwButton'
-import SwTextarea from './SwTextarea'
-import SwBreadcrumb from './breadcrumb/SwBreadcrumb'
-import SwBreadcrumbItem from './breadcrumb/SwBreadcrumbItem'
-import SwTabs from './tabs/SwTabs'
-import SwTabItem from './tabs/SwTabItem'
-import SwCard from './SwCard'
+import SwAvatar from './SwAvatar'
 import SwBadge from './SwBadge'
-import SwPrefixInput from './SwPrefixInput'
-import SwMoney from './SwMoney'
+import SwBreadcrumb from './SwBreadcrumb'
+import SwButton from './SwButton'
+import SwCard from './SwCard'
+import SwCheckbox from './SwCheckbox'
 import SwDivider from './SwDivider'
-import SwInput from './SwInput'
-import SwLabel from './SwLabel'
-import SwPageHeader from './SwPageHeader'
-import SwFilterWrapper from './SwFilterWrapper'
-import SwSwitch from './SwSwitch'
-import SwPopup from './SwPopup'
-import SwPage from './SwPage'
-import SwInputGroup from './SwInputGroup'
+import SwDropdown from './SwDropdown'
 import SwEmptyTablePlaceholder from './SwEmptyTablePlaceholder'
+import SwFileUpload from './SwFileUpload'
+import SwFilterWrapper from './SwFilterWrapper'
+import SwFooter from './SwFooter'
+import SwHeader from './SwHeader'
+import SwInput from './SwInput'
+import SwInputGroup from './SwInputGroup'
+import SwLabel from './SwLabel'
+import SwList from './SwList'
+import SwModal from './SwModal'
+import SwMoney from './SwMoney'
+import SwPage from './SwPage'
+import SwPageHeader from './SwPageHeader'
+import SwPopup from './SwPopup'
+import SwRadio from './SwRadio'
+import SwSidebar from './SwSidebar'
+import SwSwitch from './SwSwitch'
+import SwTab from './SwTab'
+import SwTextarea from './SwTextarea'
+import SwTransition from './SwTransition'
+import SwTipTapEditor from './SwTipTapEditor'
 
 const spacewindTheme = {
-  SwButton,
-  SwTextarea,
-  SwBreadcrumb,
-  SwBreadcrumbItem,
-  SwTabs,
-  SwTabItem,
-  SwCard,
+  SwAvatar,
   SwBadge,
-  SwPrefixInput,
-  SwMoney,
+  SwBreadcrumb,
+  SwButton,
+  SwCard,
+  SwCheckbox,
   SwDivider,
-  SwInput,
-  SwLabel,
-  SwPageHeader,
+  SwDropdown,
+  SwEmptyTablePlaceholder,
+  SwFileUpload,
   SwFilterWrapper,
-  SwSwitch,
-  SwPopup,
-  SwPage,
+  SwFooter,
+  SwHeader,
+  SwInput,
   SwInputGroup,
-  SwEmptyTablePlaceholder
+  SwLabel,
+  SwList,
+  SwModal,
+  SwMoney,
+  SwPage,
+  SwPageHeader,
+  SwPopup,
+  SwRadio,
+  SwSidebar,
+  SwSwitch,
+  SwTab,
+  SwTextarea,
+  SwTipTapEditor,
+  SwTransition
 }
 
 export default spacewindTheme

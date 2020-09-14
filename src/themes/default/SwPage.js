@@ -1,3 +1,3 @@
 export default {
-  classes: 'bg-gray-100 h-full p-4 md:pt-20 md:pr-8 md:pb-3 md:pl-64'
+  classes: 'bg-gray-100 px-8 py-20 md:pt-20 md:pr-8 md:pl-64 min-h-full'
 }

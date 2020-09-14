@@ -1,17 +1,9 @@
 <template>
   <textarea
-    ref="textarea"
     v-model="inputValue"
-    :rows="rows"
-    :cols="cols"
-    :disabled="disabled"
-    :placeholder="placeholder"
+    v-bind="$attrs"
     :class="textAreaStyle"
-    :readonly="readonly"
-    :required="required"
-    :maxlength="maxlength"
-    :autofocus="autofocus"
-    :wrap="wrap"
+    :disabled="disabled"
     @input="$emit('input', inputValue)"
     @change="$emit('change', inputValue)"
     @keyup="$emit('keyup', $event)"
@@ -32,33 +24,17 @@ export default {
     installComponent(Vue, theme, this)
   },
   props: {
+    classes: {
+      type: String,
+      default: classes
+    },
+    variant: {
+      type: String,
+      default: null
+    },
     variants: {
       type: Object,
       default: () => variants
-    },
-    id: {
-      type: String,
-      default: null
-    },
-    name: {
-      type: String,
-      default: null
-    },
-    rows: {
-      type: [String, Number],
-      default: 4
-    },
-    cols: {
-      type: String,
-      default: '10'
-    },
-    value: {
-      type: String,
-      default: ''
-    },
-    placeholder: {
-      type: String,
-      default: ''
     },
     invalid: {
       type: Boolean,
@@ -67,43 +43,11 @@ export default {
     disabled: {
       type: Boolean,
       default: false
-    },
-    icon: {
-      type: String,
-      default: ''
-    },
-    readonly: {
-      type: Boolean,
-      default: undefined
-    },
-    required: {
-      type: Boolean,
-      default: false
-    },
-    maxlength: {
-      type: [String, Number],
-      default: null
-    },
-    autofocus: {
-      type: Boolean,
-      default: null
-    },
-    wrap: {
-      type: String,
-      default: 'soft'
-    },
-    classes: {
-      type: String,
-      default: classes
-    },
-    variant: {
-      type: String,
-      default: null
     }
   },
   data() {
     return {
-      inputValue: this.value,
+      inputValue: null,
       valueWhenFocus: null
     }
   },
@@ -126,11 +70,6 @@ export default {
       }
 
       return style ? style : this.classes
-    }
-  },
-  watch: {
-    value() {
-      this.inputValue = this.value
     }
   },
   methods: {

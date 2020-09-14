@@ -1,24 +1,24 @@
 <template>
-  <div v-show="isActive" :class="classes">
-    <slot />
-  </div>
+  <sw-transition>
+    <div v-show="isActive">
+      <slot />
+    </div>
+  </sw-transition>
 </template>
 
 <script>
-import SwTabs from '../../themes/default/tabs/SwTabItem'
+import SwTransition from '../../components/SwTransition'
 import { installComponent } from '../../helpers/utilities'
-const { classes } = SwTabs
 
 export default {
-  name: 'SwTabs',
+  name: 'SwTabItem',
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
+  components: {
+    SwTransition
+  },
   props: {
-    classes: {
-      type: [String, Array, Object],
-      default: () => classes
-    },
     href: {
       type: String,
       default: '#'
@@ -35,6 +35,10 @@ export default {
       type: String,
       default: null,
       required: true
+    },
+    active: {
+      type: Boolean,
+      default: false
     }
   },
   data() {

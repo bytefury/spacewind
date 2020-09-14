@@ -1,18 +1,15 @@
 <template>
-  <li :class="classes.container">
+  <li :class="classes.itemContainer">
     <router-link v-if="hasRouteLink" :class="classes.base" :to="to">
       {{ title }}
     </router-link>
-    <a :to="to" v-else :class="classes.base">{{ title }}</a>
-    <span v-if="!isActive" :class="classes.separator">/</span>
+    <a :href="to" v-else :class="classes.base">{{ title }}</a>
+    <span v-if="!active" :class="classes.separator">/</span>
   </li>
 </template>
 
 <script>
-import SwBreadcrumbItem from '../../themes/default/breadcrumb/SwBreadcrumbItem'
 import { installComponent } from '../../helpers/utilities'
-
-const { classes } = SwBreadcrumbItem
 
 export default {
   name: 'SwBreadcrumbItem',
@@ -28,25 +25,25 @@ export default {
       type: String,
       default: '#'
     },
-    isActive: {
+    active: {
       type: Boolean,
       default: false,
       required: false
-    },
-    classes: {
-      type: Object,
-      default: () => classes
+    }
+  },
+  data() {
+    return {
+      classes: {
+        itemContainer: '',
+        base: '',
+        separator: ''
+      }
     }
   },
   computed: {
     hasRouteLink() {
-      return !!(
-        this.$options.components.RouterLink || this.$options.components.NuxtLink
-      )
+      return !!this.$router
     }
-  },
-  mounted() {
-    console.log(this.hasRouteLink)
   }
 }
 </script>

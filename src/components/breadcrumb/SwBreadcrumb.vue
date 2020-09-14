@@ -1,13 +1,13 @@
 <template>
   <nav>
-    <ol :class="classes">
+    <ol :class="classes.listContainer">
       <slot />
     </ol>
   </nav>
 </template>
 
 <script>
-import SwBreadcrumb from '../../themes/default/breadcrumb/SwBreadcrumb.js'
+import SwBreadcrumb from '../../themes/default/SwBreadcrumb.js'
 import { installComponent } from '../../helpers/utilities'
 
 const { classes } = SwBreadcrumb
@@ -18,8 +18,24 @@ export default {
   },
   props: {
     classes: {
-      type: String,
+      type: Object,
       default: () => classes
+    }
+  },
+  data() {
+    return {
+      breadcrumbItems: []
+    }
+  },
+  mounted() {
+    this.breadcrumbItems = this.$children
+    this.setChilds()
+  },
+  methods: {
+    setChilds() {
+      this.breadcrumbItems.forEach(item => {
+        item.classes = this.classes
+      })
     }
   }
 }

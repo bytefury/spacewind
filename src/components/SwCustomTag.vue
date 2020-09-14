@@ -1,23 +1,15 @@
 <script>
 export default {
-  render(createElement) {
-    return createElement(
-      this.tag,
-      {
-        on: {
-          click: e => this.$emit('click', e),
-          focus: e => this.$emit('focus', e),
-          blur: e => this.$emit('blur', e)
-        }
-      },
-      this.$slots.default
-    )
-  },
+  functional: true,
   props: {
     tag: {
       type: String,
-      default: 'h2'
+      default: 'button',
+      required: true
     }
+  },
+  render: (createElement, context) => {
+    return createElement(context.props.tag, context.data, context.children)
   }
 }
 </script>
