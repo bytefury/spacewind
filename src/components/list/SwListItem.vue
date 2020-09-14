@@ -1,0 +1,73 @@
+<template>
+  <sw-custom-tag
+    :class="listItemStyle.itemContainer"
+    :tag="tagName"
+    v-bind="$attrs"
+    v-on="$listeners"
+  >
+    <span :class="listItemStyle.iconContainer">
+      <slot />
+    </span>
+    <span :class="listItemStyle.title">{{ title }}</span>
+  </sw-custom-tag>
+</template>
+<script>
+import { findByKey } from '../../helpers/utilities'
+import SwCustomTag from '../SwCustomTag'
+export default {
+  inheritAttrs: false,
+  props: {
+    title: {
+      type: String,
+      required: false,
+      default: ''
+    },
+    active: {
+      type: Boolean,
+      required: false
+    },
+    tagName: {
+      type: String,
+      required: false,
+      default: 'a'
+    }
+  },
+  components: {
+    SwCustomTag
+  },
+  data() {
+    return {
+      variants: null,
+      classes: null,
+      variant: null,
+      isLoading: true
+    }
+  },
+  computed: {
+    listItemStyle() {
+      let style = findByKey(this.variant, this.variants)
+
+      if (style && this.active) {
+        let data = {}
+        if (this.classes && this.classes.active) {
+          data = { ...this.classes, ...this.classes.active }
+        }
+        return { ...data, ...style.active }
+      }
+
+      if ((style == undefined || style == null) && this.active) {
+        if (this.classes && this.classes.active) {
+          return { ...this.classes, ...this.classes.active }
+        }
+      }
+
+      return { ...this.classes, ...style }
+    }
+  },
+  methods: {
+    handleClick(e) {
+      this.$emit('click', e)
+    }
+  }
+}
+</script>

@@ -3,7 +3,14 @@
     <div :class="classes.activator" @click="toggleSearchMenu">
       <slot name="activator" />
     </div>
-    <transition name="fade">
+    <transition
+      enter-class="duration-300 ease-out"
+      enter-active-class="duration-700 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95"
+      enter-to-class="duration-700 translate-y-0 opacity-100 sm:scale-100"
+      leave-active-class="duration-300 ease-in"
+      leave-class="duration-300 translate-y-0 opacity-100 sm:scale-100"
+      leave-to-class="duration-300 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-90"
+    >
       <div v-if="showMenu" :class="baseStyle">
         <slot />
       </div>
@@ -116,13 +123,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.5s;
-}
-.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
-  opacity: 0;
-}
-</style>

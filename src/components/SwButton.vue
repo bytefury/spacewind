@@ -2,28 +2,34 @@
   <sw-custom-tag
     :tag="getRenderElement"
     :class="buttonStyle"
-    :exact="exact"
-    :href="href"
-    :method="method"
-    :data="data"
-    :preserveState="preserveState"
-    :preserveScroll="preserveScroll"
-    :id="id"
-    :value="value"
-    :autofocus="autofocus"
     :disabled="disabled"
-    :name="name"
-    :type="type"
-    :tabindex="tabindex"
-    :to="to"
-    :replace="replace"
-    :append="this.append"
-    :activeClass="activeClass"
-    :exactActiveClass="exactActiveClass"
-    @click="e => $emit('click', e)"
-    @focus="e => $emit('focus', e)"
-    @blur="e => $emit('blur', e)"
+    v-bind="$attrs"
+    v-on="$listeners"
   >
+    <div v-if="isLoading" :class="iconStyle.loadingIconContainer">
+      <slot v-if="hasLoaderSlot" name="loader" />
+      <svg
+        v-else
+        :class="iconStyle.loadingIcon"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+    </div>
     <slot />
   </sw-custom-tag>
 </template>
@@ -36,6 +42,7 @@ const { classes, variants, sizes } = SwButton
 
 export default {
   name: 'SwButton',
+  inheritAttrs: false,
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
@@ -50,39 +57,20 @@ export default {
         return ['button', 'a'].indexOf(value) !== -1
       }
     },
-    href: {
-      type: String,
-      default: null
-    },
-    variant: {
-      type: String,
-      required: false,
-      default: ''
+    classes: {
+      type: Object,
+      default: () => classes
     },
     size: {
       type: String,
       required: false,
       default: 'default'
     },
-    method: {
-      type: String,
-      default: undefined
-    },
-    data: {
+    sizes: {
       type: Object,
-      default: undefined
+      default: () => sizes
     },
     loading: {
-      type: Boolean,
-      required: false,
-      default: false
-    },
-    id: {
-      type: Number,
-      required: false,
-      default: null
-    },
-    block: {
       type: Boolean,
       required: false,
       default: false
@@ -92,72 +80,14 @@ export default {
       required: false,
       default: false
     },
-    type: {
+    variant: {
       type: String,
       required: false,
-      default: 'button'
-    },
-    name: {
-      type: String,
-      required: false,
-      default: ''
-    },
-    tabindex: {
-      type: Number,
-      required: false,
-      default: null
-    },
-    preserveState: {
-      type: Boolean,
-      default: false
-    },
-    preserveScroll: {
-      type: Boolean,
-      default: false
-    },
-    to: {
-      type: [String, Object],
-      default: undefined
-    },
-    replace: {
-      type: Boolean,
-      default: false
-    },
-    append: {
-      type: Boolean,
-      default: false
-    },
-    activeClass: {
-      type: String,
-      default: 'router-link-active'
-    },
-    exact: {
-      type: Boolean,
-      default: false
-    },
-    exactActiveClass: {
-      type: String,
-      default: 'router-link-exact-active'
-    },
-    autofocus: {
-      type: Boolean,
-      default: null
-    },
-    value: {
-      type: [String, Number],
-      default: null
+      default: 'primary'
     },
     variants: {
       type: Object,
       default: () => variants
-    },
-    classes: {
-      type: Object,
-      default: () => classes
-    },
-    sizes: {
-      type: Object,
-      default: () => sizes
     }
   },
   computed: {
@@ -165,18 +95,17 @@ export default {
       return this.href !== undefined && this.isInertiaLinkComponentAvailable
     },
     isARouterLink() {
-      return this.to !== undefined && this.isRouterLinkComponentAvailable
+      return !!this.$router
     },
     getRenderElement() {
-      if (this.isARouterLink) {
-        return (
-          this.$options.components.NuxtLink ||
-          this.$options.components.RouterLink
-        )
-      }
+      if (this.to) {
+        if (this.isARouterLink) {
+          return 'router-link'
+        }
 
-      if (this.isAnIntertiaLink) {
-        return this.$options.components.InertiaLink
+        if (this.isAnIntertiaLink) {
+          return this.$options.components.InertiaLink
+        }
       }
 
       if (this.href) {
@@ -184,6 +113,10 @@ export default {
       }
 
       return this.tagName
+    },
+    iconStyle() {
+      let style = findByKey(this.variant, this.variants)
+      return { ...this.classes, ...style }
     },
     buttonStyle() {
       let classes = []
@@ -204,15 +137,12 @@ export default {
         )
       }
       return classes
-    }
-  },
-  methods: {
-    blur() {
-      this.$el.blur()
     },
-
-    focus() {
-      this.$el.focus()
+    isLoading() {
+      return this.loading ? true : false
+    },
+    hasLoaderSlot() {
+      return !!this.$slots.loader
     }
   }
 }

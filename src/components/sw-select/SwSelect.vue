@@ -176,7 +176,6 @@
 import SwSelect from '../../themes/default/SwSelect'
 import multiselectMixin from './multiselectMixin'
 import pointerMixin from './pointerMixin'
-import { getVariant } from '../../helpers/utilities'
 
 const { classes, variants } = SwSelect
 
@@ -407,25 +406,22 @@ export default {
       )
     },
     multiSelectStyle() {
-      let style = []
-      let selectStyle = null
-
-      if (this.disabled) {
-        style.push(selectStyle.disabledBaseSelectContainer)
-      }
-
+      let style = [this.classes.baseSelectContainer]
       if (this.isOpen) {
         style.push(this.classes.activeBaseSelectContainer)
       }
 
+      if (this.disabled) {
+        style.push(this.classes.disabledBaseSelectContainer)
+      }
       if (this.isAbove) {
-        style.push(['multiselect--above', this.classes.baseSelectContainer])
+        style.push('multiselect--above')
       }
 
       return style
     },
     multiselectSelectStyle() {
-      let style = []
+      let style = [this.classes.multiSelect]
 
       if (this.disabled) {
         style.push(this.classes.disabledMultiSelect)
@@ -436,22 +432,20 @@ export default {
       return style
     },
     multiSelectTagsStyle() {
-      let style = []
+      let style = [this.classes.multiSelectTags]
       let tagStyle = null
-
       if (this.invalid) {
-        tagStyle = getVariant('danger', this.variants)
+        style.push(this.classes.multiSelectTagsInvalid)
+      } else {
+        style.push(this.classes.multiSelectTagsDefaultColor)
       }
 
       if (this.disabled) {
         style.push(this.classes.disabledMultiSelectTags)
-        return style
       }
-
       style.push(
         tagStyle ? tagStyle.multiSelectTags : this.classes.multiSelectTags
       )
-
       return style
     },
     multiselectTagsWrapStyle() {
@@ -622,13 +616,13 @@ fieldset[disabled] .multiselect {
 }
 .multiselect__tag-icon:after {
   content: '×';
-  color: #266d4d;
+  color: #ffffff;
   font-size: 14px;
 }
-.multiselect__tag-icon:focus,
-.multiselect__tag-icon:hover {
-  background: #369a6e;
-}
+// .multiselect__tag-icon:focus,
+// .multiselect__tag-icon:hover {
+//   background: #369a6e;
+// }
 .multiselect__tag-icon:focus:after,
 .multiselect__tag-icon:hover:after {
   color: white;
@@ -856,21 +850,6 @@ fieldset[disabled] .multiselect {
   .multiselect__option--selected {
     font-weight: normal !important;
     background: #ebf1fa;
-  }
-
-  .multiselect__tags-wrap .multiselect__tag {
-    background: var(--color-primary);
-    color: #fff;
-
-    .multiselect__tag-icon {
-      &:hover {
-        background: var(--color-primary-light);
-      }
-
-      &::after {
-        color: #fff;
-      }
-    }
   }
 
   &.error {

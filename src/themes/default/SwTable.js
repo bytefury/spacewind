@@ -12,7 +12,7 @@ export default {
     thSortStyles: 'cursor-pointer select-none',
     tdStyles:
       'text-left text-base h-20 px-4 py-6 align-middle bg-white first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',
-    trStyles: 'rounded-lg transition-all ease-in-out delay-200 hover:shadow-lg',
+    trStyles: 'transition duration-300 ease-in-out hover:shadow-lg',
     paginationContainer: 'flex justify-end',
     paginationDisabled: 'cursor-auto pointer-events-none text-gray-light',
     paginationLeftIcon:

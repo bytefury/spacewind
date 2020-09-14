@@ -60,4 +60,5 @@ const findByKey = (variant, variants) => {
     }
   }
 }
+
 export { installComponent, extendComponent, findByKey, camelToKebab }

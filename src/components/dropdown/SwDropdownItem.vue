@@ -1,17 +1,20 @@
 <template>
-  <div :class="classes.base" @click="onClick">
-    <font-awesome-icon v-if="icon" :icon="icon" :class="classes.icon" />
+  <div :class="classes.item" @click="onClick">
     <span v-if="title">{{ title }}</span>
   </div>
 </template>
 
 <script>
-import SwDropdownItem from '../../themes/default/dropdown/SwDropdownItem'
-const { classes } = SwDropdownItem
+import SwDropdown from '../../themes/default/SwDropdown'
+const { classes } = SwDropdown
 
 export default {
   name: 'SwDropdownItem',
   props: {
+    classes: {
+      type: Object,
+      default: () => classes
+    },
     icon: {
       type: [String, Array],
       default: null
@@ -23,10 +26,6 @@ export default {
     link: {
       type: [String, Object],
       default: null
-    },
-    classes: {
-      type: Object,
-      default: () => classes
     }
   },
   methods: {

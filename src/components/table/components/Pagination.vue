@@ -53,9 +53,9 @@
 </template>
 
 <script>
-import SwTable from "../../../themes/default/SwTable";
+import SwTable from '../../../themes/default/SwTable'
 // import { classList } from "../helpers";
-const { classes } = SwTable;
+const { classes } = SwTable
 export default {
   props: {
     pagination: {
@@ -69,128 +69,126 @@ export default {
   },
   computed: {
     pages() {
-      return this.pagination.totalPages === undefined ? [] : this.pageLinks();
+      return this.pagination.totalPages === undefined ? [] : this.pageLinks()
     },
 
     hasFirst() {
-      return (
-        this.pagination.currentPage >= 4 || this.pagination.totalPages < 10
-      );
+      return this.pagination.currentPage >= 4 || this.pagination.totalPages < 10
     },
 
     hasLast() {
       return (
         this.pagination.currentPage <= this.pagination.totalPages - 3 ||
         this.pagination.totalPages < 10
-      );
+      )
     },
 
     hasFirstEllipsis() {
       return (
         this.pagination.currentPage >= 4 && this.pagination.totalPages >= 10
-      );
+      )
     },
 
     hasLastEllipsis() {
       return (
         this.pagination.currentPage <= this.pagination.totalPages - 3 &&
         this.pagination.totalPages >= 10
-      );
+      )
     },
 
     shouldShowPagination() {
       if (this.pagination.totalPages === undefined) {
-        return false;
+        return false
       }
 
       if (this.pagination.count === 0) {
-        return false;
+        return false
       }
 
-      return this.pagination.totalPages > 1;
+      return this.pagination.totalPages > 1
     },
 
     paginationContainerStyle() {
-      return [this.classes.paginationContainer];
+      return [this.classes.paginationContainer]
     },
     firstPageDisabledStyle() {
-      let style = null;
+      let style = null
       if (this.pagination.currentPage === 1) {
-        style = this.classes.paginationDisabled;
+        style = this.classes.paginationDisabled
       }
-      return style;
+      return style
     },
     lastPageDisabledStyle() {
-      let style = null;
+      let style = null
       if (this.pagination.currentPage === this.pagination.totalPages) {
-        style = this.classes.paginationDisabled;
+        style = this.classes.paginationDisabled
       }
-      return style;
+      return style
     },
     paginationLeftIconStyle() {
-      return [this.classes.paginationLeftIcon];
+      return [this.classes.paginationLeftIcon]
     },
     paginationRightIconStyle() {
-      return [this.classes.paginationRightIcon];
+      return [this.classes.paginationRightIcon]
     }
   },
   methods: {
     isActive(page) {
-      const currentPage = this.pagination.currentPage || 1;
+      const currentPage = this.pagination.currentPage || 1
 
-      return currentPage === page;
+      return currentPage === page
     },
     paginationPageClass(page) {
-      let style = "";
+      let style = ''
 
-      style += ` ${this.classes.pageItem}`;
+      style += ` ${this.classes.pageItem}`
 
       if (this.isActive(page)) {
-        style += ` ${this.classes.activePageItem}`;
+        style += ` ${this.classes.activePageItem}`
       }
 
-      return style;
+      return style
     },
     paginationPageStyle(page) {
-      let style = "";
+      let style = ''
 
-      if (page === "...") {
-        style += ` ${this.classes.paginationDisabled}`;
+      if (page === '...') {
+        style += ` ${this.classes.paginationDisabled}`
       }
 
-      return style;
+      return style
     },
     pageClicked(page) {
       if (
-        page === "..." ||
+        page === '...' ||
         page === this.pagination.currentPage ||
         page > this.pagination.totalPages ||
         page < 1
       ) {
-        return;
+        return
       }
-      this.$emit("pageChange", page);
+      this.$emit('pageChange', page)
     },
 
     pageLinks() {
-      const pages = [];
+      const pages = []
 
-      let left = 2;
-      let right = this.pagination.totalPages - 1;
+      let left = 2
+      let right = this.pagination.totalPages - 1
 
       if (this.pagination.totalPages >= 10) {
-        left = Math.max(1, this.pagination.currentPage - 2);
+        left = Math.max(1, this.pagination.currentPage - 2)
         right = Math.min(
           this.pagination.currentPage + 2,
           this.pagination.totalPages
-        );
+        )
       }
       for (let i = left; i <= right; i++) {
-        pages.push(i);
+        pages.push(i)
       }
 
-      return pages;
+      return pages
     }
   }
-};
+}
 </script>

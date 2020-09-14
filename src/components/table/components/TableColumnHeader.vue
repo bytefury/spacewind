@@ -76,7 +76,7 @@ export default {
     },
     headerStyle() {
       return classes.thStyles
-    },
+    }
   },
 
   methods: {
@@ -84,7 +84,7 @@ export default {
       if (this.column.isSortable()) {
         this.$emit('click', this.column)
       }
-    },
-  },
+    }
+  }
 }
 </script>
