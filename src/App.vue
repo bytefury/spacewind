@@ -60,12 +60,23 @@
         <sw-tab-item title="SwSelect">
           <div class="mb-5">
             <sw-select
-              v-model="database_connection2"
+              v-model="database_connection1"
               :options="options2"
               :searchable="true"
               :show-labels="false"
               :allow-empty="true"
               :multiple="false"
+              placeholder="select a value "
+            />
+          </div>
+          <div class="mb-5">
+            <sw-select
+              v-model="database_connection2"
+              :options="options2"
+              :searchable="true"
+              :show-labels="false"
+              :allow-empty="true"
+              :multiple="true"
               placeholder="select a value "
             />
           </div>
@@ -83,22 +94,30 @@
                 accusamus ad qua
               </div>
               <template v-slot:footer>
-                <sw-button variant="danger" @click="() => $refs.myModal.close()"
-                  >Close</sw-button
-                >&nbsp;
+                <sw-button
+                  variant="danger"
+                  @click="() => $refs.myModal.close()"
+                >
+                  Close
+                </sw-button>
+                &nbsp;
               </template>
             </sw-modal>
-            <sw-button size="lg" variant="primary" @click="onModal">
+            <sw-button size="lg" loading variant="primary" @click="onModal">
               Primary Button
             </sw-button>
             &nbsp;
-            <sw-button size="lg" loading variant="danger">
+            <sw-button size="lg" variant="danger">
               Danger Button
             </sw-button>
             &nbsp;
-            <sw-button size="lg" variant="warning"> Warning Button </sw-button>
+            <sw-button size="lg" variant="warning">
+              Warning Button
+            </sw-button>
             &nbsp;
-            <sw-button size="lg" variant="success"> Success Button </sw-button>
+            <sw-button size="lg" variant="success">
+              Success Button
+            </sw-button>
             &nbsp;
             <sw-button size="lg" variant="info"> Info Button </sw-button>&nbsp;
             <sw-button size="lg" variant="primary-light">
@@ -107,7 +126,7 @@
             &nbsp;
             <br />
             <br />
-            <sw-button size="lg" variant="primary-outline">
+            <sw-button loading size="lg" variant="primary-outline">
               Primary Button
             </sw-button>
             &nbsp;
@@ -129,6 +148,48 @@
               Primary Light Button
             </sw-button>
           </div>
+        </sw-tab-item>
+        <sw-tab-item title="Card">
+          <sw-card class="mt-6">
+            <div class="grid grid-cols-3 gap-4 mb-6">
+              <sw-input-group label="Name">
+                <sw-input prefix="EST">
+                  <template v-slot:rightIcon>
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      class="w-5 h-5 mr-1 text-gray-500 "
+                    >
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                      <path
+                        fill-rule="evenodd"
+                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                  </template>
+                </sw-input>
+              </sw-input-group>
+              <sw-input-group label="Age">
+                <sw-input type="number" />
+              </sw-input-group>
+              <sw-input-group label="Amount">
+                <sw-money v-model="money" :currency="currency" />
+              </sw-input-group>
+              <sw-input-group label="Address">
+                <sw-textarea row="2" />
+              </sw-input-group>
+              <sw-input-group label="Toggle">
+                <sw-switch />
+              </sw-input-group>
+            </div>
+            <template v-slot:footer>
+              <sw-button variant="danger" @click="() => $refs.myModal.close()"
+                >Close</sw-button
+              >&nbsp;
+            </template>
+          </sw-card>
+          <sw-divider class="my-5" />
         </sw-tab-item>
         <sw-tab-item title="Badges">
           <div class="flex flex-row mt-4">
@@ -166,7 +227,7 @@
               <sw-input-group label="Age">
                 <sw-input type="number" />
               </sw-input-group>
-              <sw-input-group label="Surname">
+              <sw-input-group label="Amount">
                 <sw-money v-model="money" :currency="currency" />
               </sw-input-group>
               <sw-input-group label="Last Name">
@@ -175,11 +236,8 @@
               <sw-input-group label="Surname Name">
                 <sw-input />
               </sw-input-group>
-              <sw-input-group label="Address">
-                <sw-textarea row="2" />
-              </sw-input-group>
-              <sw-input-group label="Toggle">
-                <sw-switch />
+              <sw-input-group label="Testing">
+                <sw-input />
               </sw-input-group>
               <sw-input-group label="Checkbox">
                 <sw-checkbox label="small" variant="success" size="sm" />
@@ -203,30 +261,24 @@
                   variant="danger"
                 />
               </sw-input-group>
-              <sw-input-group label="Date Picker">
-                <sw-date-picker placeholder="dd-mm-yyyy" />
+              <sw-input-group label="Date of Birth">
+                <sw-date-picker v-model="dob" placeholder="dd-mm-yyyy" />
               </sw-input-group>
             </div>
-            <template v-slot:footer>
-              <sw-button variant="danger" @click="() => $refs.myModal.close()"
-                >Close</sw-button
-              >&nbsp;
-            </template>
           </sw-card>
-          <sw-divider class="my-5" />
         </sw-tab-item>
         <sw-tab-item title="Filter Wrapper">
           <sw-filter-wrapper is-show class="mt-6">
-            <sw-input-group label="First Name" class="w-full">
+            <sw-input-group label="First Name">
               <sw-input />
             </sw-input-group>
-            <sw-input-group label="Last Name" class="w-full">
+            <sw-input-group label="Last Name">
               <sw-input />
             </sw-input-group>
-            <sw-input-group label="Surname Name" class="w-full">
+            <sw-input-group label="Surname Name">
               <sw-input />
             </sw-input-group>
-            <sw-input-group label="Testing" class="w-full">
+            <sw-input-group label="Testing">
               <sw-input />
             </sw-input-group>
           </sw-filter-wrapper>
@@ -313,6 +365,9 @@
                   d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"
                 ></path>
               </svg>
+              <template v-slot:actions>
+                <sw-button>Test</sw-button>
+              </template>
             </sw-empty-table-placeholder>
           </sw-card>
         </sw-tab-item>
@@ -384,7 +439,7 @@
           </div>
         </sw-tab-item>
         <sw-tab-item title="Editor" class="mt-5">
-          <sw-tip-tap-editor />
+          <sw-editor />
         </sw-tab-item>
         <sw-tab-item title="File Upload">
           <sw-file-upload
@@ -462,7 +517,7 @@ import SwDropdownItem from './components/dropdown/SwDropdownItem'
 import SwCheckbox from './components/SwCheckbox'
 import SwRadio from './components/SwRadio'
 import SwDatePicker from './components/SwDatePicker'
-import SwTipTapEditor from './components/SwTipTapEditor/Index.vue'
+import SwEditor from './components/sw-editor/Index'
 
 export default {
   name: 'App',
@@ -474,6 +529,7 @@ export default {
       cropperOutputMime: '',
       fileSizeInKb: null,
       fileObject: null,
+      dob: new Date(),
       currency: {
         decimal: '.',
         thousands: ',',
@@ -639,7 +695,7 @@ export default {
     SwFooter,
     SwRadio,
     SwDatePicker,
-    SwTipTapEditor,
+    SwEditor,
     SwFileUpload
   },
   methods: {
@@ -675,3 +731,10 @@ export default {
   }
 }
 </script>
+<style lang="scss">
+@import 'tailwindcss/base';
+
+@import 'tailwindcss/components';
+
+@import 'tailwindcss/utilities';
+</style>

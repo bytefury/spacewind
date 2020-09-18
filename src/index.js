@@ -39,6 +39,7 @@ import SwTabItem from '../src/components/tabs/SwTabItem.vue'
 import SwTabs from '../src/components/tabs/SwTabs.vue'
 import SwTextarea from '../src/components/SwTextarea.vue'
 import SwTransition from '../src/components/SwTransition.vue'
+import SwEditor from '../src/components/sw-editor/Index.vue'
 
 // Register Components
 const components = {
@@ -71,7 +72,8 @@ const components = {
   SwTabItem,
   SwTabs,
   SwTextarea,
-  SwTransition
+  SwTransition,
+  SwEditor
 }
 
 export default {

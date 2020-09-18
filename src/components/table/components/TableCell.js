@@ -5,7 +5,15 @@ const { classes } = SwTable
 export default {
   functional: true,
 
-  props: ['column', 'row', 'responsiveLabel'],
+  props: {
+    column: { type: Object },
+    row: { type: Object },
+    responsiveLabel: { type: String },
+    classes: {
+      type: Object,
+      default: () => classes
+    }
+  },
 
   render(createElement, { props }) {
     const data = {}
@@ -14,7 +22,7 @@ export default {
       data.class = props.column.cellClass
     }
 
-    data.class += ` ${classes.tdStyles}`
+    data.class += ` ${props.classes.tdStyles}`
 
     if (props.column.template) {
       return createElement('td', data, props.column.template(props.row.data))
@@ -27,7 +35,7 @@ export default {
     )
 
     let tdData = {
-      class: classes.tdStyles
+      class: props.classes.tdStyles
     }
 
     return createElement('td', tdData, [

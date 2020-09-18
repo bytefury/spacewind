@@ -11,18 +11,8 @@
         {{ description }}
       </label>
     </div>
-    <div :class="classes.buttonContainer">
-      <router-link
-        v-if="isARouterLink"
-        slot="item-title"
-        :to="to"
-        :class="classes.button"
-      >
-        {{ buttonTitle }}
-      </router-link>
-      <a v-else slot="item-title" :href="to" :class="classes.button">
-        {{ buttonTitle }}</a
-      >
+    <div :class="classes.actionsContainer">
+      <slot name="actions" />
     </div>
   </div>
 </template>
@@ -51,22 +41,9 @@ export default {
       type: String,
       default: String
     },
-    to: {
-      type: [String, Object],
-      default: undefined
-    },
-    buttonTitle: {
-      type: String,
-      default: String
-    },
     classes: {
       type: Object,
       default: () => classes
-    }
-  },
-  computed: {
-    isARouterLink() {
-      return this.to !== undefined && this.isRouterLinkComponentAvailable
     }
   }
 }

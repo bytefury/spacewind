@@ -5,8 +5,12 @@
 </template>
 <script>
 import SwSidebar from '../themes/default/SwSidebar'
+import { installComponent } from '../helpers/utilities'
 const { classes } = SwSidebar
 export default {
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     classes: {
       type: Object,

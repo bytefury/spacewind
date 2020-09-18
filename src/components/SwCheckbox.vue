@@ -12,18 +12,23 @@
       @keyup="handleKeyupEnter"
       @blur="handleFocusOut"
     />
-    <label :for="uniqueId" :class="lebelStyle">Option 1</label>
+    <label v-if="label" :for="uniqueId" :class="lebelStyle">{{ label }}</label>
   </div>
 </template>
 <script>
-import { findByKey } from '../helpers/utilities'
+import { findByKey, installComponent } from '../helpers/utilities'
 import SwCheckbox from '../themes/default/SwCheckbox'
+
 const { classes, variants, sizes } = SwCheckbox
+
 export default {
   name: 'SwCheckbox',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     value: {
-      type: [Boolean, Number],
+      type: [Boolean, Number, Array, String],
       required: false,
       default: false
     },
@@ -41,7 +46,7 @@ export default {
     },
     label: {
       type: String,
-      default: String
+      default: null
     },
     name: {
       type: String,
@@ -78,32 +83,12 @@ export default {
       return { ...this.classes, ...style }
     },
     lebelStyle() {
-      let classes = []
       let size = findByKey(this.size, this.sizes)
-      let style = findByKey(this.variant, this.variants)
-
-      if (style) {
-        classes.push(style.label)
-      } else {
-        classes.push(this.checkBoxStyle.label)
-      }
-
-      classes.push(size.label)
-      return classes
+      return [this.checkBoxStyle.label, size.label]
     },
     inputStyle() {
-      let classes = []
       let size = findByKey(this.size, this.sizes)
-      let style = findByKey(this.variant, this.variants)
-
-      if (style) {
-        classes.push(style.input)
-      } else {
-        classes.push(this.checkBoxStyle.input)
-      }
-
-      classes.push(size.input)
-      return classes
+      return [this.checkBoxStyle.input, size.input]
     }
   },
   watch: {

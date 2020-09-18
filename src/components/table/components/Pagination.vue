@@ -54,8 +54,9 @@
 
 <script>
 import SwTable from '../../../themes/default/SwTable'
+import { findByKey } from '../../../helpers/utilities'
 // import { classList } from "../helpers";
-const { classes } = SwTable
+const { classes, variants } = SwTable
 export default {
   props: {
     pagination: {
@@ -65,6 +66,14 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    },
+    variants: {
+      type: Object,
+      default: () => variants
+    },
+    variant: {
+      type: String,
+      default: null
     }
   },
   computed: {
@@ -109,27 +118,34 @@ export default {
     },
 
     paginationContainerStyle() {
-      return [this.classes.paginationContainer]
+      return [this.tableTheme.paginationContainer]
     },
     firstPageDisabledStyle() {
       let style = null
       if (this.pagination.currentPage === 1) {
-        style = this.classes.paginationDisabled
+        style = this.tableTheme.paginationDisabled
       }
       return style
     },
     lastPageDisabledStyle() {
       let style = null
       if (this.pagination.currentPage === this.pagination.totalPages) {
-        style = this.classes.paginationDisabled
+        style = this.tableTheme.paginationDisabled
       }
       return style
     },
     paginationLeftIconStyle() {
-      return [this.classes.paginationLeftIcon]
+      return [this.tableTheme.paginationLeftIcon]
     },
     paginationRightIconStyle() {
-      return [this.classes.paginationRightIcon]
+      return [this.tableTheme.paginationRightIcon]
+    },
+    tableTheme() {
+      let style = {}
+      if (this.variant) {
+        style = findByKey(this.variant, this.variants)
+      }
+      return { ...this.classes, ...style }
     }
   },
   methods: {
@@ -141,10 +157,10 @@ export default {
     paginationPageClass(page) {
       let style = ''
 
-      style += ` ${this.classes.pageItem}`
+      style += ` ${this.tableTheme.pageItem}`
 
       if (this.isActive(page)) {
-        style += ` ${this.classes.activePageItem}`
+        style += ` ${this.tableTheme.activePageItem}`
       }
 
       return style
@@ -153,7 +169,7 @@ export default {
       let style = ''
 
       if (page === '...') {
-        style += ` ${this.classes.paginationDisabled}`
+        style += ` ${this.tableTheme.paginationDisabled}`
       }
 
       return style

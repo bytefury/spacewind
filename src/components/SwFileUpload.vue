@@ -7,12 +7,17 @@
     @vdropzone-thumbnail="thumbnail"
     v-bind="$attrs"
     v-on="$listeners"
+    :use-custom-slot="true"
   />
 </template>
 <script>
 import vue2Dropzone from 'vue2-dropzone'
+import { installComponent } from '../helpers/utilities'
 export default {
   inheritAttrs: false,
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   components: {
     vueDropzone: vue2Dropzone
   },
@@ -166,42 +171,16 @@ export default {
         )
       }
     },
-    uploadprogress(file, progress, bytesSent) {
-      console.log(bytesSent)
+    uploadprogress(file, progress) {
       if (file.previewElement) {
         let progressElement = file.previewElement.querySelector(
           '[data-dz-uploadprogress]'
         )
-        console.log(progressElement)
         progressElement.style.width = progress + '%'
         if (progress == 100) {
           progressElement.style.width = 0 + '%'
         }
-        // progressElement.querySelector('.progress-text').textContent =
-        //   progress + '%'
       }
-    },
-    sendingEvent(file, xhr, formData) {
-      for (let i = 0; i < this.additionalData.length; i++) {
-        for (var key in this.additionalData[i]) {
-          formData.append(key, this.additionalData[i][key])
-        }
-      }
-    },
-    successEvent() {
-      // window.toastr['success']('success')
-    },
-    maximum(file) {
-      this.$refs.myVueDropzone.removeFile(file)
-    },
-    getCustomeFile() {
-      this.$emit('takefile', true)
-    },
-    removeFile() {
-      this.$emit('takefile', false)
-    },
-    sendFile() {
-      this.$refs.myVueDropzone.processQueue()
     }
   }
 }

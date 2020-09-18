@@ -1,7 +1,7 @@
-import Multiselect from './Multiselect'
-import multiselectMixin from './multiselectMixin'
+import SwSelect from './SwSelect.vue'
+import SwSelectMixin from './SwSelectMixin'
 import pointerMixin from './pointerMixin'
 
-export default Multiselect
+export default SwSelect
 
-export { Multiselect, multiselectMixin, pointerMixin }
+export { SwSelect, SwSelectMixin, pointerMixin }

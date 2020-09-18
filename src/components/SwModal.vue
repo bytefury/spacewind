@@ -7,11 +7,7 @@
     leave-class="duration-300 translate-y-0 opacity-100 sm:scale-100"
     leave-to-class="duration-300 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-90"
   >
-    <div
-      v-show="isShow"
-      :class="classes.overlayContainer"
-      style="background: rgba(4,4,5,.1);"
-    >
+    <div v-if="isShow" :class="classes.overlayContainer">
       <span :class="classes.centering"></span>&#8203;
 
       <div :class="classes.base">
@@ -33,8 +29,12 @@
 
 <script>
 import SwModal from '../themes/default/SwModal'
+import { installComponent } from '../helpers/utilities'
 const { classes } = SwModal
 export default {
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     classes: {
       type: Object,

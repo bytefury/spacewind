@@ -111,7 +111,8 @@
 
 <script>
 import SwButton from '../SwButton'
-import SwTipTapEditor from '../../themes/default/SwTipTapEditor'
+import SwEditor from '../../themes/default/SwEditor'
+import { installComponent } from '../../helpers/utilities'
 import { Editor, EditorContent, EditorMenuBar } from 'tiptap'
 import {
   UnderlineIcon,
@@ -146,9 +147,13 @@ import {
   History
 } from 'tiptap-extensions'
 
-const { classes } = SwTipTapEditor
+const { classes } = SwEditor
 
 export default {
+  name: 'SwEditor',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   components: {
     EditorContent,
     EditorMenuBar,

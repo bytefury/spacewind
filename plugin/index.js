@@ -8,10 +8,12 @@ const SwCheckbox = require('./components/checkbox')
 const SwRadio = require('./components/radio')
 const DatepickrComponent = require('./components/datepickr')
 const tiptapEditorComponent = require('./components/tiptap-editor')
+const baseStyle = require('./components/base')
 
 const spacing = {
   '1.5': '0.375rem',
   '2.5': '0.625rem',
+  '22': '5.625rem',
   '60': '240px'
 }
 
@@ -45,6 +47,8 @@ module.exports = plugin.withOptions(
         fontWeight: 600,
         color: theme('colors.black')
       }
+
+      addUtilities(baseStyle)
 
       addBase({
         '.h1': {

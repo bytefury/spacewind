@@ -1,5 +1,5 @@
 <template>
-  <div :class="checkBoxStyle.container">
+  <div :class="radioButtonStyle.container">
     <input
       type="radio"
       v-model="checkValue"
@@ -12,15 +12,20 @@
       @keyup="handleKeyupEnter"
       @blur="handleFocusOut"
     />
-    <label :for="uniqueId" :class="lebelStyle">{{ label }}</label>
+    <label v-if="label" :for="uniqueId" :class="lebelStyle">{{ label }}</label>
   </div>
 </template>
 <script>
-import { findByKey } from '../helpers/utilities'
+import { installComponent, findByKey } from '../helpers/utilities'
 import SwRadio from '../themes/default/SwRadio'
+
 const { classes, variants, sizes } = SwRadio
+
 export default {
   name: 'SwRadio',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     value: {
       type: [Boolean, Number, String],
@@ -41,7 +46,7 @@ export default {
     },
     label: {
       type: String,
-      default: String
+      default: null
     },
     name: {
       type: String,
@@ -73,37 +78,17 @@ export default {
           .substr(2, 9)
       )
     },
-    checkBoxStyle() {
+    radioButtonStyle() {
       let style = findByKey(this.variant, this.variants)
       return { ...this.classes, ...style }
     },
     lebelStyle() {
-      let classes = []
       let size = findByKey(this.size, this.sizes)
-      let style = findByKey(this.variant, this.variants)
-
-      if (style) {
-        classes.push(style.label)
-      } else {
-        classes.push(this.checkBoxStyle.label)
-      }
-
-      classes.push(size.label)
-      return classes
+      return [this.radioButtonStyle.label, size.label]
     },
     inputStyle() {
-      let classes = []
       let size = findByKey(this.size, this.sizes)
-      let style = findByKey(this.variant, this.variants)
-
-      if (style) {
-        classes.push(style.input)
-      } else {
-        classes.push(this.checkBoxStyle.input)
-      }
-
-      classes.push(size.input)
-      return classes
+      return [this.radioButtonStyle.input, size.input]
     }
   },
   watch: {
