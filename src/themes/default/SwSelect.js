@@ -5,12 +5,12 @@ export default {
     disabledBaseSelectContainer: 'pointer-events-none opacity-50',
     multiSelect:
       'multiselect__select h-10 m-0 py-1 px-2 no-underline text-center cursor-pointer leading-5 block absolute box-border w-8',
-    disabledMultiSelect: 'bg-gray-200 text-gray',
+    disabledMultiSelect: 'bg-gray-200 text-gray-400',
     multiSelectTags:
       'multiselect__tags h-10 block pt-2 pr-10 pb-0 pl-2 rounded border border-solid text-sm ',
     multiSelectTagsDefaultColor: 'border-gray-200 bg-white',
     multiSelectTagsInvalid: 'border-danger bg-white',
-    disabledMultiSelectTags: 'bg-gray-200 text-gray',
+    disabledMultiSelectTags: 'bg-gray-200 text-gray-400',
     multiselectTagsWrap: 'multiselect__tags-wrap inline',
     multiselectTag:
       'multiselect__tag relative inline-block pt-1 pr-6 pb-1 pl-2 rounded mr-2 text-white leading-none mb-1 whitespace-no-wrap overflow-hidden max-w-full bg-primary-500',

@@ -18,7 +18,14 @@ import SwTable from '../../../themes/default/SwTable'
 const { classes } = SwTable
 
 export default {
-  props: ['column', 'sort'],
+  props: {
+    column: { type: Object },
+    sort: { type: Object },
+    classes: {
+      type: Object,
+      default: () => classes
+    }
+  },
   computed: {
     ariaDisabled() {
       if (!this.column.isSortable()) {
@@ -53,14 +60,14 @@ export default {
           'table-component__th table-component__th--sort',
           this.column.headerClass,
           this.headerStyle,
-          classes.thSortStyles
+          this.classes.thSortStyles
         )
       }
       return classList(
         `table-component__th table-component__th--sort-${this.sort.order}`,
         this.column.headerClass,
         this.headerStyle,
-        classes.thSortStyles
+        this.classes.thSortStyles
       )
     },
 
@@ -75,7 +82,7 @@ export default {
       return this.column.label
     },
     headerStyle() {
-      return classes.thStyles
+      return this.classes.thStyles
     }
   },
 

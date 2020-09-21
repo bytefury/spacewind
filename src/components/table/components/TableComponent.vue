@@ -31,6 +31,7 @@
               :key="column.show || column.show"
               :sort="sort"
               :column="column"
+              :classes="tableTheme"
               @click="changeSorting"
             />
           </tr>
@@ -41,6 +42,7 @@
             :key="row.vueTableComponentInternalRowId"
             :row="row"
             :columns="columns"
+            :classes="tableTheme"
             @rowClick="emitRowClick"
           />
         </tbody>
@@ -63,6 +65,7 @@
 
     <pagination
       v-if="pagination && !loading"
+      :classes="tableTheme"
       :pagination="pagination"
       @pageChange="pageChange"
     />
@@ -78,9 +81,9 @@ import TableRow from './TableRow'
 import settings from '../settings'
 import Pagination from './Pagination'
 import { classList, pick } from '../helpers'
-
+import { findByKey } from '../../../helpers/utilities'
 import SwTable from '../../../themes/default/SwTable'
-const { classes } = SwTable
+const { classes, variants } = SwTable
 
 export default {
   components: {
@@ -110,7 +113,15 @@ export default {
     tbodyClass: { default: () => settings.tbodyClass },
     filterInputClass: { default: () => settings.filterInputClass },
     filterPlaceholder: { default: () => settings.filterPlaceholder },
-    filterNoResults: { default: () => settings.filterNoResults }
+    filterNoResults: { default: () => settings.filterNoResults },
+    variants: {
+      type: Object,
+      default: () => variants
+    },
+    variant: {
+      type: String,
+      default: null
+    }
   },
 
   data: () => ({
@@ -210,18 +221,18 @@ export default {
         : `vue-table-component.${window.location.host}${window.location.pathname}${this.cacheKey}`
     },
     tableComponentContainerStyle() {
-      let style = this.classes.tableComponentContainer
+      let style = this.tableTheme.tableComponentContainer
 
       return style
     },
     filterClearStyle() {
-      return this.classes.tableComponentFilterClear
+      return this.tableTheme.tableComponentFilterClear
     },
     tableWrapperStyle() {
-      return this.classes.tableComponentTableWrapper
+      return this.tableTheme.tableComponentTableWrapper
     },
     tableStyle() {
-      return this.classes.baseTableStyle
+      return this.tableTheme.baseTableStyle
       // let el = document.getElementById("table");
       // if (baseTableStyle.style && el) {
       //   el.style = baseTableStyle.style;
@@ -229,10 +240,17 @@ export default {
       // return [baseTableStyle.class];
     },
     tableCaptionStyle() {
-      return this.classes.tableCaption
+      return this.tableTheme.tableCaption
     },
     emptyTableMessageStyle() {
-      return this.classes.emptyTableMessage
+      return this.tableTheme.emptyTableMessage
+    },
+    tableTheme() {
+      let style = {}
+      if (this.variant) {
+        style = findByKey(this.variant, this.variants)
+      }
+      return { ...this.classes, ...style }
     }
   },
 
@@ -392,7 +410,7 @@ export default {
 
 .table-component__filter__field:focus {
   outline: 0;
-  border-color: var(--color-primary);
+  @apply border-primary-500;
 }
 
 .table-component__table {
@@ -438,7 +456,7 @@ table.full-width {
 
 .table-component td > span:first-child {
   background: #ebf1fa;
-  color: var(--color-secondary);
+  @apply text-primary-700;
   display: none;
   font-size: 10px;
   font-weight: bold;
@@ -456,7 +474,7 @@ table.full-width {
 @media (max-width: 768px) {
   .select-all-label {
     display: inline !important;
-    color: var(--color-secondary);
+    @apply text-primary-700;
     cursor: pointer;
   }
 

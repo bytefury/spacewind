@@ -12,9 +12,13 @@
   </sw-custom-tag>
 </template>
 <script>
-import { findByKey } from '../../helpers/utilities'
+import { findByKey, installComponent } from '../../helpers/utilities'
 import SwCustomTag from '../SwCustomTag'
 export default {
+  name: 'SwListItem',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   inheritAttrs: false,
   props: {
     title: {
@@ -62,11 +66,6 @@ export default {
       }
 
       return { ...this.classes, ...style }
-    }
-  },
-  methods: {
-    handleClick(e) {
-      this.$emit('click', e)
     }
   }
 }

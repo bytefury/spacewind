@@ -1,10 +1,10 @@
 export default {
   classes: {
     button:
-      'inline-flex items-center justify-center text-white transition duration-150 ease-in-out border border-transparent focus:outline-none bg-gray-dark',
+      'inline-flex items-center justify-center text-white transition duration-150 ease-in-out border border-transparent focus:outline-none bg-gray-400',
     disabledClass: 'cursor-not-allowed',
     loadingIconContainer: 'pr-3',
-    loadingIcon: 'w-6 h-6 text-white animate-spin'
+    loadingIcon: 'w-6 h-6 text-current animate-spin'
   },
   sizes: {
     xs: {
@@ -74,7 +74,7 @@ export default {
     },
     outline: {
       button:
-        'inline-flex justify-center items-center focus:outline-none transition ease-in-out duration-150 border border-transparent border border-solid border-gray-dark text-gray-dark hover:bg-gray-dark hover:text-white'
+        'inline-flex justify-center items-center focus:outline-none transition ease-in-out duration-150 border border-transparent border border-solid border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-white'
     }
   }
 }

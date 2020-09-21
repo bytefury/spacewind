@@ -1,6 +1,6 @@
 export default {
   classes: {
-    container: '',
+    container: 'w-full',
     label: 'text-sm',
     requiredSign: 'text-danger',
     inputContainer: 'mt-2',

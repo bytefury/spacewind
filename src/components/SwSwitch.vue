@@ -18,9 +18,13 @@
 
 <script>
 import SwSwitch from '../themes/default/SwSwitch'
+import { installComponent } from '../helpers/utilities'
 const { classes } = SwSwitch
 export default {
   name: 'SwSwitch',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     value: {
       type: [Boolean, Number],

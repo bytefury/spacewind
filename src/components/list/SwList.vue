@@ -5,10 +5,14 @@
 </template>
 <script>
 import SwListItem from '../../themes/default/SwList'
-import { findByKey } from '../../helpers/utilities'
+import { findByKey, installComponent } from '../../helpers/utilities'
 const { classes, variants } = SwListItem
 
 export default {
+  name: 'SwList',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     classes: {
       type: [String, Array, Object],

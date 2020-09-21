@@ -1,7 +1,7 @@
 export default {
   classes: {
     editorContainer: 'editor-container',
-    menuContainer: 'flex flex-wrap space-x-4 bg-gray-very-light',
+    menuContainer: 'flex flex-wrap space-x-4',
     icon: 'h-4 fill-current',
     activeButton: 'opacity-75',
     editor:

@@ -16,7 +16,6 @@
     <slot name="icon" v-if="calendarButton && hasIconSlot" />
     <flatpickr
       ref="BaseDatepicker"
-      v-model="date"
       v-bind="$attrs"
       v-on="$listeners"
       :disabled="disabled"
@@ -28,12 +27,15 @@
 import Flatpickr from 'vue-flatpickr-component'
 import SwDatePicker from '../themes/default/SwDatePicker'
 import 'flatpickr/dist/flatpickr.css'
-import { findByKey } from '../helpers/utilities'
+import { installComponent, findByKey } from '../helpers/utilities'
 
 const { classes, variants } = SwDatePicker
 
 export default {
   name: 'SwDatePicker',
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   inheritAttrs: false,
   components: {
     Flatpickr
@@ -63,11 +65,6 @@ export default {
       type: String,
       required: false,
       default: ''
-    }
-  },
-  data() {
-    return {
-      date: ''
     }
   },
   computed: {

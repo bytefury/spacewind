@@ -174,14 +174,14 @@
 
 <script>
 import SwSelect from '../../themes/default/SwSelect'
-import multiselectMixin from './multiselectMixin'
+import SwSelectMixin from './SwSelectMixin'
 import pointerMixin from './pointerMixin'
 
 const { classes, variants } = SwSelect
 
 export default {
   name: 'VueMultiselect',
-  mixins: [multiselectMixin, pointerMixin],
+  mixins: [SwSelectMixin, pointerMixin],
   props: {
     classes: {
       type: Object,
@@ -559,7 +559,9 @@ fieldset[disabled] .multiselect {
 }
 
 .multiselect:focus {
-  border: 1px solid var(--color-primary-light) !important;
+  border-width: 1px;
+  border-style: solid;
+  @apply border-primary-500;
 }
 
 .multiselect--disabled {
@@ -591,7 +593,7 @@ fieldset[disabled] .multiselect {
 }
 
 .multiselect__input::placeholder {
-  color: var(--color-gray);
+  @apply text-gray-400;
 }
 
 .multiselect__tag ~ .multiselect__input,
@@ -659,7 +661,7 @@ fieldset[disabled] .multiselect {
   content: '';
 }
 .multiselect__placeholder {
-  color: var(--color-gray);
+  @apply text-gray-400;
   display: inline-block;
   margin-bottom: 10px;
   padding-top: 2px;
@@ -727,13 +729,13 @@ fieldset[disabled] .multiselect {
 .multiselect--disabled .multiselect__current,
 .multiselect--disabled .multiselect__select {
   background: #ebf1fa;
-  color: var(--color-gray);
+  @apply text-gray-400;
 }
 
 .multiselect--disabled .multiselect__input,
 .multiselect--disabled .multiselect__single {
   background: #ebf1fa;
-  color: var(--color-gray);
+  @apply text-gray-400;
 }
 
 .multiselect__option--disabled {
@@ -825,7 +827,7 @@ fieldset[disabled] .multiselect {
 
 .multiselect {
   .multiselect__option--highlight {
-    background: var(--color-gray-very-light);
+    @apply bg-gray-100;
     color: #040405;
     font-weight: normal !important;
 

@@ -12,7 +12,7 @@
           <slot name="icon" />
         </div>
         <p :class="classes.defaultLabel">
-          <slot>Choose File</slot>
+          <slot>{{ label }}</slot>
         </p>
       </div>
     </div>
@@ -44,7 +44,7 @@
           <slot name="icon" />
         </div>
         <p :class="classes.defaultLabel">
-          <slot>Choose File</slot>
+          <slot>{{ label }}</slot>
         </p>
       </div>
     </div>
@@ -54,9 +54,15 @@
 <script>
 import AvatarCropper from 'vue-avatar-cropper'
 import SwAvatar from '../themes/default/SwAvatar'
+import { installComponent } from '../helpers/utilities'
+
 const { classes } = SwAvatar
+
 export default {
   components: { AvatarCropper },
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     classes: {
       type: Object,
@@ -103,6 +109,10 @@ export default {
           height: 150
         }
       }
+    },
+    label: {
+      type: String,
+      default: 'Choose File'
     }
   },
   mounted() {
