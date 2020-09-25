@@ -1,12 +1,12 @@
 <template>
   <sw-custom-tag
-    :class="listItemStyle.itemContainer"
+    :class="itemContainerStyle"
     :tag="tagName"
     v-bind="$attrs"
     v-on="$listeners"
   >
-    <span :class="listItemStyle.iconContainer">
-      <slot />
+    <span v-if="hasIconSlot" :class="listItemStyle.iconContainer">
+      <slot name="icon" />
     </span>
     <span :class="listItemStyle.title">{{ title }}</span>
   </sw-custom-tag>
@@ -14,6 +14,7 @@
 <script>
 import { findByKey, installComponent } from '../../helpers/utilities'
 import SwCustomTag from '../SwCustomTag'
+
 export default {
   name: 'SwListItem',
   install(Vue, theme) {
@@ -44,13 +45,16 @@ export default {
       variants: null,
       classes: null,
       variant: null,
-      isLoading: true
+      isLoading: true,
+      isListGroupItem: false
     }
   },
   computed: {
+    hasIconSlot() {
+      return !!this.$slots.icon
+    },
     listItemStyle() {
       let style = findByKey(this.variant, this.variants)
-
       if (style && this.active) {
         let data = {}
         if (this.classes && this.classes.active) {
@@ -64,8 +68,13 @@ export default {
           return { ...this.classes, ...this.classes.active }
         }
       }
-
       return { ...this.classes, ...style }
+    },
+    itemContainerStyle() {
+      if (this.isListGroupItem) {
+        return this.listItemStyle.listGroup.itemContainer
+      }
+      return this.listItemStyle.itemContainer
     }
   }
 }

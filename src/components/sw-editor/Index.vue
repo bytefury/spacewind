@@ -6,103 +6,90 @@
       :class="classes.editorContainer"
     >
       <div :class="classes.menuContainer">
-        <sw-button
-          :class="getActiveClass(isActive.bold())"
-          type="button"
+        <span
+          :class="getIconContainerStyle(isActive.bold())"
           @click="commands.bold"
         >
           <bold-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          :class="getActiveClass(isActive.italic())"
-          type="button"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.italic())"
           @click="commands.italic"
         >
           <italic-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.strike())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.strike())"
           @click="commands.strike"
         >
           <strikethrough-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.underline())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.underline())"
           @click="commands.underline"
         >
           <underline-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.code())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.code())"
           @click="commands.code"
         >
           <coding-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.paragraph())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.paragraph())"
           @click="commands.paragraph"
         >
-          <paragraph-icon class="h-5 fill-white" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.heading({ level: 1 }))"
+          <paragraph-icon :class="classes.icon" />
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.heading({ level: 1 }))"
           @click="commands.heading({ level: 1 })"
         >
           H1
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.heading({ level: 2 }))"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.heading({ level: 2 }))"
           @click="commands.heading({ level: 2 })"
         >
           H2
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.heading({ level: 3 }))"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.heading({ level: 3 }))"
           @click="commands.heading({ level: 3 })"
         >
           H3
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.bullet_list())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.bullet_list())"
           @click="commands.bullet_list"
         >
           <list-ul-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.ordered_list())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.ordered_list())"
           @click="commands.ordered_list"
         >
           <list-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.blockquote())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.blockquote())"
           @click="commands.blockquote"
         >
           <quote-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button
-          type="button"
-          :class="getActiveClass(isActive.code_block())"
+        </span>
+        <span
+          :class="getIconContainerStyle(isActive.code_block())"
           @click="commands.code_block"
         >
-          code
-        </sw-button>
-        <sw-button type="button" @click="commands.undo">
+          <code-block-icon :class="classes.icon" />
+        </span>
+        <span :class="getIconContainerStyle()" @click="commands.undo">
           <undo-icon :class="classes.icon" />
-        </sw-button>
-        <sw-button type="button" @click="commands.redo">
+        </span>
+        <span :class="getIconContainerStyle()" @click="commands.redo">
           <redo-icon :class="classes.icon" />
-        </sw-button>
+        </span>
       </div>
     </editor-menu-bar>
     <editor-content :editor="editor" :class="classes.editor" />
@@ -110,7 +97,7 @@
 </template>
 
 <script>
-import SwButton from '../SwButton'
+// import SwButton from '../SwButton'
 import SwEditor from '../../themes/default/SwEditor'
 import { installComponent } from '../../helpers/utilities'
 import { Editor, EditorContent, EditorMenuBar } from 'tiptap'
@@ -125,7 +112,8 @@ import {
   QuoteIcon,
   StrikethroughIcon,
   UndoIcon,
-  RedoIcon
+  RedoIcon,
+  CodeBlockIcon
 } from './icons/index'
 
 import {
@@ -157,7 +145,6 @@ export default {
   components: {
     EditorContent,
     EditorMenuBar,
-    SwButton,
     UnderlineIcon,
     BoldIcon,
     CodingIcon,
@@ -168,7 +155,8 @@ export default {
     QuoteIcon,
     StrikethroughIcon,
     UndoIcon,
-    RedoIcon
+    RedoIcon,
+    CodeBlockIcon
   },
   props: {
     setEditor: {
@@ -227,11 +215,11 @@ export default {
       })
       this.editor.setContent(this.setEditor)
     },
-    getActiveClass(state) {
+    getIconContainerStyle(state) {
       if (state) {
-        return this.classes.activeButton
+        return this.classes.activeIconContainer
       }
-      return ''
+      return this.classes.iconContainer
     }
   }
 }

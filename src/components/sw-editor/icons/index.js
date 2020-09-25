@@ -9,6 +9,7 @@ import QuoteIcon from './QuoteIcon.vue'
 import StrikethroughIcon from './StrikethroughIcon.vue'
 import UndoIcon from './UndoIcon.vue'
 import RedoIcon from './RedoIcon.vue'
+import CodeBlockIcon from './CodeBlockIcon.vue'
 
 export {
   UnderlineIcon,
@@ -21,5 +22,6 @@ export {
   QuoteIcon,
   StrikethroughIcon,
   UndoIcon,
-  RedoIcon
+  RedoIcon,
+  CodeBlockIcon
 }

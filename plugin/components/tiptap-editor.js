@@ -30,6 +30,23 @@ const tiptapEditorComponent = theme => {
           outline: 'none'
         }
       },
+      pre: {
+        whiteSpace: ' pre-wrap'
+      },
+      pre: {
+        padding: '0.7rem 1rem',
+        borderRadius: '5px',
+        fontSize: '0.8rem',
+        overflowX: 'auto',
+        backgroundColor: theme('colors.gray.800'),
+        color: theme('colors.white')
+      },
+      'pre code': {
+        display: 'block'
+      },
+      '& *': {
+        caretColor: 'currentColor'
+      },
       ul: {
         ...listStyle,
         'list-style-type': 'disc !important'

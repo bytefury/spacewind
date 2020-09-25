@@ -2,17 +2,16 @@
   <div :class="checkBoxStyle.container">
     <input
       type="checkbox"
-      v-model="checkValue"
-      :id="uniqueId"
+      v-bind="$attrs"
       :class="inputStyle"
+      :checked="shouldBeChecked"
       :value="value"
-      :name="name"
-      @input="handleInput"
-      @change="handleChange"
-      @keyup="handleKeyupEnter"
-      @blur="handleFocusOut"
+      :id="id"
+      @change="updateInput"
+      @keyup="e => $emit('keyup', e)"
+      @blur="e => $emit('blur', e)"
     />
-    <label v-if="label" :for="uniqueId" :class="lebelStyle">{{ label }}</label>
+    <label v-if="label" :for="id" :class="lebelStyle">{{ label }}</label>
   </div>
 </template>
 <script>
@@ -23,13 +22,25 @@ const { classes, variants, sizes } = SwCheckbox
 
 export default {
   name: 'SwCheckbox',
+  inheritAttrs: false,
+  model: {
+    prop: 'modelValue',
+    event: 'change'
+  },
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
   props: {
     value: {
-      type: [Boolean, Number, Array, String],
-      required: false,
+      type: String
+    },
+    modelValue: {
+      default: false
+    },
+    trueValue: {
+      default: true
+    },
+    falseValue: {
       default: false
     },
     classes: {
@@ -48,10 +59,6 @@ export default {
       type: String,
       default: null
     },
-    name: {
-      type: String,
-      default: String
-    },
     size: {
       type: String,
       required: false,
@@ -61,22 +68,23 @@ export default {
       type: String,
       required: false,
       default: ''
-    }
-  },
-  data() {
-    return {
-      id: null,
-      checkValue: this.value
+    },
+    id: {
+      type: [String, Number],
+      required: false,
+      default: () =>
+        `sw_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`
     }
   },
   computed: {
-    uniqueId() {
-      return (
-        'sw_' +
-        Math.random()
-          .toString(36)
-          .substr(2, 9)
-      )
+    shouldBeChecked() {
+      if (this.modelValue instanceof Array) {
+        return this.modelValue.includes(this.value)
+      }
+
+      return this.modelValue === this.trueValue
     },
     checkBoxStyle() {
       let style = findByKey(this.variant, this.variants)
@@ -91,23 +99,23 @@ export default {
       return [this.checkBoxStyle.input, size.input]
     }
   },
-  watch: {
-    value() {
-      this.checkValue = this.value
-    }
-  },
   methods: {
-    handleInput(e) {
-      this.$emit('input', e.target.checked, e)
-    },
-    handleChange(e) {
-      this.$emit('change', this.checkValue, e)
-    },
-    handleKeyupEnter(e) {
-      this.$emit('keyup', this.checkValue, e)
-    },
-    handleFocusOut(e) {
-      this.$emit('blur', this.checkValue, e)
+    updateInput(event) {
+      let isChecked = event.target.checked
+
+      if (this.modelValue instanceof Array) {
+        let newValue = [...this.modelValue]
+
+        if (isChecked) {
+          newValue.push(this.value)
+        } else {
+          newValue.splice(newValue.indexOf(this.value), 1)
+        }
+
+        this.$emit('change', newValue)
+      } else {
+        this.$emit('change', isChecked ? this.trueValue : this.falseValue)
+      }
     }
   }
 }

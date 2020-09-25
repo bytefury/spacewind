@@ -113,6 +113,7 @@ module.exports = plugin.withOptions(
       },
       variants: {
         borderRadius: ['responsive', 'last', 'first'],
+        borderWidth: ['responsive', 'last', 'first'],
         margin: ['responsive', 'first']
       }
     }

@@ -1,17 +1,21 @@
 <template>
   <div v-if="enableCropper">
-    <div v-if="!hasTrigger" id="pick-avatar" :class="classes.avatarContainer">
+    <div
+      v-if="!hasTrigger"
+      id="pick-avatar"
+      :class="avatarStyle.avatarContainer"
+    >
       <img
         v-if="selectedImage"
         :src="selectedImage"
-        :class="classes.image"
+        :class="avatarStyle.image"
         style="animation: fadeIn 2s ease;"
       />
-      <div v-if="!selectedImage" :class="classes.previewAvatarClass">
-        <div v-if="hasIconSlot" :class="classes.defaultIcon">
+      <div v-if="!selectedImage" :class="avatarStyle.previewAvatarClass">
+        <div v-if="hasIconSlot" :class="avatarStyle.defaultIcon">
           <slot name="icon" />
         </div>
-        <p :class="classes.defaultLabel">
+        <p :class="avatarStyle.defaultLabel">
           <slot>{{ label }}</slot>
         </p>
       </div>
@@ -31,19 +35,19 @@
     <div
       v-if="!hasTrigger"
       @click="$refs.file.click()"
-      :class="classes.avatarContainer"
+      :class="avatarStyle.avatarContainer"
     >
       <img
         v-if="selectedImage"
         :src="selectedImage"
-        :class="classes.image"
+        :class="avatarStyle.image"
         style="animation: fadeIn 2s ease;"
       />
-      <div v-if="!selectedImage" :class="classes.previewAvatarClass">
-        <div v-if="hasIconSlot" :class="classes.defaultIcon">
+      <div v-if="!selectedImage" :class="avatarStyle.previewAvatarClass">
+        <div v-if="hasIconSlot" :class="avatarStyle.defaultIcon">
           <slot name="icon" />
         </div>
-        <p :class="classes.defaultLabel">
+        <p :class="avatarStyle.defaultLabel">
           <slot>{{ label }}</slot>
         </p>
       </div>
@@ -54,9 +58,9 @@
 <script>
 import AvatarCropper from 'vue-avatar-cropper'
 import SwAvatar from '../themes/default/SwAvatar'
-import { installComponent } from '../helpers/utilities'
+import { installComponent, findByKey } from '../helpers/utilities'
 
-const { classes } = SwAvatar
+const { classes, variants } = SwAvatar
 
 export default {
   components: { AvatarCropper },
@@ -113,6 +117,15 @@ export default {
     label: {
       type: String,
       default: 'Choose File'
+    },
+    variant: {
+      type: String,
+      required: false,
+      default: null
+    },
+    variants: {
+      type: Object,
+      default: () => variants
     }
   },
   mounted() {
@@ -131,6 +144,10 @@ export default {
     }
   },
   computed: {
+    avatarStyle() {
+      let style = findByKey(this.variant, this.variants)
+      return { ...this.classes, ...style }
+    },
     hasTrigger() {
       return this.$options.propsData.trigger !== undefined
     },
