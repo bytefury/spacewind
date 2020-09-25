@@ -1,6 +1,6 @@
 <template>
   <div :class="classes.item" @click="onClick">
-    <span v-if="title">{{ title }}</span>
+    <slot />
   </div>
 </template>
 
@@ -17,10 +17,6 @@ export default {
     },
     icon: {
       type: [String, Array],
-      default: null
-    },
-    title: {
-      type: String,
       default: null
     },
     link: {

@@ -177,7 +177,7 @@
                 <sw-money v-model="money" :currency="currency" />
               </sw-input-group>
               <sw-input-group label="Address">
-                <sw-textarea row="2" />
+                <sw-textarea row="2" v-model="address" />
               </sw-input-group>
               <sw-input-group label="Toggle">
                 <sw-switch />
@@ -240,25 +240,44 @@
                 <sw-input />
               </sw-input-group>
               <sw-input-group label="Checkbox">
-                <sw-checkbox label="small" variant="success" size="sm" />
-                <sw-checkbox label="default" />
-                <sw-checkbox label="large" variant="danger" size="lg" />
+                <sw-checkbox
+                  v-model="hobbies"
+                  name="hobbies"
+                  label="Cricket"
+                  value="cricket"
+                  variant="success"
+                  size="sm"
+                  autofocus
+                />
+                <sw-checkbox
+                  v-model="hobbies"
+                  name="hobbies"
+                  label="Foot Ball"
+                  value="football"
+                />
+                <sw-checkbox
+                  v-model="hobbies"
+                  name="hobbies"
+                  label="Wally Ball"
+                  value="wallyball"
+                  variant="danger"
+                  size="lg"
+                />
               </sw-input-group>
-              <sw-input-group label="Radio">
+              <sw-input-group label="Gender">
                 <sw-radio
-                  label="Radio 1"
-                  name="Radio 1"
-                  value="Radio 1"
+                  v-model="gender"
+                  label="Male"
+                  name="gender"
+                  value="male"
                   size="sm"
                   variant="success"
                 />
-                <sw-radio label="Radio 2" name="Radio 1" value="Radio 2" />
                 <sw-radio
-                  label="Radio 3"
-                  name="Radio 1"
-                  value="Radio 3"
-                  size="lg"
-                  variant="danger"
+                  v-model="gender"
+                  label="Female"
+                  name="gender"
+                  value="female"
                 />
               </sw-input-group>
               <sw-input-group label="Date of Birth">
@@ -401,29 +420,59 @@
             <sw-table-column label="Last Name" show="last_name" />
           </sw-table-component>
         </sw-tab-item>
-        <sw-tab-item title="List" class="mt-5">
-          <sw-list v-for="(menuGroups, groupIndex) in menu" :key="groupIndex">
-            <sw-list-item
-              v-for="(item, index) in menuGroups"
-              :title="item.title"
-              :key="index"
-              :active="index === activeIndex && groupActiveIndex === groupIndex"
-              @click="setActive(index, groupIndex)"
+        <sw-tab-item
+          title="List"
+          class="flex flex-col w-full mt-5 space-x-0 space-y-4 md:space-x-4 md:space-y-0 md:flex-row"
+        >
+          <div class="flex-1 bg-white">
+            <sw-list
+              v-for="(menuGroups, groupIndex) in menu2"
+              :key="groupIndex"
             >
-              <span v-html="item.icon" />
-            </sw-list-item>
-          </sw-list>
+              <sw-list-item
+                v-for="(item, index) in menuGroups"
+                :title="item.title"
+                :key="index"
+                :active="
+                  index === activeIndex && groupActiveIndex === groupIndex
+                "
+                @click="setActive(index, groupIndex)"
+              >
+                <span slot="icon" v-html="item.icon" />
+              </sw-list-item>
+            </sw-list>
+          </div>
+          <div class="flex-1 bg-white">
+            <sw-list>
+              <sw-list-group title="A">
+                <sw-list-group title="AA">
+                  <sw-list-item title="AAA" />
+                  <sw-list-item title="AAB" />
+                  <sw-list-item title="AAC" />
+                </sw-list-group>
+                <sw-list-item title="AB" />
+                <sw-list-item title="AC" />
+                <sw-list-item title="AD" />
+                <sw-list-item title="AE" />
+              </sw-list-group>
+              <sw-list-item title="B" />
+              <sw-list-item title="C" />
+              <sw-list-item title="D" />
+            </sw-list>
+          </div>
         </sw-tab-item>
         <sw-tab-item title="Dropdown" class="grid grid-cols-2 mt-5">
           <div class="flex">
-            <sw-dropdown>
+            <sw-dropdown isShow>
               <sw-button slot="activator" variant="primary">
                 Default
               </sw-button>
-              <sw-dropdown-item title="item1"></sw-dropdown-item>
-              <sw-dropdown-item title="item2"></sw-dropdown-item>
-              <sw-dropdown-item title="item3"></sw-dropdown-item>
-              <sw-dropdown-item title="item4"></sw-dropdown-item>
+              <sw-dropdown-item>
+                item1
+              </sw-dropdown-item>
+              <sw-dropdown-item>item2</sw-dropdown-item>
+              <sw-dropdown-item>item3</sw-dropdown-item>
+              <sw-dropdown-item>item4</sw-dropdown-item>
             </sw-dropdown>
           </div>
           <div class="flex">
@@ -431,10 +480,10 @@
               <sw-button slot="activator" variant="primary">
                 Right
               </sw-button>
-              <sw-dropdown-item title="item1"></sw-dropdown-item>
-              <sw-dropdown-item title="item2"></sw-dropdown-item>
-              <sw-dropdown-item title="item3"></sw-dropdown-item>
-              <sw-dropdown-item title="item4"></sw-dropdown-item>
+              <sw-dropdown-item>item1</sw-dropdown-item>
+              <sw-dropdown-item>item2</sw-dropdown-item>
+              <sw-dropdown-item>item3</sw-dropdown-item>
+              <sw-dropdown-item>item4</sw-dropdown-item>
             </sw-dropdown>
           </div>
         </sw-tab-item>
@@ -450,20 +499,29 @@
         </sw-tab-item>
       </sw-tabs>
       <sw-sidebar>
-        <sw-list
-          v-for="(menuGroups, groupIndex) in menu"
-          :key="groupIndex"
-          variant="sidebar"
-        >
-          <sw-list-item
-            v-for="(item, index) in menuGroups"
-            :title="item.title"
-            :key="index"
-            :active="index === activeIndex && groupActiveIndex === groupIndex"
-            @click="setActive(index, groupIndex)"
-          >
-            <span v-html="item.icon" />
-          </sw-list-item>
+        <sw-list variant="collapse-sidebar">
+          <div v-for="(menuGroups, groupIndex) in menu" :key="groupIndex">
+            <sw-list-group
+              v-if="menuGroups.items"
+              :title="menuGroups.title"
+              active
+            >
+              <span slot="titleIcon" v-html="menuGroups.icon" />
+              <sw-list-item
+                v-for="(item, index) in menuGroups.items"
+                :title="item.title"
+                :key="index"
+                :route="item.route"
+                :active="
+                  index === activeIndex && groupActiveIndex === groupIndex
+                "
+                @click="setActive(index, groupIndex)"
+              />
+            </sw-list-group>
+            <sw-list-item v-else :title="menuGroups.title">
+              <span slot="icon" v-html="menuGroups.icon" />
+            </sw-list-item>
+          </div>
         </sw-list>
       </sw-sidebar>
     </sw-page>
@@ -518,6 +576,7 @@ import SwCheckbox from './components/SwCheckbox'
 import SwRadio from './components/SwRadio'
 import SwDatePicker from './components/SwDatePicker'
 import SwEditor from './components/sw-editor/Index'
+import SwListGroup from './components/list/SwListGroup'
 
 export default {
   name: 'App',
@@ -570,7 +629,10 @@ export default {
       money: 0,
       activeIndex: 0,
       groupActiveIndex: 0,
-      menu: [
+      address: null,
+      gender: 'male',
+      hobbies: [],
+      menu2: [
         [
           {
             title: 'Dashboard',
@@ -641,6 +703,84 @@ export default {
           }
         ]
       ],
+      menu: [
+        {
+          title: 'Test 1',
+          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>`,
+          items: [
+            {
+              title: 'Test 3',
+              route: ''
+            },
+            {
+              title: 'Test 4',
+              route: ''
+            },
+            {
+              title: 'Test 5',
+              route: ''
+            }
+          ]
+        },
+        {
+          title: 'Test 2',
+          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
+                  <path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z"></path><path d="M3 8a2 2 0 012-2v10h8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+                  </svg>`,
+          items: [
+            {
+              title: 'Test 3',
+              route: ''
+            },
+            {
+              title: 'Test 4',
+              route: ''
+            },
+            {
+              title: 'Test 5',
+              route: ''
+            }
+          ]
+        },
+        {
+          title: 'Test 3',
+          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                  </svg>`,
+          items: [
+            {
+              title: 'Test 3',
+              icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>`,
+              route: ''
+            },
+            {
+              title: 'Test 4',
+              icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>`,
+              route: ''
+            },
+            {
+              title: 'Test 5',
+              icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>`,
+              route: ''
+            }
+          ]
+        },
+        {
+          title: 'Test 2',
+          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                  <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                  </svg>`,
+          route: ''
+        }
+      ],
       dropzoneOptions: {
         autoProcessQueue: false,
         url: `https://httpbin.org/post`,
@@ -696,7 +836,8 @@ export default {
     SwRadio,
     SwDatePicker,
     SwEditor,
-    SwFileUpload
+    SwFileUpload,
+    SwListGroup
   },
   methods: {
     toggleFade() {

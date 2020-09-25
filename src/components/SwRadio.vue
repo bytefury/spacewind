@@ -2,17 +2,16 @@
   <div :class="radioButtonStyle.container">
     <input
       type="radio"
-      v-model="checkValue"
-      :id="uniqueId"
       :class="inputStyle"
+      :id="id"
+      :checked="shouldBeChecked"
       :value="value"
-      :name="name"
-      @input="handleInput"
-      @change="handleChange"
-      @keyup="handleKeyupEnter"
-      @blur="handleFocusOut"
+      v-bind="$attrs"
+      @change="updateInput"
+      @keyup="e => $emit('keyup', e)"
+      @blur="e => $emit('blur', e)"
     />
-    <label v-if="label" :for="uniqueId" :class="lebelStyle">{{ label }}</label>
+    <label v-if="label" :for="id" :class="lebelStyle">{{ label }}</label>
   </div>
 </template>
 <script>
@@ -23,6 +22,11 @@ const { classes, variants, sizes } = SwRadio
 
 export default {
   name: 'SwRadio',
+  inheritAttrs: false,
+  model: {
+    prop: 'modelValue',
+    event: 'change'
+  },
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
@@ -31,6 +35,9 @@ export default {
       type: [Boolean, Number, String],
       required: false,
       default: false
+    },
+    modelValue: {
+      default: ''
     },
     classes: {
       type: Object,
@@ -48,10 +55,6 @@ export default {
       type: String,
       default: null
     },
-    name: {
-      type: String,
-      default: String
-    },
     size: {
       type: String,
       required: false,
@@ -61,23 +64,17 @@ export default {
       type: String,
       required: false,
       default: ''
-    }
-  },
-  data() {
-    return {
-      id: null,
-      checkValue: this.value
+    },
+    id: {
+      type: [String, Number],
+      required: false,
+      default: () =>
+        `sw_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`
     }
   },
   computed: {
-    uniqueId() {
-      return (
-        'sw_' +
-        Math.random()
-          .toString(36)
-          .substr(2, 9)
-      )
-    },
     radioButtonStyle() {
       let style = findByKey(this.variant, this.variants)
       return { ...this.classes, ...style }
@@ -89,25 +86,14 @@ export default {
     inputStyle() {
       let size = findByKey(this.size, this.sizes)
       return [this.radioButtonStyle.input, size.input]
-    }
-  },
-  watch: {
-    value() {
-      this.checkValue = this.value
+    },
+    shouldBeChecked() {
+      return this.modelValue == this.value
     }
   },
   methods: {
-    handleInput(e) {
-      this.$emit('input', e.target.checked, e)
-    },
-    handleChange(e) {
-      this.$emit('change', this.checkValue, e)
-    },
-    handleKeyupEnter(e) {
-      this.$emit('keyup', this.checkValue, e)
-    },
-    handleFocusOut(e) {
-      this.$emit('blur', this.checkValue, e)
+    updateInput() {
+      this.$emit('change', this.value)
     }
   }
 }

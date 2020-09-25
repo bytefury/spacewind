@@ -4,6 +4,7 @@
       v-for="column in visibleColumns"
       :row="row"
       :column="column"
+      :classes="classes"
       :key="column.id"
       :responsive-label="column.label"
     ></table-cell>

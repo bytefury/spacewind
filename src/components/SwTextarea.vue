@@ -1,15 +1,9 @@
 <template>
   <textarea
-    v-model="inputValue"
     v-bind="$attrs"
     :class="textAreaStyle"
     :disabled="disabled"
-    @input="$emit('input', inputValue)"
-    @change="$emit('change', inputValue)"
-    @keyup="$emit('keyup', $event)"
-    @keydown="$emit('keydown', $event)"
-    @blur="onBlur"
-    @focus="onFocus"
+    @input="e => $emit('input', e.target.value)"
   />
 </template>
 
@@ -20,6 +14,7 @@ const { classes, variants } = SwTextarea
 
 export default {
   name: 'SwTextarea',
+  inheritAttrs: false,
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
@@ -47,7 +42,6 @@ export default {
   },
   data() {
     return {
-      inputValue: null,
       valueWhenFocus: null
     }
   },
@@ -70,28 +64,6 @@ export default {
       }
 
       return style ? style : this.classes
-    }
-  },
-  methods: {
-    handleInput() {
-      this.$emit('input', this.inputValue)
-    },
-    handleChange() {
-      this.$emit('change', this.inputValue)
-    },
-    handleKeyupEnter() {
-      this.$emit('keyup', this.inputValue)
-    },
-    onBlur(e) {
-      this.$emit('blur', e)
-      if (this.inputValue !== this.valueWhenFocus) {
-        this.$emit('change', this.inputValue)
-      }
-    },
-
-    onFocus(e) {
-      this.$emit('focus', e)
-      this.valueWhenFocus = this.inputValue
     }
   }
 }

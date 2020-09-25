@@ -48,11 +48,15 @@ export default {
     maxHeight: {
       type: Number,
       default: 180
+    },
+    isShow: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
     return {
-      toggle: false,
+      toggle: this.isShow,
       preferredOpenDirection: 'below',
       optimizedHeight: null
     }
@@ -85,6 +89,11 @@ export default {
       let style = findByKey(dir, this.variants)
 
       return { ...this.classes, ...style }
+    }
+  },
+  watch: {
+    isShow(val) {
+      this.toggle = val
     }
   },
   methods: {
