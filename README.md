@@ -16,8 +16,8 @@ It is inspired by [TailwindUI](https://tailwindui.com/) & [VueTailwind](https://
 
 
 ## Credits
-Crater is a product of [Bytefury](https://bytefury.com)
+Spacewind is a product of [Bytefury](https://bytefury.com)
 
 ## License
-Crater is released under the Attribution Assurance License.
+Spacewind is released under the MIT License.
 See [LICENSE](LICENSE) for details.
