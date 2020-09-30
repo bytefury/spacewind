@@ -16,4 +16,4 @@ export default {
   }
 }
 
-export { SwTableComponent, SwTableColumn }
+export { SwTableComponent, SwTableColumn, Pagination }

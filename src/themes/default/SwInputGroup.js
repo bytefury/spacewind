@@ -3,7 +3,7 @@ export default {
     container: 'w-full',
     label: 'text-sm',
     requiredSign: 'text-danger',
-    inputContainer: 'mt-2',
+    inputContainer: 'mt-1',
     errorText: 'mt-1 text-danger text-sm'
   },
   variants: {

@@ -4,7 +4,7 @@ export default {
       'inline-flex items-center justify-center text-white transition duration-150 ease-in-out border border-transparent focus:outline-none bg-gray-400',
     disabledClass: 'cursor-not-allowed',
     loadingIconContainer: 'pr-3',
-    loadingIcon: 'w-6 h-6 text-current animate-spin'
+    loadingIcon: 'w-6 h-6 -ml-2 text-current animate-spin'
   },
   sizes: {
     xs: {
@@ -14,13 +14,13 @@ export default {
       button: 'px-3 py-2 text-sm leading-4 font-medium rounded-md'
     },
     md: {
-      button: 'py-2 px-4 text-base leading-6 font-medium rounded-md'
+      button: 'py-2 px-4 text-sm leading-5 font-normal rounded'
     },
     lg: {
-      button: 'py-3 px-6 text-base leading-6 font-medium rounded-md'
+      button: 'py-2 px-4 text-base leading-6 font-medium rounded-md'
     },
-    default: {
-      button: 'py-2 px-4 text-sm leading-5 font-medium rounded-md'
+    xl: {
+      button: 'py-3 px-6 text-base leading-6 font-medium rounded-md'
     }
   },
   variants: {

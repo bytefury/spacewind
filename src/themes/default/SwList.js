@@ -66,8 +66,8 @@ export default {
       active: {
         itemContainer:
           'flex flex-row items-center h-10 text-sm px-4 hover:bg-gray-300 cursor-pointer text-primary-500',
-        title: '',
-        iconContainer: '',
+        title: 'text-sm',
+        iconContainer: 'mr-4',
         listGroup: {
           container: '',
           titleContainer:

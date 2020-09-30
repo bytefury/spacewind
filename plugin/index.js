@@ -2,13 +2,16 @@ const plugin = require('tailwindcss/plugin')
 const colors = require('./colors')
 const keyframes = require('./keyframes')
 
-const SwitchComponent = require('./components/switch')
-const fileUploadComponent = require('./components/file-upload')
-const SwCheckbox = require('./components/checkbox')
-const SwRadio = require('./components/radio')
-const DatepickrComponent = require('./components/datepickr')
-const tiptapEditorComponent = require('./components/tiptap-editor')
 const baseStyle = require('./components/base')
+
+const SwitchComponent = require('./components/switch')
+const FileUploadComponent = require('./components/file-upload')
+const DatepickrComponent = require('./components/datepickr')
+const TiptapEditorComponent = require('./components/tiptap-editor')
+const TableComponent = require('./components/table')
+
+const SwRadio = require('./components/radio')
+const SwCheckbox = require('./components/checkbox')
 
 const spacing = {
   '1.5': '0.375rem',
@@ -87,16 +90,18 @@ module.exports = plugin.withOptions(
       })
 
       let SwSwitch = SwitchComponent(theme)
-      let fileUpload = fileUploadComponent(theme)
-      let Datepickr = DatepickrComponent(theme)
-      let tiptapEditor = tiptapEditorComponent(theme)
+      let SwFileUpload = FileUploadComponent(theme)
+      let SwDatepickr = DatepickrComponent(theme)
+      let SwEditor = TiptapEditorComponent(theme)
+      let SwTable = TableComponent(theme)
 
-      addComponents(fileUpload)
+      addComponents(SwFileUpload)
       addComponents(SwSwitch)
       addComponents(SwCheckbox)
       addComponents(SwRadio)
-      addComponents(Datepickr)
-      addComponents(tiptapEditor)
+      addComponents(SwDatepickr)
+      addComponents(SwEditor)
+      addComponents(SwTable)
     }
   },
   function() {

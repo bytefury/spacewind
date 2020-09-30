@@ -57,7 +57,12 @@
       </slot>
       <transition name="multiselect__loading">
         <slot name="loading">
-          <div v-show="loading" :class="multiselectSpinnerStyle" />
+          <div>
+            <div v-show="loading" :class="multiselectSpinnerStyle">
+              <span class="multiselect__spinner-before"></span>
+              <span class="multiselect__spinner-after"></span>
+            </div>
+          </div>
         </slot>
       </transition>
       <input
@@ -498,8 +503,8 @@ fieldset[disabled] .multiselect {
   top: 1px;
 }
 
-.multiselect__spinner:before,
-.multiselect__spinner:after {
+.multiselect__spinner-before,
+.multiselect__spinner-after {
   position: absolute;
   content: '';
   top: 50%;
@@ -515,13 +520,13 @@ fieldset[disabled] .multiselect {
   box-shadow: 0 0 0 1px transparent;
 }
 
-.multiselect__spinner:before {
-  animation: spinning 2.4s cubic-bezier(0.41, 0.26, 0.2, 0.62);
+.multiselect__spinner-after {
+  animation: spinning 2.4s cubic-bezier(0.51, 0.09, 0.21, 0.8);
   animation-iteration-count: infinite;
 }
 
-.multiselect__spinner:after {
-  animation: spinning 2.4s cubic-bezier(0.51, 0.09, 0.21, 0.8);
+.multiselect__spinner-before {
+  animation: spinning 2.4s cubic-bezier(0.41, 0.26, 0.2, 0.62);
   animation-iteration-count: infinite;
 }
 

@@ -1,9 +1,6 @@
 <template>
   <div :class="listGroupStyle.listGroup.container">
-    <div
-      :class="listGroupStyle.listGroup.titleContainer"
-      @click="isShow = !isShow"
-    >
+    <div :class="listGroupStyle.listGroup.titleContainer" @click="handleClick">
       <div class="flex flex-row items-center w-full h-full">
         <slot name="titleIcon" />
         <span :class="listGroupStyle.listGroup.title">
@@ -85,11 +82,6 @@ export default {
       }
 
       return { listGroup, ...this.classes, ...style }
-    },
-    isActiveGroup() {
-      let activeItems = this.items.filter(item => item.active === true)
-      console.log(activeItems)
-      return true
     }
   },
   watch: {
@@ -107,6 +99,12 @@ export default {
   },
   mounted() {
     this.items = this.$children
+  },
+  methods: {
+    handleClick() {
+      this.isShow = !this.isShow
+      this.$emit('click')
+    }
   }
 }
 </script>

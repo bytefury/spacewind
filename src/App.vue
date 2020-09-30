@@ -471,6 +471,7 @@
                 item1
               </sw-dropdown-item>
               <sw-dropdown-item>item2</sw-dropdown-item>
+              <sw-dropdown-divider />
               <sw-dropdown-item>item3</sw-dropdown-item>
               <sw-dropdown-item>item4</sw-dropdown-item>
             </sw-dropdown>
@@ -504,7 +505,8 @@
             <sw-list-group
               v-if="menuGroups.items"
               :title="menuGroups.title"
-              active
+              :active="groupActiveIndex == groupIndex"
+              @click="setActiveGroup(groupIndex)"
             >
               <span slot="titleIcon" v-html="menuGroups.icon" />
               <sw-list-item
@@ -512,13 +514,16 @@
                 :title="item.title"
                 :key="index"
                 :route="item.route"
-                :active="
-                  index === activeIndex && groupActiveIndex === groupIndex
-                "
+                :active="activeIndex == index && groupActiveIndex == groupIndex"
                 @click="setActive(index, groupIndex)"
               />
             </sw-list-group>
-            <sw-list-item v-else :title="menuGroups.title">
+            <sw-list-item
+              v-else
+              :title="menuGroups.title"
+              :active="activeIndex == -1 && groupActiveIndex == groupIndex"
+              @click="setActiveGroup(groupIndex)"
+            >
               <span slot="icon" v-html="menuGroups.icon" />
             </sw-list-item>
           </div>
@@ -544,10 +549,10 @@
 import SwModal from './components/SwModal.vue'
 import SwButton from './components/SwButton.vue'
 import SwTextarea from './components/SwTextarea.vue'
-import SwBreadcrumb from './components/breadcrumb/SwBreadcrumb.vue'
-import SwBreadcrumbItem from './components/breadcrumb/SwBreadcrumbItem.vue'
-import SwTabs from './components/tabs/SwTabs.vue'
-import SwTabItem from './components/tabs/SwTabItem.vue'
+import SwBreadcrumb from './components/sw-breadcrumb/SwBreadcrumb.vue'
+import SwBreadcrumbItem from './components/sw-breadcrumb/SwBreadcrumbItem.vue'
+import SwTabs from './components/sw-tabs/SwTabs.vue'
+import SwTabItem from './components/sw-tabs/SwTabItem.vue'
 import SwCard from './components/SwCard.vue'
 import SwBadge from './components/SwBadge.vue'
 import SwMoney from './components/SwMoney.vue'
@@ -563,20 +568,21 @@ import SwTransition from './components/SwTransition.vue'
 import SwInputGroup from './components/SwInputGroup.vue'
 import SwFileUpload from './components/SwFileUpload'
 import SwEmptyTablePlaceholder from './components/SwEmptyTablePlaceholder.vue'
-import { SwTableComponent, SwTableColumn } from './components/table/index'
-import SwList from './components/list/SwList.vue'
-import SwListItem from './components/list/SwListItem.vue'
+import { SwTableComponent, SwTableColumn } from './components/sw-table/index'
+import SwList from './components/sw-list/SwList.vue'
+import SwListItem from './components/sw-list/SwListItem.vue'
 import SwSidebar from './components/SwSidebar.vue'
 import SwHeader from './components/SwHeader.vue'
 import SwFooter from './components/SwFooter.vue'
 import SwSelect from './components/sw-select/SwSelect'
-import SwDropdown from './components/dropdown/SwDropdown.vue'
-import SwDropdownItem from './components/dropdown/SwDropdownItem'
+import SwDropdown from './components/sw-dropdown/SwDropdown.vue'
+import SwDropdownItem from './components/sw-dropdown/SwDropdownItem'
+import SwDropdownDivider from './components/sw-dropdown/SwDropdownDivider'
 import SwCheckbox from './components/SwCheckbox'
 import SwRadio from './components/SwRadio'
 import SwDatePicker from './components/SwDatePicker'
 import SwEditor from './components/sw-editor/Index'
-import SwListGroup from './components/list/SwListGroup'
+import SwListGroup from './components/sw-list/SwListGroup'
 
 export default {
   name: 'App',
@@ -709,18 +715,22 @@ export default {
           icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>`,
+          active: false,
           items: [
             {
               title: 'Test 3',
-              route: ''
+              route: '',
+              active: false
             },
             {
               title: 'Test 4',
-              route: ''
+              route: '',
+              active: false
             },
             {
               title: 'Test 5',
-              route: ''
+              route: '',
+              active: false
             }
           ]
         },
@@ -729,18 +739,22 @@ export default {
           icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
                   <path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z"></path><path d="M3 8a2 2 0 012-2v10h8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
                   </svg>`,
+          active: false,
           items: [
             {
               title: 'Test 3',
-              route: ''
+              route: '',
+              active: false
             },
             {
               title: 'Test 4',
-              route: ''
+              route: '',
+              active: false
             },
             {
               title: 'Test 5',
-              route: ''
+              route: '',
+              active: false
             }
           ]
         },
@@ -749,27 +763,31 @@ export default {
           icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                   </svg>`,
+          active: false,
           items: [
             {
               title: 'Test 3',
               icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>`,
-              route: ''
+              route: '',
+              active: false
             },
             {
               title: 'Test 4',
               icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>`,
-              route: ''
+              route: '',
+              active: false
             },
             {
               title: 'Test 5',
               icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>`,
-              route: ''
+              route: '',
+              active: false
             }
           ]
         },
@@ -778,7 +796,8 @@ export default {
           icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                   <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
                   </svg>`,
-          route: ''
+          route: '',
+          active: false
         }
       ],
       dropzoneOptions: {
@@ -828,6 +847,7 @@ export default {
     SwSelect,
     SwDropdown,
     SwDropdownItem,
+    SwDropdownDivider,
     SwList,
     SwListItem,
     SwSidebar,
@@ -868,6 +888,29 @@ export default {
     setActive(index, groupIndex) {
       this.activeIndex = index
       this.groupActiveIndex = groupIndex
+      this.menu.forEach(item => {
+        if (item.items) {
+          item.items.forEach(_item => {
+            _item.active = false
+          })
+        }
+        item.active = false
+      })
+      this.menu[groupIndex].items[index].active = true
+      this.menu[groupIndex].active = true
+    },
+    setActiveGroup(groupIndex) {
+      this.activeIndex = -1
+      this.groupActiveIndex = groupIndex
+      this.menu.forEach(item => {
+        if (item.items) {
+          item.active = false
+          item.items.forEach(_item => {
+            _item.active = false
+          })
+        }
+      })
+      this.menu[groupIndex].active = true
     }
   }
 }

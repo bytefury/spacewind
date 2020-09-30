@@ -2,7 +2,7 @@ export default {
   classes: {
     container: 'relative',
     activator: 'cursor-pointer',
-    divider: 'border-t border-solid border-white my-2 mx-0 overflow-hidden',
+    divider: 'border-t border-solid border-gray-200 my-2 mx-0 overflow-hidden',
     itemContainer:
       'absolute top-full mr-0 my-2 z-50 p-2 text-base text-left list-none rounded border-0 shadow bg-white text-black',
     item:
