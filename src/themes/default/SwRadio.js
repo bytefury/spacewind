@@ -1,7 +1,7 @@
 export default {
   classes: {
     container: 'radio mt-2',
-    label: 'cursor-pointer',
+    label: 'cursor-pointer text-primary-800',
     input:
       'cursor-pointer flex-shrink-0 inline-block text-primary-500 align-middle bg-white border border-gray-300 rounded-full outline-none appearance-none select-none transition duration-200 ease-in-out'
   },
@@ -9,12 +9,12 @@ export default {
     success: {
       input:
         'cursor-pointer flex-shrink-0 inline-block text-success align-middle bg-white border border-gray-300 rounded-full outline-none appearance-none select-none transition duration-200 ease-in-out',
-      label: 'cursor-pointer'
+      label: 'cursor-pointer text-primary-800'
     },
     danger: {
       input:
         'cursor-pointer flex-shrink-0 inline-block text-danger align-middle bg-white border border-gray-300 rounded-full outline-none appearance-none select-none transition duration-200 ease-in-out',
-      label: 'cursor-pointer'
+      label: 'cursor-pointer text-primary-800'
     }
   },
   sizes: {

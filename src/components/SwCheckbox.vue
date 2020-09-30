@@ -32,7 +32,7 @@ export default {
   },
   props: {
     value: {
-      type: String
+      type: [Boolean, Number, String]
     },
     modelValue: {
       default: false

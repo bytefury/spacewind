@@ -7,6 +7,12 @@
     role="columnheader"
     @click="clicked"
   >
+    <span class="asc-direction">
+      ↑
+    </span>
+    <span class="desc-direction">
+      ↓
+    </span>
     {{ label }}
   </th>
 </template>

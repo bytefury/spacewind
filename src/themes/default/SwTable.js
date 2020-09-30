@@ -8,7 +8,7 @@ export default {
     tableCaption: 'absolute top-auto overflow-hidden',
     emptyTableMessage: 'text-center text-gray-400 pt-3',
     thStyles:
-      'p-3 text-gray-800 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
+      'relative p-3 text-gray-800 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
     thSortStyles: 'cursor-pointer select-none',
     tdStyles:
       'text-left text-base h-20 px-4 py-6 align-middle bg-white first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',

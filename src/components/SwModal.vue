@@ -7,19 +7,19 @@
     leave-class="duration-300 translate-y-0 opacity-100 sm:scale-100"
     leave-to-class="duration-300 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-90"
   >
-    <div v-if="isShow" :class="classes.overlayContainer">
-      <span :class="classes.centering"></span>&#8203;
+    <div v-if="isShow" :class="modalStyle.overlayContainer">
+      <span :class="modalStyle.centering"></span>&#8203;
 
-      <div :class="classes.base">
-        <div :class="classes.header">
+      <div :class="modalStyle.base">
+        <div :class="modalStyle.header">
           <slot name="header" />
         </div>
 
-        <div :class="classes.body">
+        <div :class="modalStyle.body">
           <slot></slot>
         </div>
 
-        <div v-show="hasFooter" :class="classes.footer">
+        <div v-show="hasFooter" :class="modalStyle.footer">
           <slot name="footer" />
         </div>
       </div>
@@ -29,8 +29,8 @@
 
 <script>
 import SwModal from '../themes/default/SwModal'
-import { installComponent } from '../helpers/utilities'
-const { classes } = SwModal
+import { installComponent, findByKey } from '../helpers/utilities'
+const { classes, variants } = SwModal
 export default {
   install(Vue, theme) {
     installComponent(Vue, theme, this)
@@ -46,6 +46,14 @@ export default {
       validator: value => {
         return [true, false].indexOf(value) !== -1
       }
+    },
+    variants: {
+      type: Object,
+      default: () => variants
+    },
+    variant: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -59,6 +67,10 @@ export default {
     },
     hasHeader() {
       return this.$slots && this.$slots.header ? true : false
+    },
+    modalStyle() {
+      let style = findByKey(this.variant, this.variants)
+      return { ...this.classes, ...style }
     }
   },
   watch: {

@@ -61,7 +61,7 @@ export default {
     size: {
       type: String,
       required: false,
-      default: 'default'
+      default: 'md'
     },
     sizes: {
       type: Object,
