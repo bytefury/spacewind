@@ -1,7 +1,7 @@
 export default {
   classes: {
     container: 'flex flex-wrap justify-between',
-    pageTitle: 'page-title',
+    pageTitle: 'sw-page-title',
     actionsContainer: 'flex items-center'
   }
 }

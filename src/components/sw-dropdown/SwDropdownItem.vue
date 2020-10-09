@@ -1,15 +1,26 @@
 <template>
-  <div :class="classes.item" @click="onClick">
+  <sw-custom-tag
+    :tag="tagName"
+    :class="classes.item"
+    v-bind="$attrs"
+    v-on="$listeners"
+  >
     <slot />
-  </div>
+  </sw-custom-tag>
 </template>
 
 <script>
 import SwDropdown from '../../themes/default/SwDropdown'
+import SwCustomTag from '../SwCustomTag'
+import { installComponent } from '../../helpers/utilities'
 const { classes } = SwDropdown
 
 export default {
   name: 'SwDropdownItem',
+  inheritAttrs: false,
+  install(Vue, theme) {
+    installComponent(Vue, theme, this)
+  },
   props: {
     classes: {
       type: Object,
@@ -22,16 +33,15 @@ export default {
     link: {
       type: [String, Object],
       default: null
+    },
+    tagName: {
+      type: String,
+      required: false,
+      default: 'div'
     }
   },
-  methods: {
-    onClick() {
-      if (this.link) {
-        this.$router.push(this.link)
-        return true
-      }
-      this.$emit('onClick')
-    }
+  components: {
+    SwCustomTag
   }
 }
 </script>

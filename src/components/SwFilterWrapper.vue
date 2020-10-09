@@ -1,8 +1,8 @@
 <template>
   <transition name="fade">
-    <div v-show="isShow" :class="classes.container">
+    <div v-show="isShow" :class="filterWrapperStyle.container">
       <slot name="filter-header" />
-      <div :class="classes.body">
+      <div :class="filterWrapperStyle.body">
         <slot />
       </div>
     </div>
@@ -11,8 +11,8 @@
 
 <script>
 import SwFilterWrapper from '../themes/default/SwFilterWrapper'
-import { installComponent } from '../helpers/utilities'
-const { classes } = SwFilterWrapper
+import { installComponent, findByKey } from '../helpers/utilities'
+const { classes, variants } = SwFilterWrapper
 
 export default {
   name: 'SwFilterWrapper',
@@ -27,6 +27,20 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    },
+    variant: {
+      type: String,
+      default: null
+    },
+    variants: {
+      type: Object,
+      default: () => variants
+    }
+  },
+  computed: {
+    filterWrapperStyle() {
+      let style = findByKey(this.variant, this.variants)
+      return { ...this.classes, ...style }
     }
   }
 }

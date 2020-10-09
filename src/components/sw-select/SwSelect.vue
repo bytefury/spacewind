@@ -118,7 +118,7 @@
           <li v-if="multiple && max === internalValue.length">
             <span :class="multiselectOptionStyle">
               <slot name="maxElements">
-                {{ $t('validation.maximum_options_error', { max: max }) }}
+                {{ maximumOptionsError }}
               </slot>
             </span>
           </li>
@@ -167,7 +167,7 @@
             v-if="showNoOptions && options.length === 0 && !search && !loading"
           >
             <span :class="multiselectOptionStyle">
-              <slot name="noOptions">{{ $t('general.list_is_empty') }}</slot>
+              <slot name="noOptions">{{ listIsEmpty }}</slot>
             </span>
           </li>
         </ul>
@@ -335,6 +335,14 @@ export default {
     invalid: {
       type: Boolean,
       default: false
+    },
+    maximumOptionsError: {
+      type: String,
+      default: null
+    },
+    listIsEmpty: {
+      type: String,
+      default: null
     }
   },
   computed: {

@@ -22,8 +22,6 @@ import SwDropdownItem from '../src/components/sw-dropdown/SwDropdownItem.vue'
 import SwDropdownDivider from '../src/components/sw-dropdown/SwDropdownDivider.vue'
 import SwEmptyTablePlaceholder from '../src/components/SwEmptyTablePlaceholder.vue'
 import SwFilterWrapper from '../src/components/SwFilterWrapper.vue'
-import SwFooter from '../src/components/SwFooter.vue'
-import SwHeader from '../src/components/SwHeader.vue'
 import SwInput from '../src/components/SwInput.vue'
 import SwInputGroup from '../src/components/SwInputGroup.vue'
 import SwLabel from '../src/components/SwLabel.vue'
@@ -32,12 +30,10 @@ import SwListItem from '../src/components/sw-list/SwListItem.vue'
 import SwListGroup from '../src/components/sw-list/SwListGroup.vue'
 import SwModal from '../src/components/SwModal.vue'
 import SwMoney from '../src/components/SwMoney.vue'
-import SwPage from '../src/components/SwPage.vue'
 import SwPageHeader from '../src/components/SwPageHeader.vue'
 import SwPopup from '../src/components/SwPopup.vue'
 import SwFileUpload from '../src/components/SwFileUpload.vue'
 import SwRadio from '../src/components/SwRadio.vue'
-import SwSidebar from '../src/components/SwSidebar.vue'
 import SwSwitch from '../src/components/SwSwitch.vue'
 import SwTabItem from '../src/components/sw-tabs/SwTabItem.vue'
 import SwTabs from '../src/components/sw-tabs/SwTabs.vue'
@@ -65,8 +61,6 @@ const components = {
   SwDropdownDivider,
   SwEmptyTablePlaceholder,
   SwFilterWrapper,
-  SwFooter,
-  SwHeader,
   SwInput,
   SwLabel,
   SwList,
@@ -75,12 +69,10 @@ const components = {
   SwMoney,
   SwPageHeader,
   SwPopup,
-  SwPage,
   SwInputGroup,
   SwModal,
   SwFileUpload,
   SwRadio,
-  SwSidebar,
   SwSwitch,
   SwTabItem,
   SwTableComponent,

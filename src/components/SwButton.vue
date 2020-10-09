@@ -10,7 +10,7 @@
       <slot v-if="hasLoaderSlot" name="loader" />
       <svg
         v-else
-        :class="iconStyle.loadingIcon"
+        :class="loadingIconStyle"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -133,6 +133,18 @@ export default {
             : this.classes.disabledClass
         )
       }
+      return classes
+    },
+    loadingIconStyle() {
+      let classes = []
+      let size = findByKey(this.size, this.sizes)
+
+      classes.push(this.classes.loadingIcon)
+
+      if (size && size.loadingIcon) {
+        classes.push(size.loadingIcon)
+      }
+
       return classes
     },
     isLoading() {
