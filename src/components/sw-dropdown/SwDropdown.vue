@@ -3,17 +3,17 @@
     <div @click.stop.prevent="showDropdown" :class="dropdownStyle.activator">
       <slot name="activator" />
     </div>
-    <transition :enter-active-class="dropdownStyle.animation">
+    <sw-transition :variant="transitionType">
       <div
         v-show="toggle"
         ref="dropdownItems"
-        :class="dropdownStyle.itemContainer"
+        :class="itemContainerClasses"
         :style="itemContainerStyle"
         @click="closeOnSelectDropdownItem"
       >
         <slot />
       </div>
-    </transition>
+    </sw-transition>
   </div>
 </template>
 
@@ -21,12 +21,16 @@
 import SwDropdown from '../../themes/default/SwDropdown'
 import { findByKey } from '../../helpers/utilities'
 import vClickOutside from 'v-click-outside'
-const { classes, variants } = SwDropdown
+import SwTransition from '../SwTransition'
+const { classes, variants, positions } = SwDropdown
 
 export default {
   name: 'SwDrodown',
   directives: {
     clickOutside: vClickOutside.directive
+  },
+  components: {
+    SwTransition
   },
   props: {
     variant: {
@@ -41,33 +45,42 @@ export default {
       type: Object,
       default: () => classes
     },
-    openDirection: {
+    positions: {
+      type: Object,
+      default: () => positions
+    },
+    position: {
       type: String,
-      default: ''
+      default: 'bottom-right'
     },
     maxHeight: {
-      type: Number,
-      default: 180
+      type: String,
+      default: '200px'
     },
-    isShow: {
+    show: {
       type: Boolean,
       default: false
+    },
+    transitionType: {
+      type: String,
+      default: 'dropdown'
     }
   },
   data() {
     return {
-      toggle: this.isShow,
+      toggle: this.show,
       preferredOpenDirection: 'below',
-      optimizedHeight: null
+      optimizedHeight: null,
+      windowHeight: window.innerHeight
     }
   },
   computed: {
     isAbove() {
-      if (this.openDirection === 'above' || this.openDirection === 'top') {
+      if (this.position === 'top-right' || this.position === 'top-left') {
         return true
       } else if (
-        this.openDirection === 'below' ||
-        this.openDirection === 'bottom'
+        (this.position === 'bottom-right' || this.position === 'bottom-left') &&
+        this.preferredOpenDirection === 'bottom'
       ) {
         return false
       } else {
@@ -76,27 +89,52 @@ export default {
     },
     itemContainerStyle() {
       return this.isAbove
-        ? { bottom: '100%', minWidth: '10rem', backgroundClip: 'padding-box' }
-        : { minWidth: '10rem', backgroundClip: 'padding-box' }
+        ? {
+            bottom: '100%',
+            minWidth: '10rem',
+            backgroundClip: 'padding-box',
+            maxHeight: this.maxHeight
+          }
+        : {
+            minWidth: '10rem',
+            backgroundClip: 'padding-box',
+            maxHeight: this.maxHeight
+          }
     },
     dropdownStyle() {
-      let dir = this.variant
-
-      if (this.isAbove) {
-        dir = this.variant ? 'above-' + this.variant : 'above'
-      }
-
-      let style = findByKey(dir, this.variants)
+      let style = findByKey(this.variant, this.variants)
 
       return { ...this.classes, ...style }
+    },
+    itemContainerClasses() {
+      let style = this.dropdownStyle
+
+      let itemsContainerPosition = findByKey(this.position, this.positions)
+
+      return `${style.itemContainer} ${itemsContainerPosition}`
     }
   },
   watch: {
     isShow(val) {
       this.toggle = val
+    },
+    windowHeight() {
+      this.adjustPosition()
     }
   },
+  mounted() {
+    this.$nextTick(() => {
+      window.addEventListener('resize', this.onResize)
+    })
+  },
+
+  beforeDestroy() {
+    window.removeEventListener('resize', this.onResize)
+  },
   methods: {
+    onResize() {
+      this.windowHeight = window.innerHeight
+    },
     adjustPosition() {
       if (typeof window === 'undefined') return
 
@@ -106,10 +144,8 @@ export default {
       const hasEnoughSpaceBelow = spaceBelow > this.maxHeight
 
       if (
-        hasEnoughSpaceBelow ||
-        spaceBelow > spaceAbove ||
-        this.openDirection === 'below' ||
-        this.openDirection === 'bottom'
+        (hasEnoughSpaceBelow || spaceBelow > spaceAbove) &&
+        (this.position === 'bottom-left' || this.position === 'bottom-right')
       ) {
         this.preferredOpenDirection = 'below'
         this.optimizedHeight = Math.min(spaceBelow - 40, this.maxHeight)

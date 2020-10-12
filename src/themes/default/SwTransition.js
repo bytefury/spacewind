@@ -7,5 +7,14 @@ export default {
     leaveTo: 'opacity-0',
     leaveActive: 'transition-all ease-in-out'
   },
-  variants: {}
+  variants: {
+    dropdown: {
+      enter: 'transform scale-95 opacity-0',
+      enterTo: 'transform scale-100 opacity-100',
+      enterActive: 'transition duration-100 ease-out',
+      leave: 'transform scale-100 opacity-100',
+      leaveTo: 'transform scale-95 opacity-0',
+      leaveActive: 'transition duration-75 ease-out'
+    }
+  }
 }

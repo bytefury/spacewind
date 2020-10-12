@@ -1,234 +1,268 @@
 <template>
   <div>
-    <sw-page class="p-4">
-      <sw-header>
-        <div class="flex items-center">
-          <a
-            href="/"
-            class="float-none text-lg not-italic font-black tracking-wider text-white brand-main md:float-left font-base"
-          >
-            <img
-              id="logo-white"
-              src="/logo-white.png"
-              alt="Crater Logo"
-              class="hidden h-6 md:block"
-            />
-            <img
-              id="logo-mobile"
-              src="/crater-white-small.png"
-              alt="Laraspace Logo"
-              class="block h-8 md:hidden"
-            />
-          </a>
-        </div>
-        <ul class="float-right h-8 m-0 list-none" style="height: 36px;">
-          <li class="relative block float-left px-1 py-0 m-0">
-            <a
-              slot="activator"
-              href="#"
-              data-toggle="dropdown"
-              aria-haspopup="true"
-              aria-expanded="false"
-              class="inline-block text-sm text-black bg-transparent bg-white rounded-sm avatar"
-            >
-              <img
-                src="/default-avatar.jpg"
-                alt="Avatar"
-                class="rounded-sm"
-                style="width: 36px;"
+    <base-header />
+    <div class="flex h-screen pt-16 pb-10 overflow-hidden bg-gray-100">
+      <base-sidebar />
+      <div
+        class="flex flex-col flex-1 p-8 overflow-y-auto border-b border-gray-300 border-solid"
+      >
+        <sw-page-header title="Demo">
+          <template v-slot:breadcrumbs>
+            <sw-breadcrumb>
+              <sw-breadcrumb-item title="Dashboard" />
+              <sw-breadcrumb-item title="Invoice" />
+              <sw-breadcrumb-item title="Create" active />
+            </sw-breadcrumb>
+          </template>
+          <template v-slot:actions>
+            <div>
+              <sw-button variant="primary">Test 1</sw-button>&nbsp;
+              <sw-button variant="warning">Test 1</sw-button>&nbsp;
+            </div>
+          </template>
+        </sw-page-header>
+        <sw-tabs>
+          <sw-tab-item title="SwSelect" class="mt-5">
+            <div class="mb-5">
+              <sw-select
+                v-model="database_connection1"
+                :options="options2"
+                :searchable="true"
+                :show-labels="false"
+                :allow-empty="true"
+                :multiple="false"
+                placeholder="select a value "
               />
-            </a>
-          </li>
-        </ul>
-      </sw-header>
-      <sw-page-header title="Demo">
-        <template v-slot:breadcrumbs>
-          <sw-breadcrumb>
-            <sw-breadcrumb-item title="Dashboard" />
-            <sw-breadcrumb-item title="Invoice" />
-            <sw-breadcrumb-item title="Create" active />
-          </sw-breadcrumb>
-        </template>
-        <template v-slot:actions>
-          <div>
-            <sw-button variant="primary">Test 1</sw-button>&nbsp;
-            <sw-button variant="warning">Test 1</sw-button>&nbsp;
-          </div>
-        </template>
-      </sw-page-header>
-      <sw-tabs>
-        <sw-tab-item title="SwSelect">
-          <div class="mb-5">
-            <sw-select
-              v-model="database_connection1"
-              :options="options2"
-              :searchable="true"
-              :show-labels="false"
-              :allow-empty="true"
-              :multiple="false"
-              placeholder="select a value "
-            />
-          </div>
-          <div class="mb-5">
-            <sw-select
-              v-model="database_connection2"
-              :options="options2"
-              :searchable="true"
-              :show-labels="false"
-              :allow-empty="true"
-              :multiple="true"
-              placeholder="select a value "
-            />
-          </div>
-        </sw-tab-item>
-        <sw-tab-item title="Button">
-          <div class="p-4">
-            <sw-modal ref="myModal">
-              <template v-slot:header>
-                Title
-              </template>
-              <div>
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Quidem,
-                nulla aliquam quam facilis in voluptatem assumenda dolore ut
-                atque consequatur laudantium at asperiores rem provident a
-                accusamus ad qua
+            </div>
+            <div class="mb-5">
+              <sw-select
+                v-model="database_connection2"
+                :options="options2"
+                :searchable="true"
+                :show-labels="false"
+                :allow-empty="true"
+                :multiple="true"
+                placeholder="select a value "
+              />
+            </div>
+          </sw-tab-item>
+          <sw-tab-item title="Button" class="mt-5">
+            <div class="p-4">
+              <sw-modal ref="myModal">
+                <template v-slot:header>
+                  Title
+                </template>
+                <div>
+                  Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                  Quidem, nulla aliquam quam facilis in voluptatem assumenda
+                  dolore ut atque consequatur laudantium at asperiores rem
+                  provident a accusamus ad qua
+                </div>
+                <template v-slot:footer>
+                  <sw-button
+                    variant="danger"
+                    @click="() => $refs.myModal.close()"
+                  >
+                    Close
+                  </sw-button>
+                  &nbsp;
+                </template>
+              </sw-modal>
+              <sw-button size="lg" variant="primary" @click="onModal">
+                Primary Button
+              </sw-button>
+              &nbsp;
+              <sw-button
+                size="lg"
+                variant="danger"
+                :loading="isLoading"
+                @click="isLoading != isLoading"
+              >
+                Danger Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="warning">
+                Warning Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="success">
+                Success Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="info"> Info Button </sw-button
+              >&nbsp;
+              <sw-button size="lg" variant="primary-light">
+                Primary Light Button
+              </sw-button>
+              &nbsp;
+              <br />
+              <br />
+              <sw-button size="lg" variant="primary-outline">
+                Primary Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="danger-outline">
+                Danger Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="warning-outline">
+                Warning Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="success-outline">
+                Success Button
+              </sw-button>
+              &nbsp;
+              <sw-button size="lg" variant="info-outline"
+                >Info Button</sw-button
+              >
+              &nbsp;
+              <sw-button size="lg" variant="primary-light-outline">
+                Primary Light Button
+              </sw-button>
+            </div>
+          </sw-tab-item>
+          <sw-tab-item title="Card" class="mt-5">
+            <sw-card class="mt-6">
+              <div class="grid grid-cols-3 gap-4 mb-6">
+                <sw-input-group label="Name">
+                  <sw-input prefix="EST">
+                    <template v-slot:rightIcon>
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-5 h-5 mr-1 text-gray-500 "
+                      >
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                        <path
+                          fill-rule="evenodd"
+                          d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                          clip-rule="evenodd"
+                        ></path>
+                      </svg>
+                    </template>
+                  </sw-input>
+                </sw-input-group>
+                <sw-input-group label="Age">
+                  <sw-input type="number" />
+                </sw-input-group>
+                <sw-input-group label="Amount">
+                  <sw-money v-model="money" :currency="currency" />
+                </sw-input-group>
+                <sw-input-group label="Address">
+                  <sw-textarea row="2" v-model="address" />
+                </sw-input-group>
+                <sw-input-group label="Toggle">
+                  <sw-switch />
+                </sw-input-group>
               </div>
               <template v-slot:footer>
-                <sw-button
-                  variant="danger"
-                  @click="() => $refs.myModal.close()"
-                >
-                  Close
-                </sw-button>
-                &nbsp;
+                <sw-button variant="danger" @click="() => $refs.myModal.close()"
+                  >Close</sw-button
+                >&nbsp;
               </template>
-            </sw-modal>
-            <sw-button size="lg" loading variant="primary" @click="onModal">
-              Primary Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="danger">
-              Danger Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="warning">
-              Warning Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="success">
-              Success Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="info"> Info Button </sw-button>&nbsp;
-            <sw-button size="lg" variant="primary-light">
-              Primary Light Button
-            </sw-button>
-            &nbsp;
-            <br />
-            <br />
-            <sw-button loading size="lg" variant="primary-outline">
-              Primary Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="danger-outline">
-              Danger Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="warning-outline">
-              Warning Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="success-outline">
-              Success Button
-            </sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="info-outline">Info Button</sw-button>
-            &nbsp;
-            <sw-button size="lg" variant="primary-light-outline">
-              Primary Light Button
-            </sw-button>
-          </div>
-        </sw-tab-item>
-        <sw-tab-item title="Card">
-          <sw-card class="mt-6">
-            <div class="grid grid-cols-3 gap-4 mb-6">
-              <sw-input-group label="Name">
-                <sw-input prefix="EST">
-                  <template v-slot:rightIcon>
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      class="w-5 h-5 mr-1 text-gray-500 "
-                    >
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
-                      <path
-                        fill-rule="evenodd"
-                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                        clip-rule="evenodd"
-                      ></path>
-                    </svg>
-                  </template>
-                </sw-input>
-              </sw-input-group>
-              <sw-input-group label="Age">
-                <sw-input type="number" />
-              </sw-input-group>
-              <sw-input-group label="Amount">
-                <sw-money v-model="money" :currency="currency" />
-              </sw-input-group>
-              <sw-input-group label="Address">
-                <sw-textarea row="2" v-model="address" />
-              </sw-input-group>
-              <sw-input-group label="Toggle">
-                <sw-switch />
-              </sw-input-group>
+            </sw-card>
+            <sw-divider class="my-5" />
+          </sw-tab-item>
+          <sw-tab-item title="Badges" class="mt-5">
+            <div class="flex flex-row mt-4">
+              <sw-badge>Default</sw-badge>
+              <sw-badge variant="success" class="ml-5">Success</sw-badge>
+              <sw-badge variant="warning" class="ml-5">Warning</sw-badge>
+              <sw-badge variant="info" class="ml-5">Info</sw-badge>
+              <sw-badge variant="danger" class="ml-5">Danger</sw-badge>
+              <sw-badge bg-color="#FF9988" color="white" class="ml-5"
+                >Custom Color</sw-badge
+              >
             </div>
-            <template v-slot:footer>
-              <sw-button variant="danger" @click="() => $refs.myModal.close()"
-                >Close</sw-button
-              >&nbsp;
-            </template>
-          </sw-card>
-          <sw-divider class="my-5" />
-        </sw-tab-item>
-        <sw-tab-item title="Badges">
-          <div class="flex flex-row mt-4">
-            <sw-badge>Default</sw-badge>
-            <sw-badge variant="success" class="ml-5">Success</sw-badge>
-            <sw-badge variant="warning" class="ml-5">Warning</sw-badge>
-            <sw-badge variant="info" class="ml-5">Info</sw-badge>
-            <sw-badge variant="danger" class="ml-5">Danger</sw-badge>
-            <sw-badge bg-color="#FF9988" color="white" class="ml-5"
-              >Custom Color</sw-badge
-            >
-          </div>
-        </sw-tab-item>
-        <sw-tab-item title="Card">
-          <sw-card class="mt-6">
-            <div class="grid grid-cols-3 gap-4 mb-6">
-              <sw-input-group label="Name">
-                <sw-input prefix="EST">
-                  <template v-slot:rightIcon>
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      class="w-5 h-5 mr-1 text-gray-500 "
-                    >
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
-                      <path
-                        fill-rule="evenodd"
-                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                        clip-rule="evenodd"
-                      ></path>
-                    </svg>
-                  </template>
-                </sw-input>
-              </sw-input-group>
-              <sw-input-group label="Age">
-                <sw-input type="number" />
-              </sw-input-group>
-              <sw-input-group label="Amount">
-                <sw-money v-model="money" :currency="currency" />
+          </sw-tab-item>
+          <sw-tab-item title="Card" class="mt-5">
+            <sw-card class="mt-6">
+              <div class="grid grid-cols-3 gap-4 mb-6">
+                <sw-input-group label="Name">
+                  <sw-input prefix="EST">
+                    <template v-slot:rightIcon>
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-5 h-5 mr-1 text-gray-500 "
+                      >
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                        <path
+                          fill-rule="evenodd"
+                          d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                          clip-rule="evenodd"
+                        ></path>
+                      </svg>
+                    </template>
+                  </sw-input>
+                </sw-input-group>
+                <sw-input-group label="Age">
+                  <sw-input type="number" />
+                </sw-input-group>
+                <sw-input-group label="Amount">
+                  <sw-money v-model="money" :currency="currency" />
+                </sw-input-group>
+                <sw-input-group label="Last Name">
+                  <sw-input />
+                </sw-input-group>
+                <sw-input-group label="Surname Name">
+                  <sw-input />
+                </sw-input-group>
+                <sw-input-group label="Testing">
+                  <sw-input />
+                </sw-input-group>
+                <sw-input-group label="Checkbox">
+                  <sw-checkbox
+                    v-model="hobbies"
+                    name="hobbies"
+                    label="Cricket"
+                    value="cricket"
+                    variant="success"
+                    size="sm"
+                    autofocus
+                  />
+                  <sw-checkbox
+                    v-model="hobbies"
+                    name="hobbies"
+                    label="Foot Ball"
+                    value="football"
+                  />
+                  <sw-checkbox
+                    v-model="hobbies"
+                    name="hobbies"
+                    label="Wally Ball"
+                    value="wallyball"
+                    variant="danger"
+                    size="lg"
+                  />
+                </sw-input-group>
+                <sw-input-group label="Gender">
+                  <sw-radio
+                    v-model="gender"
+                    label="Male"
+                    name="gender"
+                    value="male"
+                    size="sm"
+                    variant="success"
+                  />
+                  <sw-radio
+                    v-model="gender"
+                    label="Female"
+                    name="gender"
+                    value="female"
+                  />
+                </sw-input-group>
+                <sw-input-group label="Date of Birth">
+                  <sw-date-picker v-model="dob" placeholder="dd-mm-yyyy" />
+                </sw-input-group>
+              </div>
+            </sw-card>
+          </sw-tab-item>
+          <sw-tab-item title="Filter Wrapper" class="mt-5">
+            <sw-filter-wrapper is-show class="mt-6">
+              <sw-input-group label="First Name">
+                <sw-input />
               </sw-input-group>
               <sw-input-group label="Last Name">
                 <sw-input />
@@ -239,309 +273,247 @@
               <sw-input-group label="Testing">
                 <sw-input />
               </sw-input-group>
-              <sw-input-group label="Checkbox">
-                <sw-checkbox
-                  v-model="hobbies"
-                  name="hobbies"
-                  label="Cricket"
-                  value="cricket"
-                  variant="success"
-                  size="sm"
-                  autofocus
-                />
-                <sw-checkbox
-                  v-model="hobbies"
-                  name="hobbies"
-                  label="Foot Ball"
-                  value="football"
-                />
-                <sw-checkbox
-                  v-model="hobbies"
-                  name="hobbies"
-                  label="Wally Ball"
-                  value="wallyball"
-                  variant="danger"
-                  size="lg"
-                />
-              </sw-input-group>
-              <sw-input-group label="Gender">
-                <sw-radio
-                  v-model="gender"
-                  label="Male"
-                  name="gender"
-                  value="male"
-                  size="sm"
-                  variant="success"
-                />
-                <sw-radio
-                  v-model="gender"
-                  label="Female"
-                  name="gender"
-                  value="female"
-                />
-              </sw-input-group>
-              <sw-input-group label="Date of Birth">
-                <sw-date-picker v-model="dob" placeholder="dd-mm-yyyy" />
-              </sw-input-group>
-            </div>
-          </sw-card>
-        </sw-tab-item>
-        <sw-tab-item title="Filter Wrapper">
-          <sw-filter-wrapper is-show class="mt-6">
-            <sw-input-group label="First Name">
-              <sw-input />
-            </sw-input-group>
-            <sw-input-group label="Last Name">
-              <sw-input />
-            </sw-input-group>
-            <sw-input-group label="Surname Name">
-              <sw-input />
-            </sw-input-group>
-            <sw-input-group label="Testing">
-              <sw-input />
-            </sw-input-group>
-          </sw-filter-wrapper>
-        </sw-tab-item>
-        <sw-tab-item title="Popup">
-          <sw-popup>
-            <template v-slot:activator>
-              <span>Click Here</span>
-            </template>
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
-              aperiam blanditiis quia odio ipsam unde voluptates aut cum
-              necessitatibus architecto numquam reprehenderit illum consequatur
-              optio et ut. Numquam, sapiente nihil!
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
-              aperiam blanditiis quia odio ipsam unde voluptates aut cum
-              necessitatibus architecto numquam reprehenderit illum consequatur
-              optio et ut. Numquam, sapiente nihil!
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
-              aperiam blanditiis quia odio ipsam unde voluptates aut cum
-              necessitatibus architecto numquam reprehenderit illum consequatur
-              optio et ut. Numquam, sapiente nihil!
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
-              aperiam blanditiis quia odio ipsam unde voluptates aut cum
-              necessitatibus architecto numquam reprehenderit illum consequatur
-              optio et ut. Numquam, sapiente nihil!
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
-              aperiam blanditiis quia odio ipsam unde voluptates aut cum
-              necessitatibus architecto numquam reprehenderit illum consequatur
-              optio et ut. Numquam, sapiente nihil!
-            </p>
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
-              aperiam blanditiis quia odio ipsam unde voluptates aut cum
-              necessitatibus architecto numquam reprehenderit illum consequatur
-              optio et ut. Numquam, sapiente nihil!
-            </p>
-          </sw-popup>
-        </sw-tab-item>
-        <sw-tab-item title="Avatar Cropper">
-          <sw-card class="mt-6">
-            <sw-avatar
-              :preview-avatar="previewAvatar"
-              @changed="onChange"
-              @uploadHandler="onUploadHandler"
-              @handleUploadError="onHandleUploadError"
-            >
-              <template v-slot:icon>
+            </sw-filter-wrapper>
+          </sw-tab-item>
+          <sw-tab-item title="Popup" class="mt-5">
+            <sw-popup>
+              <template v-slot:activator>
+                <span>Click Here</span>
+              </template>
+              <p>
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
+                aperiam blanditiis quia odio ipsam unde voluptates aut cum
+                necessitatibus architecto numquam reprehenderit illum
+                consequatur optio et ut. Numquam, sapiente nihil!
+              </p>
+              <p>
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
+                aperiam blanditiis quia odio ipsam unde voluptates aut cum
+                necessitatibus architecto numquam reprehenderit illum
+                consequatur optio et ut. Numquam, sapiente nihil!
+              </p>
+              <p>
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
+                aperiam blanditiis quia odio ipsam unde voluptates aut cum
+                necessitatibus architecto numquam reprehenderit illum
+                consequatur optio et ut. Numquam, sapiente nihil!
+              </p>
+              <p>
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
+                aperiam blanditiis quia odio ipsam unde voluptates aut cum
+                necessitatibus architecto numquam reprehenderit illum
+                consequatur optio et ut. Numquam, sapiente nihil!
+              </p>
+              <p>
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
+                aperiam blanditiis quia odio ipsam unde voluptates aut cum
+                necessitatibus architecto numquam reprehenderit illum
+                consequatur optio et ut. Numquam, sapiente nihil!
+              </p>
+              <p>
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Vero,
+                aperiam blanditiis quia odio ipsam unde voluptates aut cum
+                necessitatibus architecto numquam reprehenderit illum
+                consequatur optio et ut. Numquam, sapiente nihil!
+              </p>
+            </sw-popup>
+          </sw-tab-item>
+          <sw-tab-item title="Avatar Cropper" class="mt-5">
+            <sw-card class="mt-6">
+              <sw-avatar
+                :preview-avatar="previewAvatar"
+                @changed="onChange"
+                @uploadHandler="onUploadHandler"
+                @handleUploadError="onHandleUploadError"
+              >
+                <template v-slot:icon>
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="w-6 h-6 text-gray-400 cloud-upload"
+                  >
+                    <path
+                      d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"
+                    ></path>
+                    <path d="M9 13h2v5a1 1 0 11-2 0v-5z"></path>
+                  </svg>
+                </template>
+              </sw-avatar>
+            </sw-card>
+          </sw-tab-item>
+          <sw-tab-item title="Empty Table Placeholder" class="mt-5">
+            <sw-card class="mt-6">
+              <sw-empty-table-placeholder
+                title="Testing"
+                buttonTitle="Testing"
+                description="Lorem ipsum dolor sit amet, consectetur adipisicing elit. Natus, consectetur consequuntur, provident dolores enim facere quam soluta dolore mollitia officiis libero quia nulla corporis sapiente perferendis illum corrupti eveniet odit."
+              >
                 <svg
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  class="w-6 h-6 text-gray-400 cloud-upload"
+                  class="w-6 h-6 academic-cap"
                 >
                   <path
-                    d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"
+                    d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"
                   ></path>
-                  <path d="M9 13h2v5a1 1 0 11-2 0v-5z"></path>
                 </svg>
-              </template>
-            </sw-avatar>
-          </sw-card>
-        </sw-tab-item>
-        <sw-tab-item title="Empty Table Placeholder">
-          <sw-card class="mt-6">
-            <sw-empty-table-placeholder
-              title="Testing"
-              buttonTitle="Testing"
-              description="Lorem ipsum dolor sit amet, consectetur adipisicing elit. Natus, consectetur consequuntur, provident dolores enim facere quam soluta dolore mollitia officiis libero quia nulla corporis sapiente perferendis illum corrupti eveniet odit."
-            >
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                class="w-6 h-6 academic-cap"
-              >
-                <path
-                  d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"
-                ></path>
-              </svg>
-              <template v-slot:actions>
-                <sw-button>Test</sw-button>
-              </template>
-            </sw-empty-table-placeholder>
-          </sw-card>
-        </sw-tab-item>
-        <sw-tab-item title="Transition">
-          <div class="grid grid-cols-3 mt-4">
-            <div class="p-2">
-              <sw-button variant="primary" @click="toggleFade">Fade</sw-button>
-              <sw-transition>
-                <div v-show="fade" class="p-4 mt-2 rounded bg-primary-200">
-                  Content Of Fade Transition
-                </div>
-              </sw-transition>
+                <template v-slot:actions>
+                  <sw-button>Test</sw-button>
+                </template>
+              </sw-empty-table-placeholder>
+            </sw-card>
+          </sw-tab-item>
+          <sw-tab-item title="Transition" class="mt-5">
+            <div class="grid grid-cols-3 mt-4">
+              <div class="p-2">
+                <sw-button variant="primary" @click="toggleFade"
+                  >Fade</sw-button
+                >
+                <sw-transition>
+                  <div v-show="fade" class="p-4 mt-2 rounded bg-primary-200">
+                    Content Of Fade Transition
+                  </div>
+                </sw-transition>
+              </div>
+              <div class="p-2">
+                <sw-button variant="primary" @click="toggleBounce">
+                  Bounce
+                </sw-button>
+                <sw-transition variant="bounce">
+                  <div v-show="bounce" class="p-4 mt-2 rounded bg-primary-200">
+                    Content Of Bounce Transition
+                  </div>
+                </sw-transition>
+              </div>
             </div>
-            <div class="p-2">
-              <sw-button variant="primary" @click="toggleBounce">
-                Bounce
-              </sw-button>
-              <sw-transition variant="bounce">
-                <div v-show="bounce" class="p-4 mt-2 rounded bg-primary-200">
-                  Content Of Bounce Transition
-                </div>
-              </sw-transition>
-            </div>
-          </div>
-        </sw-tab-item>
-        <sw-tab-item title="Table">
-          <sw-table-component ref="table" :data="users" table-class="table">
-            <sw-table-column label="Name" show="name" />
-            <sw-table-column label="Age" show="age" />
-            <sw-table-column label="Phone" show="phone" />
-            <sw-table-column label="Last Name" show="last_name" />
-          </sw-table-component>
-        </sw-tab-item>
-        <sw-tab-item
-          title="List"
-          class="flex flex-col w-full mt-5 space-x-0 space-y-4 md:space-x-4 md:space-y-0 md:flex-row"
-        >
-          <div class="flex-1 bg-white">
-            <sw-list
-              v-for="(menuGroups, groupIndex) in menu2"
-              :key="groupIndex"
-            >
-              <sw-list-item
-                v-for="(item, index) in menuGroups"
-                :title="item.title"
-                :key="index"
-                :active="
-                  index === activeIndex && groupActiveIndex === groupIndex
-                "
-                @click="setActive(index, groupIndex)"
+          </sw-tab-item>
+          <sw-tab-item title="Table" class="mt-5">
+            <sw-table-component ref="table" :data="users" table-class="table">
+              <sw-table-column label="Name" show="name" />
+              <sw-table-column label="Age" show="age" />
+              <sw-table-column label="Phone" show="phone" />
+              <sw-table-column label="Last Name" show="last_name" />
+            </sw-table-component>
+          </sw-tab-item>
+          <sw-tab-item
+            title="List"
+            class="flex flex-col w-full mt-5 space-x-0 space-y-4 md:space-x-4 md:space-y-0 md:flex-row"
+          >
+            <div class="flex-1 bg-white">
+              <sw-list
+                v-for="(menuGroups, groupIndex) in menu2"
+                :key="groupIndex"
               >
-                <span slot="icon" v-html="item.icon" />
-              </sw-list-item>
-            </sw-list>
-          </div>
-          <div class="flex-1 bg-white">
-            <sw-list>
-              <sw-list-group title="A">
-                <sw-list-group title="AA">
-                  <sw-list-item title="AAA" />
-                  <sw-list-item title="AAB" />
-                  <sw-list-item title="AAC" />
+                <sw-list-item
+                  v-for="(item, index) in menuGroups"
+                  :title="item.title"
+                  :key="index"
+                  :active="
+                    index === activeIndex && groupActiveIndex === groupIndex
+                  "
+                  @click="setActive(index, groupIndex)"
+                >
+                  <span slot="icon" v-html="item.icon" />
+                </sw-list-item>
+              </sw-list>
+            </div>
+            <div class="flex-1 bg-white">
+              <sw-list>
+                <sw-list-group title="A">
+                  <sw-list-group title="AA">
+                    <sw-list-item title="AAA" />
+                    <sw-list-item title="AAB" />
+                    <sw-list-item title="AAC" />
+                  </sw-list-group>
+                  <sw-list-item title="AB" />
+                  <sw-list-item title="AC" />
+                  <sw-list-item title="AD" />
+                  <sw-list-item title="AE" />
                 </sw-list-group>
-                <sw-list-item title="AB" />
-                <sw-list-item title="AC" />
-                <sw-list-item title="AD" />
-                <sw-list-item title="AE" />
-              </sw-list-group>
-              <sw-list-item title="B" />
-              <sw-list-item title="C" />
-              <sw-list-item title="D" />
-            </sw-list>
-          </div>
-        </sw-tab-item>
-        <sw-tab-item title="Dropdown" class="grid grid-cols-2 mt-5">
-          <div class="flex">
-            <sw-dropdown isShow>
-              <sw-button slot="activator" variant="primary">
-                Default
-              </sw-button>
-              <sw-dropdown-item>
-                item1
-              </sw-dropdown-item>
-              <sw-dropdown-item>item2</sw-dropdown-item>
-              <sw-dropdown-divider />
-              <sw-dropdown-item>item3</sw-dropdown-item>
-              <sw-dropdown-item>item4</sw-dropdown-item>
-            </sw-dropdown>
-          </div>
-          <div class="flex">
-            <sw-dropdown variant="right">
-              <sw-button slot="activator" variant="primary">
-                Right
-              </sw-button>
-              <sw-dropdown-item>item1</sw-dropdown-item>
-              <sw-dropdown-item>item2</sw-dropdown-item>
-              <sw-dropdown-item>item3</sw-dropdown-item>
-              <sw-dropdown-item>item4</sw-dropdown-item>
-            </sw-dropdown>
-          </div>
-        </sw-tab-item>
-        <sw-tab-item title="Editor" class="mt-5">
-          <sw-editor />
-        </sw-tab-item>
-        <sw-tab-item title="File Upload">
-          <sw-file-upload
-            id="mydropzone"
-            ref="dropZone"
-            :options="dropzoneOptions"
-          />
-        </sw-tab-item>
-      </sw-tabs>
-      <sw-sidebar>
-        <sw-list variant="collapse-sidebar">
-          <div v-for="(menuGroups, groupIndex) in menu" :key="groupIndex">
-            <sw-list-group
-              v-if="menuGroups.items"
-              :title="menuGroups.title"
-              :active="groupActiveIndex == groupIndex"
-              @click="setActiveGroup(groupIndex)"
-            >
-              <span slot="titleIcon" v-html="menuGroups.icon" />
-              <sw-list-item
-                v-for="(item, index) in menuGroups.items"
-                :title="item.title"
-                :key="index"
-                :route="item.route"
-                :active="activeIndex == index && groupActiveIndex == groupIndex"
-                @click="setActive(index, groupIndex)"
+                <sw-list-item title="B" />
+                <sw-list-item title="C" />
+                <sw-list-item title="D" />
+              </sw-list>
+            </div>
+          </sw-tab-item>
+          <sw-tab-item title="Dropdown" class="grid grid-cols-2 mt-5">
+            <div class="flex">
+              <sw-dropdown show>
+                <sw-button slot="activator" variant="primary">
+                  Default
+                </sw-button>
+                <sw-dropdown-item>
+                  item1
+                </sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-divider />
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+              </sw-dropdown>
+            </div>
+            <div class="flex">
+              <sw-dropdown position="bottom-right">
+                <sw-button slot="activator" variant="primary">
+                  Right
+                </sw-button>
+                <sw-dropdown-item>item1</sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+                <sw-dropdown-item>item1</sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+                <sw-dropdown-item>item1</sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+                <sw-dropdown-item>item1</sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+                <sw-dropdown-item>item1</sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+                <sw-dropdown-item>item1</sw-dropdown-item>
+                <sw-dropdown-item>item2</sw-dropdown-item>
+                <sw-dropdown-item>item3</sw-dropdown-item>
+                <sw-dropdown-item>item4</sw-dropdown-item>
+              </sw-dropdown>
+            </div>
+          </sw-tab-item>
+          <sw-tab-item title="Editor" class="mt-5">
+            <sw-editor />
+          </sw-tab-item>
+          <sw-tab-item title="File Upload" class="mt-5">
+            <sw-file-upload
+              id="mydropzone"
+              ref="dropZone"
+              :options="dropzoneOptions"
+            />
+          </sw-tab-item>
+          <sw-tab-item title="Wizard">
+            <div class="flex items-center justify-center w-full">
+              <img
+                id="logo-crater"
+                src="https://demo.craterapp.com/assets/img/crater-logo.png"
+                alt="Crater Logo"
+                class="h-12 mt-2"
               />
-            </sw-list-group>
-            <sw-list-item
-              v-else
-              :title="menuGroups.title"
-              :active="activeIndex == -1 && groupActiveIndex == groupIndex"
-              @click="setActiveGroup(groupIndex)"
+            </div>
+            <sw-wizard
+              :steps="3"
+              :currentStep.sync="wizardStep"
+              @submit="submitWizard"
             >
-              <span slot="icon" v-html="menuGroups.icon" />
-            </sw-list-item>
-          </div>
-        </sw-list>
-      </sw-sidebar>
-    </sw-page>
-    <sw-footer>
-      <div class="text-right">
-        Powered By
-        <a
-          href="http://bytefury.com/"
-          target="_blank"
-          class="font-normal text-black"
-        >
-          Bytefury
-        </a>
+              <component :is="tab" @next="setNextTab()" @back="setBackTab()" />
+            </sw-wizard>
+          </sw-tab-item>
+        </sw-tabs>
       </div>
-    </sw-footer>
+    </div>
+    <base-footer />
   </div>
 </template>
 
@@ -563,7 +535,6 @@ import SwPageHeader from './components/SwPageHeader.vue'
 import SwFilterWrapper from './components/SwFilterWrapper.vue'
 import SwSwitch from './components/SwSwitch.vue'
 import SwPopup from './components/SwPopup.vue'
-import SwPage from './components/SwPage.vue'
 import SwTransition from './components/SwTransition.vue'
 import SwInputGroup from './components/SwInputGroup.vue'
 import SwFileUpload from './components/SwFileUpload'
@@ -571,9 +542,6 @@ import SwEmptyTablePlaceholder from './components/SwEmptyTablePlaceholder.vue'
 import { SwTableComponent, SwTableColumn } from './components/sw-table/index'
 import SwList from './components/sw-list/SwList.vue'
 import SwListItem from './components/sw-list/SwListItem.vue'
-import SwSidebar from './components/SwSidebar.vue'
-import SwHeader from './components/SwHeader.vue'
-import SwFooter from './components/SwFooter.vue'
 import SwSelect from './components/sw-select/SwSelect'
 import SwDropdown from './components/sw-dropdown/SwDropdown.vue'
 import SwDropdownItem from './components/sw-dropdown/SwDropdownItem'
@@ -583,6 +551,16 @@ import SwRadio from './components/SwRadio'
 import SwDatePicker from './components/SwDatePicker'
 import SwEditor from './components/sw-editor/Index'
 import SwListGroup from './components/sw-list/SwListGroup'
+import SwWizard from './components/sw-wizard/SwWizard'
+import SwWizardStep from './components/sw-wizard/partials/SwWizardStep'
+
+import BaseHeader from './views/layouts/Header'
+import BaseSidebar from './views/layouts/Sidebar'
+import BaseFooter from './views/layouts/Footer'
+
+import Test1 from './views/Test1'
+import Test2 from './views/Test2'
+import Test3 from './views/Test3'
 
 export default {
   name: 'App',
@@ -595,6 +573,7 @@ export default {
       fileSizeInKb: null,
       fileObject: null,
       dob: new Date(),
+      isLoading: false,
       currency: {
         decimal: '.',
         thousands: ',',
@@ -628,16 +607,17 @@ export default {
           phone: '234234234234'
         }
       ],
+      activeIndex: 0,
+      groupActiveIndex: 0,
       database_connection1: '',
       database_connection2: '',
       options1: ['sqlite', 'mysql', 'pgsql', 'sqlsrv'],
       options2: ['sqlite', 'mysql', 'pgsql', 'sqlsrv'],
       money: 0,
-      activeIndex: 0,
-      groupActiveIndex: 0,
       address: null,
       gender: 'male',
       hobbies: [],
+      wizardStep: 1,
       menu2: [
         [
           {
@@ -709,97 +689,6 @@ export default {
           }
         ]
       ],
-      menu: [
-        {
-          title: 'Test 1',
-          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
-                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
-                </svg>`,
-          active: false,
-          items: [
-            {
-              title: 'Test 3',
-              route: '',
-              active: false
-            },
-            {
-              title: 'Test 4',
-              route: '',
-              active: false
-            },
-            {
-              title: 'Test 5',
-              route: '',
-              active: false
-            }
-          ]
-        },
-        {
-          title: 'Test 2',
-          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
-                  <path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z"></path><path d="M3 8a2 2 0 012-2v10h8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
-                  </svg>`,
-          active: false,
-          items: [
-            {
-              title: 'Test 3',
-              route: '',
-              active: false
-            },
-            {
-              title: 'Test 4',
-              route: '',
-              active: false
-            },
-            {
-              title: 'Test 5',
-              route: '',
-              active: false
-            }
-          ]
-        },
-        {
-          title: 'Test 3',
-          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-4">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                  </svg>`,
-          active: false,
-          items: [
-            {
-              title: 'Test 3',
-              icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
-                </svg>`,
-              route: '',
-              active: false
-            },
-            {
-              title: 'Test 4',
-              icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
-                </svg>`,
-              route: '',
-              active: false
-            },
-            {
-              title: 'Test 5',
-              icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
-                </svg>`,
-              route: '',
-              active: false
-            }
-          ]
-        },
-        {
-          title: 'Test 2',
-          icon: `<svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                  <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
-                  </svg>`,
-          route: '',
-          active: false
-        }
-      ],
       dropzoneOptions: {
         autoProcessQueue: false,
         url: `https://httpbin.org/post`,
@@ -816,6 +705,20 @@ export default {
         dictFileTooBig: 'File size too Big',
         addRemoveLinks: false,
         method: 'post'
+      }
+    }
+  },
+  computed: {
+    tab() {
+      switch (this.wizardStep) {
+        case 1:
+          return 'test-1'
+        case 2:
+          return 'test-2'
+        case 3:
+          return 'test-3'
+        default:
+          return ''
       }
     }
   },
@@ -836,7 +739,6 @@ export default {
     SwFilterWrapper,
     SwSwitch,
     SwPopup,
-    SwPage,
     SwInputGroup,
     SwEmptyTablePlaceholder,
     SwTransition,
@@ -850,14 +752,19 @@ export default {
     SwDropdownDivider,
     SwList,
     SwListItem,
-    SwSidebar,
-    SwHeader,
-    SwFooter,
     SwRadio,
     SwDatePicker,
     SwEditor,
     SwFileUpload,
-    SwListGroup
+    SwListGroup,
+    SwWizard,
+    SwWizardStep,
+    BaseHeader,
+    BaseSidebar,
+    BaseFooter,
+    Test1,
+    Test2,
+    Test3
   },
   methods: {
     toggleFade() {
@@ -885,32 +792,21 @@ export default {
     onHandleUploadError() {
       window.toastr['error']('Oops! Something went wrong...')
     },
-    setActive(index, groupIndex) {
-      this.activeIndex = index
-      this.groupActiveIndex = groupIndex
-      this.menu.forEach(item => {
-        if (item.items) {
-          item.items.forEach(_item => {
-            _item.active = false
-          })
-        }
-        item.active = false
-      })
-      this.menu[groupIndex].items[index].active = true
-      this.menu[groupIndex].active = true
+    submitWizard() {
+      this.wizardStep = 3
+      alert('wizard completed')
     },
-    setActiveGroup(groupIndex) {
-      this.activeIndex = -1
-      this.groupActiveIndex = groupIndex
-      this.menu.forEach(item => {
-        if (item.items) {
-          item.active = false
-          item.items.forEach(_item => {
-            _item.active = false
-          })
-        }
-      })
-      this.menu[groupIndex].active = true
+    setNextTab() {
+      if (this.wizardStep < 3) {
+        this.wizardStep += 1
+        return true
+      }
+      alert('steps completed!')
+    },
+    setBackTab() {
+      if (this.wizardStep > 1) {
+        this.wizardStep -= 1
+      }
     }
   }
 }

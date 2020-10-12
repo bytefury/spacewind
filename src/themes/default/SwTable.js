@@ -14,7 +14,7 @@ export default {
       'text-left text-base h-20 px-4 py-6 align-middle bg-white first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',
     trStyles: 'transition duration-300 ease-in-out hover:shadow-lg',
     paginationContainer: 'flex justify-end',
-    paginationDisabled: 'cursor-auto pointer-events-none text-gray-100',
+    paginationDisabled: 'cursor-auto pointer-events-none text-gray-400',
     paginationLeftIcon:
       'left chevron icon block px-3 py-2 not-italic cursor-pointer leading-tight bg-white border border-solid border-gray-100',
     pageItem:

@@ -18,6 +18,40 @@ const installComponent = (Vue, theme = {}, component) => {
   })
 }
 
+const getCurrentTheme = (CurrentTheme, componentName) => {
+  let components = [
+    {
+      name: 'SwDropdownItem',
+      themeName: 'SwDropdown'
+    },
+    {
+      name: 'SwDropdownDivider',
+      themeName: 'SwDropdown'
+    },
+    {
+      name: 'SwTableComponent',
+      themeName: 'SwTable'
+    },
+    {
+      name: 'SwTableColumn',
+      themeName: 'SwTable'
+    },
+    {
+      name: 'Pagination',
+      themeName: 'SwTable'
+    }
+  ]
+  let index = components.findIndex(component => {
+    return component.name == componentName
+  })
+
+  if (index >= 0) {
+    return CurrentTheme[components[index].themeName]
+  }
+
+  return CurrentTheme[componentName]
+}
+
 const extendComponent = (
   Vue,
   CurrentTheme,
@@ -25,7 +59,7 @@ const extendComponent = (
   components,
   defaultTheme
 ) => {
-  const themeSettings = CurrentTheme[componentName]
+  const themeSettings = getCurrentTheme(CurrentTheme, componentName)
   const themeDefaultSettings = defaultTheme[componentName]
 
   const newSettings = merge(themeDefaultSettings, themeSettings)

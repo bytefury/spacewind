@@ -10,6 +10,7 @@ const DatepickrComponent = require('./components/datepickr')
 const TiptapEditorComponent = require('./components/tiptap-editor')
 const TableComponent = require('./components/table')
 
+const SwWizard = require('./components/wizard')
 const SwRadio = require('./components/radio')
 const SwCheckbox = require('./components/checkbox')
 
@@ -30,6 +31,10 @@ const animation = {
 
 const inset = {
   '-60': '-240px'
+}
+
+const minHeight = {
+  '10': '2.5rem'
 }
 
 module.exports = plugin.withOptions(
@@ -54,35 +59,35 @@ module.exports = plugin.withOptions(
       addUtilities(baseStyle)
 
       addBase({
-        '.h1': {
+        '.sw-h1': {
           ...spacewindTypography,
           fontSize: '35px'
         },
-        '.h2': {
+        '.sw-h2': {
           ...spacewindTypography,
           fontSize: '28px'
         },
-        '.h3': {
+        '.sw-h3': {
           ...spacewindTypography,
           fontSize: '24.5px'
         },
-        '.h4': {
+        '.sw-h4': {
           ...spacewindTypography,
           fontSize: '21px'
         },
-        '.h5': {
+        '.sw-h5': {
           ...spacewindTypography,
           fontSize: '17.5px'
         },
-        '.h6': {
+        '.sw-h6': {
           ...spacewindTypography,
           fontSize: '14px'
         },
-        '.page-title': {
+        '.sw-page-title': {
           ...spacewindTypography,
           fontSize: '24.5px'
         },
-        '.section-title': {
+        '.sw-section-title': {
           ...spacewindTypography,
           fontSize: '17.5px',
           fontWeight: 500
@@ -102,6 +107,7 @@ module.exports = plugin.withOptions(
       addComponents(SwDatepickr)
       addComponents(SwEditor)
       addComponents(SwTable)
+      addComponents(SwWizard)
     }
   },
   function() {
@@ -113,7 +119,8 @@ module.exports = plugin.withOptions(
           borderWidth,
           keyframes,
           animation,
-          inset
+          inset,
+          minHeight
         }
       },
       variants: {

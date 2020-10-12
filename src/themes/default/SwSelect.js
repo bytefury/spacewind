@@ -7,7 +7,7 @@ export default {
       'multiselect__select h-10 m-0 py-1 px-2 no-underline text-center cursor-pointer leading-5 block absolute box-border w-8',
     disabledMultiSelect: 'bg-gray-200 text-gray-400',
     multiSelectTags:
-      'multiselect__tags h-10 block pt-2 pr-10 pb-0 pl-2 rounded border border-solid text-sm ',
+      'multiselect__tags min-h-10 block pt-2 pr-10 pb-0 pl-2 rounded border border-solid text-sm ',
     multiSelectTagsDefaultColor: 'border-gray-200 bg-white',
     multiSelectTagsInvalid: 'border-danger bg-white',
     disabledMultiSelectTags: 'bg-gray-200 text-gray-400',
@@ -19,7 +19,7 @@ export default {
     multiselectStrong: 'mb-2 leading-5 inline-block align-top',
     multiselectSpinner: 'multiselect__spinner absolute w-12 h-8 bg-white block',
     multiselectInput:
-      'multiselect__input relative inline-block border-none leading-5 rounded pl-1 w-full box-border align-top text-sm',
+      'multiselect__input p-1 relative inline-block border-none leading-5 rounded pl-1 w-full box-border align-top text-sm',
     multiselectSingle:
       'multiselect__single relative inline-block border-none leading-5 rounded bg-white pl-1 w-full box-border align-top pl-1 mb-2 text-sm',
     multiselectContentWrapper:
@@ -33,7 +33,7 @@ export default {
   variants: {
     danger: {
       multiSelectTags:
-        'multiselect__tags h-10 block pt-2 pr-10 pb-0 pl-2 rounded border border-solid text-sm border-danger bg-white'
+        'multiselect__tags min-h-10 block pt-2 pr-10 pb-0 pl-2 rounded border border-solid text-sm border-danger bg-white'
     }
   }
 }
