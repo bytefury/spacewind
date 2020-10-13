@@ -40,6 +40,9 @@ import SwTabs from '../src/components/sw-tabs/SwTabs.vue'
 import SwTextarea from '../src/components/SwTextarea.vue'
 import SwTransition from '../src/components/SwTransition.vue'
 import SwEditor from '../src/components/sw-editor/Index.vue'
+import SwWizard from '../src/components/sw-wizard/SwWizard.vue'
+import SwWizardNavigation from '../src/components/sw-wizard/partials/SwWizardNavigation.vue'
+import SwWizardStep from '../src/components/sw-wizard/partials/SwWizardStep.vue'
 import {
   SwTableComponent,
   SwTableColumn,
@@ -81,7 +84,10 @@ const components = {
   SwTabs,
   SwTextarea,
   SwTransition,
-  SwEditor
+  SwEditor,
+  SwWizard,
+  SwWizardNavigation,
+  SwWizardStep
 }
 
 export default {

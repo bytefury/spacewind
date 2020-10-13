@@ -29,6 +29,7 @@ import SwTab from './SwTab'
 import SwTextarea from './SwTextarea'
 import SwTransition from './SwTransition'
 import SwTable from './SwTable'
+import SwWizard from './SwWizard'
 
 const spacewindTheme = {
   SwAvatar,
@@ -55,7 +56,8 @@ const spacewindTheme = {
   SwTab,
   SwTextarea,
   SwTransition,
-  SwTable
+  SwTable,
+  SwWizard
 }
 
 export default spacewindTheme
