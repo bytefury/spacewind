@@ -43,6 +43,10 @@ export default {
     variants: {
       type: Object,
       default: () => variants
+    },
+    allowNavigationRedirect: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
@@ -55,7 +59,9 @@ export default {
         return this.currentStep
       },
       set: function(newValue) {
-        this.$emit('update:currentStep', newValue)
+        if (this.allowNavigationRedirect) {
+          this.$emit('update:currentStep', newValue)
+        }
       }
     }
   }

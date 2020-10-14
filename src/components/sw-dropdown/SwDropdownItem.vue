@@ -30,10 +30,6 @@ export default {
       type: [String, Array],
       default: null
     },
-    link: {
-      type: [String, Object],
-      default: null
-    },
     tagName: {
       type: String,
       required: false,
