@@ -17,6 +17,7 @@ module.exports = {
       'error',
       {
         singleline: 20,
+        endOfLine: 'auto',
         multiline: {
           max: 1,
           allowFirstLine: false
