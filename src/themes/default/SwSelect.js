@@ -1,14 +1,14 @@
 export default {
   classes: {
-    baseSelectContainer: 'base-select multiselect min-h-10 z-40',
-    activeBaseSelectContainer: 'multiselect--active z-50',
+    baseSelectContainer: 'base-select multiselect min-h-10',
+    activeBaseSelectContainer: 'multiselect--active z-10',
     disabledBaseSelectContainer: 'pointer-events-none opacity-50',
     multiSelect:
       'multiselect__select h-10 m-0 py-1 px-2 no-underline text-center cursor-pointer leading-5 block absolute box-border w-8',
     disabledMultiSelect: 'bg-gray-200 text-gray-400',
     multiSelectTags:
       'multiselect__tags min-h-10 block pt-2 pr-10 pb-0 pl-2 rounded border border-solid text-sm ',
-    multiSelectTagsDefaultColor: 'border-gray-200 bg-white',
+    multiSelectTagsDefaultColor: 'border-gray-300 bg-white',
     multiSelectTagsInvalid: 'border-danger bg-white',
     disabledMultiSelectTags: 'bg-gray-200 text-gray-400',
     multiselectTagsWrap: 'multiselect__tags-wrap inline',
@@ -23,7 +23,7 @@ export default {
     multiselectSingle:
       'multiselect__single relative inline-block border-none leading-5 rounded bg-white pl-1 w-full box-border align-top pl-1 mb-2 text-sm',
     multiselectContentWrapper:
-      'multiselect__content-wrapper absolute block bg-white w-full overflow-auto border border-solid border-gray-200 border-t-0 rounded-bl rounded-br z-50',
+      'multiselect__content-wrapper absolute block bg-white w-full overflow-auto border border-solid border-gray-300 border-t-0 rounded-bl rounded-br',
     multiselectContent:
       'multiselect__content list-none inline-block p-0 m-0 min-w-full align-top',
     multiselectOption:

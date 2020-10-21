@@ -24,11 +24,6 @@ export default {
       required: false,
       default: ''
     },
-    title: {
-      type: String,
-      required: false,
-      default: ''
-    },
     classes: {
       type: String,
       default: classes

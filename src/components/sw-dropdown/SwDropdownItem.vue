@@ -26,10 +26,6 @@ export default {
       type: Object,
       default: () => classes
     },
-    icon: {
-      type: [String, Array],
-      default: null
-    },
     tagName: {
       type: String,
       required: false,

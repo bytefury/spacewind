@@ -6,8 +6,8 @@
 
 import SwAvatar from './SwAvatar'
 import SwBadge from './SwBadge'
-import SwBreadcrumb from './SwBreadcrumb'
 import SwButton from './SwButton'
+import SwBreadcrumb from './SwBreadcrumb'
 import SwCard from './SwCard'
 import SwCheckbox from './SwCheckbox'
 import SwDivider from './SwDivider'
@@ -35,6 +35,7 @@ const spacewindTheme = {
   SwAvatar,
   SwBadge,
   SwBreadcrumb,
+  SwTab,
   SwButton,
   SwCard,
   SwCheckbox,
@@ -53,7 +54,6 @@ const spacewindTheme = {
   SwPopup,
   SwRadio,
   SwSwitch,
-  SwTab,
   SwTextarea,
   SwTransition,
   SwTable,

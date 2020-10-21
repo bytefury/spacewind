@@ -15,7 +15,7 @@ export default {
   },
   props: {
     classes: {
-      type: [String, Array, Object],
+      type: Object,
       default: () => classes
     },
     variants: {

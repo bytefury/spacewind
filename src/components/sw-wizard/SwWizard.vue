@@ -1,7 +1,7 @@
 <template>
   <div :class="wizardStyle.wizardContainer">
     <wizard-navigation
-      :currentStep.sync="getCurrentStep"
+      :current-step.sync="getCurrentStep"
       :steps="steps"
       :classes="wizardStyle"
     />
@@ -67,4 +67,3 @@ export default {
   }
 }
 </script>
-

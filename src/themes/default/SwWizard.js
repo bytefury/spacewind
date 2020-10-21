@@ -15,11 +15,7 @@ export default {
     icon:
       'flex items-center justify-center w-full h-full text-sm font-black text-center text-white',
     stepContainer:
-      'w-full mb-8 bg-white border border-gray-200 border-solid rounded p-8 lg:w-9/12 md:w-full',
-    stepHeadingContainer: 'heading-section',
-    stepTitle: 'text-2xl not-italic font-semibold leading-7 text-black',
-    stepDescription:
-      'w-full mt-1 mb-8 text-sm not-italic leading-snug text-gray-500 lg:w-7/12 md:w-7/12 sm:w-7/12'
+      'w-full mb-8 bg-white border border-gray-200 border-solid rounded p-8 lg:w-9/12 md:w-full'
   },
   variants: {}
 }

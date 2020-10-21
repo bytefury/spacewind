@@ -5,6 +5,7 @@
       :id="uniqueId"
       :class="classes.switch"
       type="checkbox"
+      :disabled="disabled"
       @input="handleInput"
       @change="handleChange"
       @keyup="handleKeyupEnter"
