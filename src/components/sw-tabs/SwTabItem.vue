@@ -19,15 +19,7 @@ export default {
     SwTransition
   },
   props: {
-    href: {
-      type: String,
-      default: '#'
-    },
     route: {
-      type: String,
-      default: null
-    },
-    filter: {
       type: String,
       default: null
     },

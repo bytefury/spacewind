@@ -85,9 +85,9 @@ export default {
     }
   },
   watch: {
-    listGroupStyle(newStyle) {
+    listGroupStyle() {
       this.items.forEach(item => {
-        item.classes = newStyle
+        item.classes = this.classes
         item.variants = this.variants
         item.variant = this.variant
         item.isListGroupItem = true

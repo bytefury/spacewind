@@ -623,7 +623,7 @@ fieldset[disabled] .multiselect {
   outline: none;
 }
 .multiselect__tag {
-  background: #41b883;
+  // background: #41b883;
   text-overflow: ellipsis;
 }
 .multiselect__tag-icon {
@@ -847,7 +847,7 @@ fieldset[disabled] .multiselect {
     &.multiselect__option--selected {
       background: #ebf1fa;
       color: #040405;
-      font-size: 1rem;
+      // font-size: 1rem;
       font-weight: normal !important;
 
       &::after {

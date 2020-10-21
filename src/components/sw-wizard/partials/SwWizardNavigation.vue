@@ -4,8 +4,8 @@
       <div :class="classes.progressesSubContainer">
         <div
           v-for="(number, index) in steps"
-          :class="stepStyle(number)"
           :key="index"
+          :class="stepStyle(number)"
           @click="$emit('update:currentStep', index + 1)"
         >
           <svg
@@ -61,4 +61,3 @@ export default {
   }
 }
 </script>
-
