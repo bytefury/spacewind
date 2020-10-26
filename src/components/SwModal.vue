@@ -8,8 +8,6 @@
     leave-to-class="duration-300 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-90"
   >
     <div v-if="isShow" :class="modalStyle.overlayContainer">
-      <span :class="modalStyle.centering"></span>&#8203;
-
       <div :class="modalStyle.base">
         <div :class="modalStyle.header">
           <slot name="header" />

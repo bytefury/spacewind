@@ -22,14 +22,15 @@ export default {
     installComponent(Vue, theme, this)
   },
   props: {
-    classes: {
-      type: Object,
-      default: () => classes
-    },
     tagName: {
       type: String,
       required: false,
       default: 'div'
+    }
+  },
+  data() {
+    return {
+      classes: classes
     }
   },
   components: {
