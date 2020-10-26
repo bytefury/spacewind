@@ -15,10 +15,12 @@ const SwRadio = require('./components/radio')
 const SwCheckbox = require('./components/checkbox')
 
 const spacing = {
+  '0.5': '0.125rem',
   '1.5': '0.375rem',
   '2.5': '0.625rem',
   '22': '5.625rem',
-  '60': '240px'
+  '60': '240px',
+  '130': '560px'
 }
 
 const borderWidth = {
@@ -35,6 +37,10 @@ const inset = {
 
 const minHeight = {
   '10': '2.5rem'
+}
+
+const maxHeight = {
+  '130': '560px'
 }
 
 module.exports = plugin.withOptions(
@@ -120,7 +126,8 @@ module.exports = plugin.withOptions(
           keyframes,
           animation,
           inset,
-          minHeight
+          minHeight,
+          maxHeight
         }
       },
       variants: {

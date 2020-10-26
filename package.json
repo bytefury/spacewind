@@ -1,6 +1,6 @@
 {
   "name": "@bytefury/spacewind",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": false,
   "main": "./dist/spacewind.umd.js",
   "unpkg": "./dist/spacewind.umd.min.js",
@@ -22,6 +22,7 @@
     "build-bundle": "vue-cli-service build --target lib --name spacewind ./src/index.js"
   },
   "dependencies": {
+    "@popperjs/core": "^2.5.3",
     "core-js": "^3.6.5",
     "lodash": "^4.17.19",
     "moment": "^2.27.0",

@@ -3,14 +3,14 @@
     <div v-if="hasLeftIconSlot" :class="inputStyle.leftIconContainer">
       <slot name="leftIcon" />
     </div>
-    <p v-if="prefix" :class="inputStyle.prefix">
-      <span class="mr-1">{{ prefix }}</span> -
+    <p v-if="prefix" :class="inputStyle.prefixContainer">
+      <span :class="inputStyle.prefix">{{ prefix }}</span>
     </p>
     <input
       ref="baseInput"
       v-model="inputValue"
       v-bind="$attrs"
-      :class="inputStyle.input"
+      :class="getBaseInputStyle"
       :disabled="disabled"
       :value="value"
       @input="handleInput"
@@ -95,6 +95,12 @@ export default {
       }
 
       return { ...this.classes, ...style }
+    },
+    getBaseInputStyle() {
+      if (this.hasLeftIconSlot || this.prefix)
+        return this.inputStyle.leftIconInput
+      if (this.hasRightIconSlot) return this.inputStyle.rightIconInput
+      return this.inputStyle.baseInput
     },
     isAlignLeftIcon() {
       if (this.alignIcon === 'left') {

@@ -9,9 +9,14 @@ const { classes } = SwDropdown
 export default {
   name: 'SwDropdownDivider',
   props: {
-    classes: {
+    variants: {
       type: Object,
-      default: () => classes
+      default: () => null
+    }
+  },
+  data() {
+    return {
+      classes: classes
     }
   }
 }
