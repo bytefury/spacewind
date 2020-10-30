@@ -1,5 +1,6 @@
 <template>
   <div v-click-outside="destroyPopperInstance" :class="dropdownStyle.container">
+    <!-- <sw-transition :variant="transitionType"> -->
     <div
       v-show="toggle"
       :id="itemsId"
@@ -8,6 +9,7 @@
     >
       <slot />
     </div>
+    <!-- </sw-transition> -->
     <div :id="activatorID" role="tooltip" @click.stop.prevent="showDropdown">
       <slot name="activator" />
     </div>
@@ -18,6 +20,7 @@
 import SwDropdown from '../../themes/default/SwDropdown'
 import { findByKey } from '../../helpers/utilities'
 import vClickOutside from 'v-click-outside'
+// import SwTransition from '../SwTransition'
 import { createPopper } from '@popperjs/core'
 const { classes, variants } = SwDropdown
 
@@ -25,6 +28,9 @@ export default {
   name: 'SwDrodown',
   directives: {
     clickOutside: vClickOutside.directive
+  },
+  components: {
+    // SwTransition
   },
   props: {
     variant: {
@@ -97,7 +103,7 @@ export default {
     },
     variant() {
       this.children.forEach(child => {
-        child.classes = this.dropdownStyle
+        child.theme = this.dropdownStyle
       })
     }
   },
@@ -111,7 +117,7 @@ export default {
       this.createPopperInstance()
     }
     this.children.forEach(child => {
-      child.classes = this.dropdownStyle
+      child.theme = this.dropdownStyle
     })
   },
   methods: {

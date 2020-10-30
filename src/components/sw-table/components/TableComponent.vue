@@ -13,7 +13,7 @@
     <div :class="tableWrapperStyle">
       <base-loader v-if="loading" class="table-loader" />
 
-      <table :class="tableStyle" style="border-spacing: 0 15px;">
+      <table :class="tableStyle">
         <caption
           v-if="showCaption"
           :class="tableCaptionStyle"

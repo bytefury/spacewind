@@ -1,7 +1,7 @@
 <template>
   <sw-custom-tag
     :tag="tagName"
-    :class="classes.item"
+    :class="getDropdownItemStyle.item"
     v-bind="$attrs"
     v-on="$listeners"
   >
@@ -30,11 +30,17 @@ export default {
   },
   data() {
     return {
-      classes: classes
+      theme: classes
     }
   },
   components: {
     SwCustomTag
+  },
+  computed: {
+    getDropdownItemStyle() {
+      let classes = this.classes || {}
+      return { ...this.theme, ...classes }
+    }
   }
 }
 </script>

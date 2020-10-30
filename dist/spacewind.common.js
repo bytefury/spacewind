@@ -48902,7 +48902,7 @@ function _objectSpread2(target) {
     container: 'relative',
     activator: 'cursor-pointer',
     divider: 'border-t border-solid border-gray-200 my-2 mx-0 overflow-hidden',
-    itemContainer: 'z-10 p-2 h-32 text-base text-left list-none rounded border-0 shadow bg-white text-black overflow-auto sw-scroll',
+    itemContainer: 'z-10 p-2 max-h-60 text-base text-left list-none rounded border-0 shadow bg-white text-black overflow-auto sw-scroll',
     item: 'flex p-2 text-sm font-light text-left text-black bg-transparent rounded cursor-pointer none hover:bg-gray-200 whitespace-no-wrap',
     itemIcon: 'w-5 h-5 mr-3 text-secondary'
   },
@@ -49181,7 +49181,7 @@ function _objectSpread2(target) {
     tableComponentContainer: 'flex flex-col relative mt-6 table-component',
     tableComponentFilterClear: 'absolute cursor-pointer top-0 right-0 bottom-0 flex items-center justify-center pr-2 font-bold w-4',
     tableComponentTableWrapper: 'w-full',
-    baseTableStyle: 'w-full border-separate table-auto mb-0',
+    baseTableStyle: 'w-full border-separate table-auto mb-0 sw-border-gap-15',
     tableCaption: 'absolute top-auto overflow-hidden',
     emptyTableMessage: 'text-center text-gray-400 pt-3',
     thStyles: 'relative p-3 text-gray-800 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
@@ -49197,11 +49197,30 @@ function _objectSpread2(target) {
     filterInput: 'py-1 pl-3 pr-5 border border-solid border-gray-100 rounded-sm text-sm focus:border-primary-500 outline-none'
   },
   variants: {
+    flatRows: {
+      tableComponentContainer: 'flex flex-col relative mt-6 table-component bg-white rounded-md flat-table',
+      tableComponentFilterClear: 'absolute cursor-pointer top-0 right-0 bottom-0 flex items-center justify-center pr-2 font-bold w-4',
+      tableComponentTableWrapper: 'w-full',
+      baseTableStyle: 'w-full border-separate table-auto mb-0 sw-border-gap-0',
+      tableCaption: 'absolute top-auto overflow-hidden',
+      emptyTableMessage: 'text-center text-gray-400 pt-3',
+      thStyles: 'relative pt-6 pb-4 pl-2 pr-3 text-gray-600 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
+      thSortStyles: 'cursor-pointer select-none',
+      tdStyles: 'text-left text-base h-8 px-2 py-3 align-middle first:rounded-bl-md md:first:border-b-0 md:border-b border-solid border-gray-200',
+      trStyles: 'transition duration-300 ease-in-out bg-white hover:bg-primary-50',
+      paginationContainer: 'flex justify-end',
+      paginationDisabled: 'cursor-auto pointer-events-none text-gray-400',
+      paginationLeftIcon: 'left chevron icon block px-3 py-2 not-italic cursor-pointer leading-tight bg-white border border-solid border-gray-100',
+      pageItem: 'left chevron icon block px-3 py-2 not-italic cursor-pointer leading-tight bg-white border border-solid border-gray-100',
+      activePageItem: 'bg-primary-500 text-white',
+      paginationRightIcon: 'right chevron icon block px-3 py-2 not-italic cursor-pointer leading-tight bg-white border border-solid border-gray-100',
+      filterInput: 'py-1 pl-3 pr-5 border border-solid border-gray-100 rounded-sm text-sm focus:border-primary-500 outline-none'
+    },
     settingsTable: {
       tableComponentContainer: 'flex flex-col relative mt-6 table-component',
       tableComponentFilterClear: 'absolute cursor-pointer top-0 right-0 bottom-0 flex items-center justify-center pr-2 font-bold w-4',
       tableComponentTableWrapper: 'w-full',
-      baseTableStyle: 'w-full border-separate table-auto mb-0',
+      baseTableStyle: 'w-full border-separate table-auto mb-0 sw-border-gap-15',
       tableCaption: 'absolute top-auto overflow-hidden',
       emptyTableMessage: 'text-center text-gray-400 pt-3',
       thStyles: 'relative p-3 text-gray-800 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
@@ -50623,12 +50642,12 @@ var SwDivider_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwDivider = (SwDivider_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdown.vue?vue&type=template&id=2440bc1f&
-var SwDropdownvue_type_template_id_2440bc1f_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{directives:[{name:"click-outside",rawName:"v-click-outside",value:(_vm.destroyPopperInstance),expression:"destroyPopperInstance"}],class:_vm.dropdownStyle.container},[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.toggle),expression:"toggle"}],class:_vm.dropdownStyle.itemContainer,attrs:{"id":_vm.itemsId,"aria-describedby":"tooltip"}},[_vm._t("default")],2),_c('div',{attrs:{"id":_vm.activatorID,"role":"tooltip"},on:{"click":function($event){$event.stopPropagation();$event.preventDefault();return _vm.showDropdown($event)}}},[_vm._t("activator")],2)])}
-var SwDropdownvue_type_template_id_2440bc1f_staticRenderFns = []
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdown.vue?vue&type=template&id=2b79e590&
+var SwDropdownvue_type_template_id_2b79e590_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{directives:[{name:"click-outside",rawName:"v-click-outside",value:(_vm.destroyPopperInstance),expression:"destroyPopperInstance"}],class:_vm.dropdownStyle.container},[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.toggle),expression:"toggle"}],class:_vm.dropdownStyle.itemContainer,attrs:{"id":_vm.itemsId,"aria-describedby":"tooltip"}},[_vm._t("default")],2),_c('div',{attrs:{"id":_vm.activatorID,"role":"tooltip"},on:{"click":function($event){$event.stopPropagation();$event.preventDefault();return _vm.showDropdown($event)}}},[_vm._t("activator")],2)])}
+var SwDropdownvue_type_template_id_2b79e590_staticRenderFns = []
 
 
-// CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdown.vue?vue&type=template&id=2440bc1f&
+// CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdown.vue?vue&type=template&id=2b79e590&
 
 // EXTERNAL MODULE: ./node_modules/v-click-outside/dist/v-click-outside.umd.js
 var v_click_outside_umd = __webpack_require__("c28b");
@@ -52508,8 +52527,11 @@ var popper_createPopper = /*#__PURE__*/popperGenerator({
 //
 //
 //
+//
+//
 
 
+ // import SwTransition from '../SwTransition'
 
 
 var SwDropdownvue_type_script_lang_js_classes = SwDropdown.classes,
@@ -52518,6 +52540,8 @@ var SwDropdownvue_type_script_lang_js_classes = SwDropdown.classes,
   name: 'SwDrodown',
   directives: {
     clickOutside: v_click_outside_umd_default.a.directive
+  },
+  components: {// SwTransition
   },
   props: {
     variant: {
@@ -52592,7 +52616,7 @@ var SwDropdownvue_type_script_lang_js_classes = SwDropdown.classes,
       var _this = this;
 
       this.children.forEach(function (child) {
-        child.classes = _this.dropdownStyle;
+        child.theme = _this.dropdownStyle;
       });
     }
   },
@@ -52610,7 +52634,7 @@ var SwDropdownvue_type_script_lang_js_classes = SwDropdown.classes,
     }
 
     this.children.forEach(function (child) {
-      child.classes = _this2.dropdownStyle;
+      child.theme = _this2.dropdownStyle;
     });
   },
   methods: {
@@ -52660,8 +52684,8 @@ var SwDropdownvue_type_script_lang_js_classes = SwDropdown.classes,
 
 var SwDropdown_component = normalizeComponent(
   sw_dropdown_SwDropdownvue_type_script_lang_js_,
-  SwDropdownvue_type_template_id_2440bc1f_render,
-  SwDropdownvue_type_template_id_2440bc1f_staticRenderFns,
+  SwDropdownvue_type_template_id_2b79e590_render,
+  SwDropdownvue_type_template_id_2b79e590_staticRenderFns,
   false,
   null,
   null,
@@ -52670,14 +52694,15 @@ var SwDropdown_component = normalizeComponent(
 )
 
 /* harmony default export */ var sw_dropdown_SwDropdown = (SwDropdown_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=template&id=5fb94122&
-var SwDropdownItemvue_type_template_id_5fb94122_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('sw-custom-tag',_vm._g(_vm._b({class:_vm.classes.item,attrs:{"tag":_vm.tagName}},'sw-custom-tag',_vm.$attrs,false),_vm.$listeners),[_vm._t("default")],2)}
-var SwDropdownItemvue_type_template_id_5fb94122_staticRenderFns = []
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=template&id=3ee95e3f&
+var SwDropdownItemvue_type_template_id_3ee95e3f_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('sw-custom-tag',_vm._g(_vm._b({class:_vm.getDropdownItemStyle.item,attrs:{"tag":_vm.tagName}},'sw-custom-tag',_vm.$attrs,false),_vm.$listeners),[_vm._t("default")],2)}
+var SwDropdownItemvue_type_template_id_3ee95e3f_staticRenderFns = []
 
 
-// CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=template&id=5fb94122&
+// CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=template&id=3ee95e3f&
 
 // CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js??ref--12-0!./node_modules/thread-loader/dist/cjs.js!./node_modules/babel-loader/lib!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=script&lang=js&
+
 //
 //
 //
@@ -52708,11 +52733,17 @@ var SwDropdownItemvue_type_script_lang_js_classes = SwDropdown.classes;
   },
   data: function data() {
     return {
-      classes: SwDropdownItemvue_type_script_lang_js_classes
+      theme: SwDropdownItemvue_type_script_lang_js_classes
     };
   },
   components: {
     SwCustomTag: SwCustomTag
+  },
+  computed: {
+    getDropdownItemStyle: function getDropdownItemStyle() {
+      var classes = this.classes || {};
+      return _objectSpread2(_objectSpread2({}, this.theme), classes);
+    }
   }
 });
 // CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=script&lang=js&
@@ -52727,8 +52758,8 @@ var SwDropdownItemvue_type_script_lang_js_classes = SwDropdown.classes;
 
 var SwDropdownItem_component = normalizeComponent(
   sw_dropdown_SwDropdownItemvue_type_script_lang_js_,
-  SwDropdownItemvue_type_template_id_5fb94122_render,
-  SwDropdownItemvue_type_template_id_5fb94122_staticRenderFns,
+  SwDropdownItemvue_type_template_id_3ee95e3f_render,
+  SwDropdownItemvue_type_template_id_3ee95e3f_staticRenderFns,
   false,
   null,
   null,
@@ -52737,14 +52768,15 @@ var SwDropdownItem_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwDropdownItem = (SwDropdownItem_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=template&id=2477e350&
-var SwDropdownDividervue_type_template_id_2477e350_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.classes.divider})}
-var SwDropdownDividervue_type_template_id_2477e350_staticRenderFns = []
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=template&id=5f2098a6&
+var SwDropdownDividervue_type_template_id_5f2098a6_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.getDropdownDividerStyle.divider})}
+var SwDropdownDividervue_type_template_id_5f2098a6_staticRenderFns = []
 
 
-// CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=template&id=2477e350&
+// CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=template&id=5f2098a6&
 
 // CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js??ref--12-0!./node_modules/thread-loader/dist/cjs.js!./node_modules/babel-loader/lib!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=script&lang=js&
+
 //
 //
 //
@@ -52763,8 +52795,14 @@ var SwDropdownDividervue_type_script_lang_js_classes = SwDropdown.classes;
   },
   data: function data() {
     return {
-      classes: SwDropdownDividervue_type_script_lang_js_classes
+      theme: SwDropdownDividervue_type_script_lang_js_classes
     };
+  },
+  computed: {
+    getDropdownDividerStyle: function getDropdownDividerStyle() {
+      var classes = this.classes || {};
+      return _objectSpread2(_objectSpread2({}, this.theme), classes);
+    }
   }
 });
 // CONCATENATED MODULE: ./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=script&lang=js&
@@ -52779,8 +52817,8 @@ var SwDropdownDividervue_type_script_lang_js_classes = SwDropdown.classes;
 
 var SwDropdownDivider_component = normalizeComponent(
   sw_dropdown_SwDropdownDividervue_type_script_lang_js_,
-  SwDropdownDividervue_type_template_id_2477e350_render,
-  SwDropdownDividervue_type_template_id_2477e350_staticRenderFns,
+  SwDropdownDividervue_type_template_id_5f2098a6_render,
+  SwDropdownDividervue_type_template_id_5f2098a6_staticRenderFns,
   false,
   null,
   null,
@@ -67511,12 +67549,12 @@ var SwWizardStep_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwWizardStep = (SwWizardStep_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableComponent.vue?vue&type=template&id=4f40c1ee&
-var TableComponentvue_type_template_id_4f40c1ee_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.tableComponentContainerStyle},[(_vm.showFilter && _vm.filterableColumnExists)?_c('div',{staticClass:"relative self-end"},[_c('input',{directives:[{name:"model",rawName:"v-model",value:(_vm.filter),expression:"filter"}],class:_vm.fullFilterInputClass,attrs:{"placeholder":_vm.filterPlaceholder,"type":"text"},domProps:{"value":(_vm.filter)},on:{"input":function($event){if($event.target.composing){ return; }_vm.filter=$event.target.value}}}),(_vm.filter)?_c('a',{class:_vm.filterClearStyle,on:{"click":function($event){_vm.filter = ''}}},[_vm._v("×")]):_vm._e()]):_vm._e(),_c('div',{class:_vm.tableWrapperStyle},[(_vm.loading)?_c('base-loader',{staticClass:"table-loader"}):_vm._e(),_c('table',{class:_vm.tableStyle,staticStyle:{"border-spacing":"0 15px"}},[(_vm.showCaption)?_c('caption',{class:_vm.tableCaptionStyle,attrs:{"role":"alert","aria-live":"polite"}},[_vm._v(" "+_vm._s(_vm.ariaCaption)+" ")]):_vm._e(),_c('thead',{class:_vm.fullTableHeadClass},[_c('tr',_vm._l((_vm.columns),function(column){return _c('table-column-header',{key:column.show || column.show,attrs:{"sort":_vm.sort,"column":column,"classes":_vm.tableTheme},on:{"click":_vm.changeSorting}})}),1)]),_c('tbody',{class:_vm.fullTableBodyClass},_vm._l((_vm.displayedRows),function(row){return _c('table-row',{key:row.vueTableComponentInternalRowId,attrs:{"row":row,"columns":_vm.columns,"classes":_vm.tableTheme},on:{"rowClick":_vm.emitRowClick}})}),1),_c('tfoot',[_vm._t("tfoot",null,{"rows":_vm.rows})],2)])],1),(_vm.displayedRows.length === 0 && !_vm.loading)?_c('div',{class:_vm.emptyTableMessageStyle},[_vm._v(" "+_vm._s(_vm.filterNoResults)+" ")]):_vm._e(),_c('div',{staticStyle:{"display":"none"}},[_vm._t("default")],2),(_vm.pagination && !_vm.loading)?_c('pagination',{attrs:{"classes":_vm.tableTheme,"pagination":_vm.pagination},on:{"pageChange":_vm.pageChange}}):_vm._e()],1)}
-var TableComponentvue_type_template_id_4f40c1ee_staticRenderFns = []
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"441d8839-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableComponent.vue?vue&type=template&id=1a32822c&
+var TableComponentvue_type_template_id_1a32822c_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.tableComponentContainerStyle},[(_vm.showFilter && _vm.filterableColumnExists)?_c('div',{staticClass:"relative self-end"},[_c('input',{directives:[{name:"model",rawName:"v-model",value:(_vm.filter),expression:"filter"}],class:_vm.fullFilterInputClass,attrs:{"placeholder":_vm.filterPlaceholder,"type":"text"},domProps:{"value":(_vm.filter)},on:{"input":function($event){if($event.target.composing){ return; }_vm.filter=$event.target.value}}}),(_vm.filter)?_c('a',{class:_vm.filterClearStyle,on:{"click":function($event){_vm.filter = ''}}},[_vm._v("×")]):_vm._e()]):_vm._e(),_c('div',{class:_vm.tableWrapperStyle},[(_vm.loading)?_c('base-loader',{staticClass:"table-loader"}):_vm._e(),_c('table',{class:_vm.tableStyle},[(_vm.showCaption)?_c('caption',{class:_vm.tableCaptionStyle,attrs:{"role":"alert","aria-live":"polite"}},[_vm._v(" "+_vm._s(_vm.ariaCaption)+" ")]):_vm._e(),_c('thead',{class:_vm.fullTableHeadClass},[_c('tr',_vm._l((_vm.columns),function(column){return _c('table-column-header',{key:column.show || column.show,attrs:{"sort":_vm.sort,"column":column,"classes":_vm.tableTheme},on:{"click":_vm.changeSorting}})}),1)]),_c('tbody',{class:_vm.fullTableBodyClass},_vm._l((_vm.displayedRows),function(row){return _c('table-row',{key:row.vueTableComponentInternalRowId,attrs:{"row":row,"columns":_vm.columns,"classes":_vm.tableTheme},on:{"rowClick":_vm.emitRowClick}})}),1),_c('tfoot',[_vm._t("tfoot",null,{"rows":_vm.rows})],2)])],1),(_vm.displayedRows.length === 0 && !_vm.loading)?_c('div',{class:_vm.emptyTableMessageStyle},[_vm._v(" "+_vm._s(_vm.filterNoResults)+" ")]):_vm._e(),_c('div',{staticStyle:{"display":"none"}},[_vm._t("default")],2),(_vm.pagination && !_vm.loading)?_c('pagination',{attrs:{"classes":_vm.tableTheme,"pagination":_vm.pagination},on:{"pageChange":_vm.pageChange}}):_vm._e()],1)}
+var TableComponentvue_type_template_id_1a32822c_staticRenderFns = []
 
 
-// CONCATENATED MODULE: ./src/components/sw-table/components/TableComponent.vue?vue&type=template&id=4f40c1ee&
+// CONCATENATED MODULE: ./src/components/sw-table/components/TableComponent.vue?vue&type=template&id=1a32822c&
 
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.concat.js
 var es_array_concat = __webpack_require__("99af");
@@ -68962,8 +69000,8 @@ var TableComponentvue_type_script_lang_js_classes = SwTable.classes,
 
 var TableComponent_component = normalizeComponent(
   components_TableComponentvue_type_script_lang_js_,
-  TableComponentvue_type_template_id_4f40c1ee_render,
-  TableComponentvue_type_template_id_4f40c1ee_staticRenderFns,
+  TableComponentvue_type_template_id_1a32822c_render,
+  TableComponentvue_type_template_id_1a32822c_staticRenderFns,
   false,
   null,
   null,

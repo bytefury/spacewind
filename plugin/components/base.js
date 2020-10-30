@@ -13,6 +13,12 @@ const baseStyle = {
   '.sw-scroll::-webkit-scrollbar-thumb': {
     cursor: 'pointer',
     backgroundColor: '#a0aec0'
+  },
+  '.sw-border-gap-15': {
+    borderSpacing: '0px 15px'
+  },
+  '.sw-border-gap-0': {
+    borderSpacing: '0px'
   }
 }
 

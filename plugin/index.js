@@ -40,7 +40,8 @@ const minHeight = {
 }
 
 const maxHeight = {
-  '130': '560px'
+  '130': '560px',
+  '60': '240px'
 }
 
 module.exports = plugin.withOptions(
