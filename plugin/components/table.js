@@ -1,5 +1,12 @@
 const TableComponent = theme => {
   return {
+    '.flat-table': {
+      'tr:last-child': {
+        td: {
+          border: 'none !important'
+        }
+      }
+    },
     '.table-component__filter': {
       alignSelf: 'flex-end',
       position: 'relative'

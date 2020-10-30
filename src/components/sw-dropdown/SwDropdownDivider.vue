@@ -1,5 +1,5 @@
 <template>
-  <div :class="classes.divider" />
+  <div :class="getDropdownDividerStyle.divider" />
 </template>
 
 <script>
@@ -16,7 +16,13 @@ export default {
   },
   data() {
     return {
-      classes: classes
+      theme: classes
+    }
+  },
+  computed: {
+    getDropdownDividerStyle() {
+      let classes = this.classes || {}
+      return { ...this.theme, ...classes }
     }
   }
 }
