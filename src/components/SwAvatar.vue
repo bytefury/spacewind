@@ -34,8 +34,8 @@
   <div v-else>
     <div
       v-if="!hasTrigger"
-      @click="$refs.file.click()"
       :class="avatarStyle.avatarContainer"
+      @click="$refs.file.click()"
     >
       <img
         v-if="selectedImage"
@@ -128,16 +128,6 @@ export default {
       default: () => variants
     }
   },
-  mounted() {
-    if (!this.enableCropper && this.hasTrigger) {
-      let trigger = document.querySelector(this.trigger)
-      if (!trigger) {
-        this.$emit('error', 'No avatar make trigger found.', 'user')
-      } else {
-        trigger.addEventListener('click', this.pickImage)
-      }
-    }
-  },
   data() {
     return {
       selectedImage: null
@@ -158,6 +148,16 @@ export default {
   watch: {
     previewAvatar(val) {
       this.selectedImage = val
+    }
+  },
+  mounted() {
+    if (!this.enableCropper && this.hasTrigger) {
+      let trigger = document.querySelector(this.trigger)
+      if (!trigger) {
+        this.$emit('error', 'No avatar make trigger found.', 'user')
+      } else {
+        trigger.addEventListener('click', this.pickImage)
+      }
     }
   },
   methods: {

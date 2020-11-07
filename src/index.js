@@ -48,6 +48,7 @@ import {
   SwTableColumn,
   Pagination
 } from '../src/components/sw-table/index'
+import vOutsideEvents from 'vue-outside-events'
 
 // Register Components
 const components = {
@@ -92,6 +93,8 @@ const components = {
 
 export default {
   install(Vue, args = {}) {
+    Vue.use(vOutsideEvents)
+
     if (this.installed) {
       return
     }

@@ -3,7 +3,7 @@
     <router-link v-if="hasRouteLink" :class="classes.base" :to="to">
       {{ title }}
     </router-link>
-    <a :href="to" v-else :class="classes.base">{{ title }}</a>
+    <a v-else :href="to" :class="classes.base">{{ title }}</a>
     <span v-if="!active" :class="classes.separator">/</span>
   </li>
 </template>

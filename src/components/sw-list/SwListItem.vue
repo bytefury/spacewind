@@ -20,6 +20,9 @@ export default {
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
+  components: {
+    SwCustomTag
+  },
   inheritAttrs: false,
   props: {
     title: {
@@ -36,9 +39,6 @@ export default {
       required: false,
       default: 'a'
     }
-  },
-  components: {
-    SwCustomTag
   },
   data() {
     return {

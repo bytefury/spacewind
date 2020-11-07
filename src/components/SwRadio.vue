@@ -1,9 +1,9 @@
 <template>
   <div :class="radioButtonStyle.container">
     <input
+      :id="id"
       type="radio"
       :class="inputStyle"
-      :id="id"
       :checked="shouldBeChecked"
       :value="value"
       v-bind="$attrs"

@@ -20,7 +20,9 @@ const spacing = {
   '2.5': '0.625rem',
   '22': '5.625rem',
   '60': '240px',
-  '130': '560px'
+  '130': '560px',
+  'full.7': '99.7%',
+  'full.8': '99.88%'
 }
 
 const borderWidth = {

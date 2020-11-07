@@ -19,7 +19,7 @@ export default {
     stepHeadingContainer: 'heading-section',
     stepTitle: 'text-2xl not-italic font-semibold leading-7 text-black',
     stepDescription:
-      'w-full mt-1 mb-8 text-sm not-italic leading-snug text-gray-500 lg:w-7/12 md:w-7/12 sm:w-7/12'
+      'w-full mt-2 mb-8 text-sm not-italic leading-snug text-gray-500 lg:w-7/12 md:w-7/12 sm:w-7/12'
   },
   variants: {}
 }

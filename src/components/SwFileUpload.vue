@@ -4,22 +4,22 @@
     class="p-10 border-2 border-dashed"
     :options="getOptions"
     accepted-files="application/pdf"
-    @vdropzone-thumbnail="thumbnail"
     v-bind="$attrs"
-    v-on="$listeners"
     :use-custom-slot="true"
+    @vdropzone-thumbnail="thumbnail"
+    v-on="$listeners"
   />
 </template>
 <script>
 import vue2Dropzone from 'vue2-dropzone'
 import { installComponent } from '../helpers/utilities'
 export default {
+  components: {
+    vueDropzone: vue2Dropzone
+  },
   inheritAttrs: false,
   install(Vue, theme) {
     installComponent(Vue, theme, this)
-  },
-  components: {
-    vueDropzone: vue2Dropzone
   },
   props: {
     options: {

@@ -15,6 +15,9 @@ export default {
       input:
         'cursor-pointer flex-shrink-0 inline-block text-danger align-middle bg-white border border-gray-300 rounded outline-none appearance-none select-none transition duration-200 ease-in-out',
       label: 'cursor-pointer text-primary-800'
+    },
+    flatTable: {
+      container: 'checkbox flex justify-center items-center'
     }
   },
   sizes: {
