@@ -1,12 +1,12 @@
 <template>
   <div :class="checkBoxStyle.container">
     <input
+      :id="id"
       type="checkbox"
       v-bind="$attrs"
       :class="inputStyle"
       :checked="shouldBeChecked"
       :value="value"
-      :id="id"
       @change="updateInput"
       @keyup="e => $emit('keyup', e)"
       @blur="e => $emit('blur', e)"

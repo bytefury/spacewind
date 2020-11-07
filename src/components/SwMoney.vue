@@ -1,7 +1,7 @@
 <template>
   <money
-    :class="baseStyle"
     v-model="inputValue"
+    :class="baseStyle"
     v-bind="currency"
     :disabled="disabled"
     @input="$emit('input', inputValue)"

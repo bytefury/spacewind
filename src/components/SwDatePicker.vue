@@ -13,13 +13,13 @@
         clip-rule="evenodd"
       ></path>
     </svg>
-    <slot name="icon" v-if="calendarButton && hasIconSlot" />
+    <slot v-if="calendarButton && hasIconSlot" name="icon" />
     <flatpickr
       ref="BaseDatepicker"
       v-bind="$attrs"
-      v-on="$listeners"
       :disabled="disabled"
       :class="datepickerStyle.datepicker"
+      v-on="$listeners"
     />
   </div>
 </template>
@@ -36,10 +36,10 @@ export default {
   install(Vue, theme) {
     installComponent(Vue, theme, this)
   },
-  inheritAttrs: false,
   components: {
     Flatpickr
   },
+  inheritAttrs: false,
   props: {
     calendarButton: {
       type: Boolean,

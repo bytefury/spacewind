@@ -20,7 +20,6 @@
 
 <script>
 import SwPopup from '../themes/default/SwPopup'
-import vClickOutside from 'v-click-outside'
 import { installComponent } from '../helpers/utilities'
 const { classes } = SwPopup
 
@@ -28,9 +27,6 @@ export default {
   name: 'SwPopup',
   install(Vue, theme) {
     installComponent(Vue, theme, this)
-  },
-  directives: {
-    clickOutside: vClickOutside.directive
   },
   props: {
     classes: {

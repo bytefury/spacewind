@@ -10,7 +10,7 @@
       <slot />
     </div>
     <!-- </sw-transition> -->
-    <div :id="activatorID" role="tooltip" @click.stop.prevent="showDropdown">
+    <div :id="activatorID" role="tooltip" @click="showDropdown">
       <slot name="activator" />
     </div>
   </div>
@@ -19,16 +19,12 @@
 <script>
 import SwDropdown from '../../themes/default/SwDropdown'
 import { findByKey } from '../../helpers/utilities'
-import vClickOutside from 'v-click-outside'
 // import SwTransition from '../SwTransition'
 import { createPopper } from '@popperjs/core'
 const { classes, variants } = SwDropdown
 
 export default {
   name: 'SwDrodown',
-  directives: {
-    clickOutside: vClickOutside.directive
-  },
   components: {
     // SwTransition
   },
@@ -119,6 +115,15 @@ export default {
     this.children.forEach(child => {
       child.theme = this.dropdownStyle
     })
+
+    document.addEventListener(
+      'click',
+      event => {
+        if (event.target.closest(`#${this.itemsId}`))
+          this.destroyPopperInstance()
+      },
+      false
+    )
   },
   methods: {
     createPopperInstance() {

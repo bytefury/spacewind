@@ -2,10 +2,10 @@
   <tr :class="rowStyle" @click="onClick">
     <table-cell
       v-for="column in visibleColumns"
+      :key="column.id"
       :row="row"
       :column="column"
       :classes="classes"
-      :key="column.id"
       :responsive-label="column.label"
     ></table-cell>
   </tr>

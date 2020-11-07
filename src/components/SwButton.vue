@@ -42,12 +42,12 @@ const { classes, variants, sizes } = SwButton
 
 export default {
   name: 'SwButton',
+  components: {
+    SwCustomTag
+  },
   inheritAttrs: false,
   install(Vue, theme) {
     installComponent(Vue, theme, this)
-  },
-  components: {
-    SwCustomTag
   },
   props: {
     tagName: {

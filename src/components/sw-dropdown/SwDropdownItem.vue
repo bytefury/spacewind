@@ -17,6 +17,9 @@ const { classes } = SwDropdown
 
 export default {
   name: 'SwDropdownItem',
+  components: {
+    SwCustomTag
+  },
   inheritAttrs: false,
   install(Vue, theme) {
     installComponent(Vue, theme, this)
@@ -32,9 +35,6 @@ export default {
     return {
       theme: classes
     }
-  },
-  components: {
-    SwCustomTag
   },
   computed: {
     getDropdownItemStyle() {

@@ -1,8 +1,8 @@
 <template>
   <div :class="classes.container">
     <input
-      v-model="checkValue"
       :id="uniqueId"
+      v-model="checkValue"
       :class="classes.switch"
       type="checkbox"
       :disabled="disabled"

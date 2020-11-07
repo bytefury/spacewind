@@ -66,9 +66,9 @@
         </slot>
       </transition>
       <input
+        :id="id"
         ref="search"
         :name="name"
-        :id="id"
         :placeholder="placeholder"
         :style="inputStyle"
         :value="search"
@@ -109,8 +109,8 @@
         @mousedown.prevent
       >
         <ul
-          :style="contentStyle"
           :id="'listbox-' + id"
+          :style="contentStyle"
           :class="multiselectContentStyle"
           role="listbox"
         >
@@ -125,8 +125,8 @@
           <template v-if="!max || internalValue.length < max">
             <li
               v-for="(option, index) of filteredOptions"
-              :key="index"
               :id="id + '-' + index"
+              :key="index"
               :role="
                 !(option && (option.$isLabel || option.$isDisabled))
                   ? 'option'

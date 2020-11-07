@@ -2,8 +2,8 @@
   <div :class="tableComponentContainerStyle">
     <div v-if="showFilter && filterableColumnExists" class="relative self-end">
       <input
-        :class="fullFilterInputClass"
         v-model="filter"
+        :class="fullFilterInputClass"
         :placeholder="filterPlaceholder"
         type="text"
       />

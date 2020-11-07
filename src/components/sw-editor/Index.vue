@@ -1,46 +1,46 @@
 <template>
-  <div>
+  <div :class="getEditorStyle.editorContainer">
     <editor-menu-bar
       v-slot="{ commands, isActive }"
       :editor="editor"
-      :class="classes.editorContainer"
+      :class="getEditorStyle.editorMenuBar"
     >
-      <div :class="classes.menuContainer">
+      <div :class="getEditorStyle.menuContainer">
         <span
           :class="getIconContainerStyle(isActive.bold())"
           @click="commands.bold"
         >
-          <bold-icon :class="classes.icon" />
+          <bold-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.italic())"
           @click="commands.italic"
         >
-          <italic-icon :class="classes.icon" />
+          <italic-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.strike())"
           @click="commands.strike"
         >
-          <strikethrough-icon :class="classes.icon" />
+          <strikethrough-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.underline())"
           @click="commands.underline"
         >
-          <underline-icon :class="classes.icon" />
+          <underline-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.code())"
           @click="commands.code"
         >
-          <coding-icon :class="classes.icon" />
+          <coding-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.paragraph())"
           @click="commands.paragraph"
         >
-          <paragraph-icon :class="classes.icon" />
+          <paragraph-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.heading({ level: 1 }))"
@@ -64,42 +64,42 @@
           :class="getIconContainerStyle(isActive.bullet_list())"
           @click="commands.bullet_list"
         >
-          <list-ul-icon :class="classes.icon" />
+          <list-ul-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.ordered_list())"
           @click="commands.ordered_list"
         >
-          <list-icon :class="classes.icon" />
+          <list-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.blockquote())"
           @click="commands.blockquote"
         >
-          <quote-icon :class="classes.icon" />
+          <quote-icon :class="getEditorStyle.icon" />
         </span>
         <span
           :class="getIconContainerStyle(isActive.code_block())"
           @click="commands.code_block"
         >
-          <code-block-icon :class="classes.icon" />
+          <code-block-icon :class="getEditorStyle.icon" />
         </span>
         <span :class="getIconContainerStyle()" @click="commands.undo">
-          <undo-icon :class="classes.icon" />
+          <undo-icon :class="getEditorStyle.icon" />
         </span>
         <span :class="getIconContainerStyle()" @click="commands.redo">
-          <redo-icon :class="classes.icon" />
+          <redo-icon :class="getEditorStyle.icon" />
         </span>
       </div>
     </editor-menu-bar>
-    <editor-content :editor="editor" :class="classes.editor" />
+    <editor-content :editor="editor" :class="getEditorStyle.editor" />
   </div>
 </template>
 
 <script>
 // import SwButton from '../SwButton'
 import SwEditor from '../../themes/default/SwEditor'
-import { installComponent } from '../../helpers/utilities'
+import { installComponent, findByKey } from '../../helpers/utilities'
 import { Editor, EditorContent, EditorMenuBar } from 'tiptap'
 import {
   UnderlineIcon,
@@ -135,7 +135,7 @@ import {
   History
 } from 'tiptap-extensions'
 
-const { classes } = SwEditor
+const { classes, variants } = SwEditor
 
 export default {
   name: 'SwEditor',
@@ -166,11 +166,26 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    },
+    variant: {
+      type: String,
+      required: false,
+      default: null
+    },
+    variants: {
+      type: Object,
+      default: () => variants
     }
   },
   data() {
     return {
       editor: null
+    }
+  },
+  computed: {
+    getEditorStyle() {
+      let style = findByKey(this.variant, this.variants)
+      return { ...this.classes, ...style }
     }
   },
   watch: {
@@ -217,9 +232,9 @@ export default {
     },
     getIconContainerStyle(state) {
       if (state) {
-        return this.classes.activeIconContainer
+        return this.getEditorStyle.activeIconContainer
       }
-      return this.classes.iconContainer
+      return this.getEditorStyle.iconContainer
     }
   }
 }
