@@ -143,6 +143,13 @@ const TableComponent = theme => {
             'border-top-right-radius': '5px !important'
           },
 
+          '&:last-child': {
+            position: 'unset',
+            visibility: 'hidden',
+            height: '0px !important',
+            padding: '0px !important'
+          },
+
           '&:nth-last-child(3)': {
             'border-bottom-left-radius': '5px !important'
           },

@@ -15,10 +15,6 @@ const tiptapEditorComponent = theme => {
   }
   return {
     '.header-editior': {
-      '.ProseMirror': {
-        padding: '10px !important',
-        paddingTop: '60px !important'
-      },
       '.editor-menu-bar': {
         marginLeft: '0.6px',
         marginRight: '0px'
@@ -26,8 +22,6 @@ const tiptapEditorComponent = theme => {
     },
     '.editor__content': {
       '.ProseMirror': {
-        padding: '10px',
-        paddingTop: '5px',
         borderRadius: '5px',
         minHeight: '200px',
         borderColor: theme('colors.gray.400'),
