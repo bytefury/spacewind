@@ -20,9 +20,7 @@ const spacing = {
   '2.5': '0.625rem',
   '22': '5.625rem',
   '60': '240px',
-  '130': '560px',
-  'full.7': '99.7%',
-  'full.8': '99.88%'
+  '130': '560px'
 }
 
 const borderWidth = {
@@ -44,6 +42,12 @@ const minHeight = {
 const maxHeight = {
   '130': '560px',
   '60': '240px'
+}
+
+const zIndex = {
+  '5': 5,
+  '15': 15,
+  '25': 25
 }
 
 module.exports = plugin.withOptions(
@@ -130,7 +134,8 @@ module.exports = plugin.withOptions(
           animation,
           inset,
           minHeight,
-          maxHeight
+          maxHeight,
+          zIndex
         }
       },
       variants: {

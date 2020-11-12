@@ -43,10 +43,11 @@ export default {
     }
   },
   watch: {
-    activeTab(activeTab) {
-      this.tabs.map(tab => (tab.isActive = tab == activeTab))
-
-      this.$emit('update', activeTab)
+    activeTab(newState, oldState) {
+      this.tabs.map(tab => (tab.isActive = tab == newState))
+      if (oldState != null) {
+        this.$emit('update', newState)
+      }
     }
   },
   mounted() {

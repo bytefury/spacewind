@@ -1,6 +1,6 @@
 export default {
   classes: {
-    container: 'checkbox mt-2',
+    container: 'checkbox flex items-center',
     label: 'cursor-pointer text-primary-800',
     input:
       'cursor-pointer flex-shrink-0 inline-block text-primary-500 align-middle bg-white border border-gray-300 rounded outline-none appearance-none select-none transition duration-200 ease-in-out'
