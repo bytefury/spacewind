@@ -27,15 +27,11 @@ export default {
       type: String,
       default: null,
       required: true
-    },
-    active: {
-      type: Boolean,
-      default: false
     }
   },
   data() {
     return {
-      isActive: this.active
+      isActive: false
     }
   }
 }

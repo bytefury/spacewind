@@ -331,7 +331,7 @@ export default {
       }
     }
   },
-  beforeDestroy() {
+  destroyed() {
     if (this.editor) this.editor.destroy()
   },
   mounted() {

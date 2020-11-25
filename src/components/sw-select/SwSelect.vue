@@ -747,8 +747,8 @@ fieldset[disabled] .multiselect {
 
 .multiselect--disabled .multiselect__input,
 .multiselect--disabled .multiselect__single {
-  background: #ebf1fa;
-  @apply text-gray-400;
+  // background: #ebf1fa;
+  @apply text-gray-400 bg-white;
 }
 
 .multiselect__option--disabled {
@@ -845,7 +845,7 @@ fieldset[disabled] .multiselect {
     font-weight: normal !important;
 
     &.multiselect__option--selected {
-      background: #ebf1fa;
+      @apply bg-primary-100;
       color: #040405;
       // font-size: 1rem;
       font-weight: normal !important;
@@ -864,7 +864,7 @@ fieldset[disabled] .multiselect {
 
   .multiselect__option--selected {
     font-weight: normal !important;
-    background: #ebf1fa;
+    @apply bg-primary-100;
   }
 
   &.error {

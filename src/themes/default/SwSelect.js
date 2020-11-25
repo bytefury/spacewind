@@ -21,7 +21,7 @@ export default {
     multiselectInput:
       'multiselect__input p-1 relative inline-block border-none leading-5 rounded pl-1 w-full box-border align-top text-sm',
     multiselectSingle:
-      'multiselect__single relative inline-block border-none leading-5 rounded bg-white w-full box-border align-top pl-1 pt-1 mb-2 text-sm',
+      'multiselect__single relative inline-block border-none leading-5 rounded text-gray-800 w-full box-border align-top pl-1 pt-1 mb-2 text-sm',
     multiselectContentWrapper:
       'multiselect__content-wrapper absolute block bg-white w-full overflow-auto border border-solid border-gray-300 border-t-0 rounded-bl rounded-br',
     multiselectContent:
