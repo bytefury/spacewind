@@ -11,7 +11,7 @@ export default {
       'relative px-4 py-3 text-gray-800 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
     thSortStyles: 'cursor-pointer select-none',
     tdStyles:
-      'text-left text-base h-20 px-4 py-6 align-middle bg-white first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',
+      'text-left text-base h-20 px-4 py-6 align-middle bg-white font-light first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',
     trStyles: 'transition duration-300 ease-in-out hover:shadow-lg',
     paginationContainer: 'flex justify-end',
     paginationDisabled: 'cursor-auto pointer-events-none text-gray-400',
@@ -39,7 +39,7 @@ export default {
         'relative pt-6 pb-4 pl-2 pr-3 text-gray-600 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
       thSortStyles: 'cursor-pointer select-none',
       tdStyles:
-        'text-left text-base h-8 px-2 py-3 align-middle first:rounded-bl-md md:first:border-b-0 md:border-b border-solid border-gray-200',
+        'text-left text-base h-8 px-2 py-3 align-middle font-light first:rounded-bl-md md:first:border-b-0 md:border-b border-solid border-gray-200',
       trStyles:
         'transition duration-300 ease-in-out bg-white hover:bg-primary-50',
       paginationContainer: 'flex justify-end',
@@ -66,7 +66,7 @@ export default {
         'relative p-3 text-gray-800 text-left align-middle tracking-widest uppercase whitespace-no-wrap text-sm font-medium',
       thSortStyles: 'cursor-pointer select-none',
       tdStyles:
-        'text-left text-base h-20 px-4 py-6 align-middle bg-gray-100 first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',
+        'text-left text-base h-20 px-4 py-6 align-middle font-light bg-gray-100 first:rounded-bl-md first:rounded-tl-md last:rounded-br-md last:rounded-tr-md',
       trStyles: 'transition duration-300 ease-in-out hover:shadow-lg',
       paginationContainer: 'flex justify-end',
       paginationDisabled: 'cursor-auto pointer-events-none text-gray-400',

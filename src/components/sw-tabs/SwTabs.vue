@@ -29,12 +29,16 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    },
+    activeTab: {
+      type: String,
+      default: null
     }
   },
   data() {
     return {
       tabs: [],
-      activeTab: null
+      currentTab: null
     }
   },
   computed: {
@@ -43,29 +47,36 @@ export default {
     }
   },
   watch: {
-    activeTab(newState, oldState) {
+    currentTab(newState, oldState) {
       this.tabs.map(tab => (tab.isActive = tab == newState))
       if (oldState != null) {
         this.$emit('update', newState)
+      }
+    },
+    activeTab(newTitle) {
+      if (newTitle) {
+        this.setActiveTab()
       }
     }
   },
   mounted() {
     this.tabs = this.$children
-    this.setInitialActiveTab()
+    this.setActiveTab()
   },
   methods: {
     setTab(tab) {
-      this.activeTab = tab
+      this.currentTab = tab
 
       if (tab && tab.route) {
         this.$router.push(tab.route)
       }
     },
-    setInitialActiveTab() {
-      this.activeTab = this.tabs.find(tab => tab.active) || this.tabs[0]
-      if (this.activeTab.route) {
-        this.$router.push(this.activeTab.route)
+    setActiveTab() {
+      this.currentTab = this.activeTab
+        ? this.tabs.find(tab => tab.title == this.activeTab)
+        : this.tabs[0]
+      if (this.currentTab.route) {
+        this.$router.push(this.currentTab.route)
       }
     }
   }
