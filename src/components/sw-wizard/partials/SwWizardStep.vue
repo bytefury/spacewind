@@ -30,9 +30,6 @@ export default {
     classes: {
       type: Object,
       default: () => classes
-    },
-    beforeChange: {
-      type: Function
     }
   }
 }
