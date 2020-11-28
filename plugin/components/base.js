@@ -19,6 +19,10 @@ const baseStyle = {
   },
   '.sw-border-gap-0': {
     borderSpacing: '0px'
+  },
+  'input:-webkit-autofill': {
+    backgroundColor: 'transparent !important',
+    '-webkit-box-shadow': '0 0 0 50px white inset'
   }
 }
 

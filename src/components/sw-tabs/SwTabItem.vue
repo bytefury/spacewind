@@ -1,22 +1,16 @@
 <template>
-  <sw-transition>
-    <div v-show="isActive">
-      <slot />
-    </div>
-  </sw-transition>
+  <div v-show="isActive">
+    <slot />
+  </div>
 </template>
 
 <script>
-import SwTransition from '../../components/SwTransition'
 import { installComponent } from '../../helpers/utilities'
 
 export default {
   name: 'SwTabItem',
   install(Vue, theme) {
     installComponent(Vue, theme, this)
-  },
-  components: {
-    SwTransition
   },
   props: {
     route: {
