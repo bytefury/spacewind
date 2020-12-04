@@ -49,6 +49,7 @@ import {
   Pagination
 } from '../src/components/sw-table/index'
 import vOutsideEvents from 'vue-outside-events'
+import VTooltip from 'v-tooltip'
 
 // Register Components
 const components = {
@@ -94,6 +95,7 @@ const components = {
 export default {
   install(Vue, args = {}) {
     Vue.use(vOutsideEvents)
+    Vue.use(VTooltip)
 
     if (this.installed) {
       return
