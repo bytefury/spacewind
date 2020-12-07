@@ -57533,7 +57533,7 @@ var getCurrentTheme = function getCurrentTheme(CurrentTheme, componentName) {
   return CurrentTheme[componentName];
 };
 
-var utilities_extendComponent = function extendComponent(Vue, CurrentTheme, componentName, components, defaultTheme) {
+var utilities_extendComponent = function extendComponent(Vue, CurrentTheme, componentName, components, defaultTheme, defaultOptions) {
   var themeSettings = getCurrentTheme(CurrentTheme, componentName);
   var themeDefaultSettings = defaultTheme[componentName];
   var newSettings = merge_default()(themeDefaultSettings, themeSettings);
@@ -57546,9 +57546,9 @@ var utilities_extendComponent = function extendComponent(Vue, CurrentTheme, comp
     };
     props[key] = prop;
   });
-  return Vue.extend(_objectSpread2(_objectSpread2({}, components[componentName]), {
+  return Vue.extend(_objectSpread2(_objectSpread2({}, components[componentName]), _objectSpread2({
     props: props
-  }));
+  }, defaultOptions)));
 };
 
 var camelToKebab = function camelToKebab(string) {
@@ -77594,9 +77594,11 @@ var src_components = {
 
     var ComponentTheme = _objectSpread2(_objectSpread2({}, themes_default), args.theme || {});
 
+    var defaultOptions = _objectSpread2({}, args.option || {});
+
     var componentsToRegister = args.components || Object.keys(src_components);
     componentsToRegister.forEach(function (componentName) {
-      Vue.component(componentName, utilities_extendComponent(Vue, ComponentTheme, componentName, src_components, themes_default));
+      Vue.component(componentName, utilities_extendComponent(Vue, ComponentTheme, componentName, src_components, themes_default, defaultOptions));
     });
   }
 });
