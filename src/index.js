@@ -108,6 +108,10 @@ export default {
       ...(args.theme || {})
     }
 
+    const defaultOptions = {
+      ...(args.option || {})
+    }
+
     const componentsToRegister = args.components || Object.keys(components)
 
     componentsToRegister.forEach(componentName => {
@@ -118,7 +122,8 @@ export default {
           ComponentTheme,
           componentName,
           components,
-          DefaultTheme
+          DefaultTheme,
+          defaultOptions
         )
       )
     })
