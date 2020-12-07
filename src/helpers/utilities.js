@@ -57,7 +57,8 @@ const extendComponent = (
   CurrentTheme,
   componentName,
   components,
-  defaultTheme
+  defaultTheme,
+  defaultOptions
 ) => {
   const themeSettings = getCurrentTheme(CurrentTheme, componentName)
   const themeDefaultSettings = defaultTheme[componentName]
@@ -76,7 +77,8 @@ const extendComponent = (
   return Vue.extend({
     ...components[componentName],
     ...{
-      props
+      props,
+      ...defaultOptions
     }
   })
 }

@@ -1,10 +1,20 @@
 export default {
   classes: {
-    container: 'w-full',
+    container: 'w-full relative',
     label: 'text-sm',
     requiredSign: 'text-danger',
     inputContainer: 'mt-1',
-    errorText: 'mt-1 text-danger text-sm'
+    errorText: 'mt-1 text-danger text-sm',
+    tooltipContainer: 'absolute top-0 right-0',
+    tooltipIconContainer: '',
+    tooltipIcon: 'w-6 h-6 text-current text-gray-400 cursor-pointer',
+    tooltip: 'px-2.5 py-1 text-sm text-white rounded bg-black',
+    popoverClass: '',
+    popoverBaseClass: '',
+    popoverWrapperClass: '',
+    popoverArrowClass: '',
+    popoverInnerClass: '',
+    openClass: ''
   },
   variants: {
     horizontal: {

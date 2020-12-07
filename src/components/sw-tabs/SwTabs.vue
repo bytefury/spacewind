@@ -1,10 +1,12 @@
 <template>
   <div>
-    <ul :class="tabsContailerStyle">
+    <ul :class="getTabStyle.tabNavContainer">
       <li
         v-for="(tab, index) in tabs"
         :key="index"
-        :class="tab.isActive ? classes.tabNavItemActive : classes.tabNavItem"
+        :class="
+          tab.isActive ? getTabStyle.tabNavItemActive : getTabStyle.tabNavItem
+        "
         :aria-selected="tab.isActive"
         @click="setTab(tab)"
       >
@@ -17,8 +19,8 @@
 
 <script>
 import SwTabs from '../../themes/default/SwTab'
-import { installComponent } from '../../helpers/utilities'
-const { classes } = SwTabs
+import { installComponent, findByKey } from '../../helpers/utilities'
+const { classes, variants } = SwTabs
 
 export default {
   name: 'SwTabs',
@@ -33,6 +35,14 @@ export default {
     activeTab: {
       type: String,
       default: null
+    },
+    variant: {
+      type: String,
+      default: null
+    },
+    variants: {
+      type: Object,
+      default: () => variants
     }
   },
   data() {
@@ -42,8 +52,9 @@ export default {
     }
   },
   computed: {
-    tabsContailerStyle() {
-      return [this.classes.tabNavContainer]
+    getTabStyle() {
+      let style = findByKey(this.variant, this.variants)
+      return { ...this.classes, ...style }
     }
   },
   watch: {
