@@ -48,7 +48,7 @@ export default {
       default: () => classes
     },
     value: {
-      type: [String, Number, File],
+      type: [String, Number],
       default: ''
     },
     invalid: {
