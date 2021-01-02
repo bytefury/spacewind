@@ -3,7 +3,7 @@ export default {
     container:
       'relative flex items-center w-full border border-solid rounded-md bg-white',
     prefixContainer: 'flex items-center h-full py-0 pl-2',
-    prefix: 'text-black font-medium text-sm whitespace-no-wrap',
+    prefix: 'text-black font-medium text-sm whitespace-nowrap',
     baseInput:
       'not-italic font-normal leading-tight text-left outline-none rounded-md input-field box-border-2 placeholder-gray-400 text-black w-full h-10 px-3 py-2 text-sm',
     rightIconInput:

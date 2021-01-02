@@ -33,13 +33,12 @@ export default {
   },
   data() {
     return {
-      theme: classes
+      theme: null
     }
   },
   computed: {
     getDropdownItemStyle() {
-      let classes = this.classes || {}
-      return { ...this.theme, ...classes }
+      return { ...classes, ...this.theme }
     }
   }
 }

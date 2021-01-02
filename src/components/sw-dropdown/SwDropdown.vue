@@ -104,15 +104,11 @@ export default {
     }
   },
   mounted() {
-    this.$children.forEach(child => {
-      if (child.$children.length) {
-        this.children = child.$children
-      }
-    })
     if (this.show) {
       this.createPopperInstance()
     }
-    this.children.forEach(child => {
+
+    this.$children.forEach(child => {
       child.theme = this.dropdownStyle
     })
 
