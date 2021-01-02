@@ -340,6 +340,8 @@ export default {
   methods: {
     initEditor() {
       this.editor = new Editor({
+        disablePasteRules: true, // disable Markdown when pasting
+        disableInputRules: true, // disable Markdown when typing
         extensions: [
           new Blockquote(),
           new CodeBlock(),
