@@ -131,7 +131,7 @@ export default {
               </svg>
             </div>
             
-            <div class="w-full text-base text-center whitespace-no-wrap dz-filename">
+            <div class="w-full text-base text-center whitespace-nowrap dz-filename">
               <span class="w-full" data-dz-name=""></span>
             </div>
             <div class="w-full mb-2 text-xs text-center dz-size">

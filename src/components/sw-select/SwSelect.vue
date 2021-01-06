@@ -77,7 +77,7 @@
         :aria-controls="'listbox-' + id"
         :class="multiselectInputStyle"
         type="text"
-        autocomplete="off"
+        :autocomplete="autoComplete"
         spellcheck="false"
         @input="updateSearch($event.target.value)"
         @focus.prevent="activate()"
@@ -343,6 +343,10 @@ export default {
     listIsEmpty: {
       type: String,
       default: null
+    },
+    autoComplete: {
+      type: String,
+      default: 'nope'
     }
   },
   computed: {

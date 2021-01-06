@@ -1,6 +1,6 @@
 {
   "name": "@bytefury/spacewind",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "private": false,
   "main": "./dist/spacewind.umd.js",
   "unpkg": "./dist/spacewind.umd.min.js",
@@ -23,10 +23,13 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.5.3",
+    "@tailwindcss/postcss7-compat": "^2.0.2",
+    "autoprefixer": "^9",
     "core-js": "^3.6.5",
     "lodash": "^4.17.19",
     "moment": "^2.27.0",
-    "tailwindcss": "^1.8.10",
+    "postcss": "^7",
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat",
     "tiptap": "^1.29.6",
     "tiptap-extensions": "^1.32.7",
     "v-money": "^0.8.1",
