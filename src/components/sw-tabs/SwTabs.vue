@@ -1,7 +1,7 @@
 <template>
   <div>
     <ul :class="getTabStyle.tabNavContainer">
-      <slot name="tabsNav">
+      <slot name="nav">
         <li
           v-for="(tab, index) in getAllTabs"
           :key="index"
