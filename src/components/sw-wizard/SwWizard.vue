@@ -1,10 +1,12 @@
 <template>
   <div :class="wizardStyle.wizardContainer">
-    <wizard-navigation
-      :current-step.sync="getCurrentStep"
-      :steps="steps"
-      :classes="wizardStyle"
-    />
+    <slot name="navigation">
+      <wizard-navigation
+        :current-step.sync="getCurrentStep"
+        :steps="steps"
+        :classes="wizardStyle"
+      />
+    </slot>
     <div :class="wizardStyle.wizardStepsContainer">
       <slot />
     </div>

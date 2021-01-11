@@ -29,11 +29,5 @@ export default {
     multiselectOption:
       'multiselect__option block p-3 no-underline leading-4 normal-case align-middle relative cursor-pointer whitespace-nowrap text-sm',
     multiselectElement: 'multiselect__element block'
-  },
-  variants: {
-    danger: {
-      multiSelectTags:
-        'multiselect__tags min-h-10 block pt-1.5 pr-10 pb-0 pl-2 rounded border border-solid text-sm border-danger bg-white'
-    }
   }
 }

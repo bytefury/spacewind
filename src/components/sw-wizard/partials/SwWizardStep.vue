@@ -8,7 +8,7 @@
         {{ description }}
       </p>
     </div>
-    <slot></slot>
+    <slot />
   </div>
 </template>
 

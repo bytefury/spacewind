@@ -182,7 +182,7 @@ import SwSelect from '../../themes/default/SwSelect'
 import SwSelectMixin from './SwSelectMixin'
 import pointerMixin from './pointerMixin'
 
-const { classes, variants } = SwSelect
+const { classes } = SwSelect
 
 export default {
   name: 'VueMultiselect',
@@ -191,10 +191,6 @@ export default {
     classes: {
       type: Object,
       default: () => classes
-    },
-    variants: {
-      type: Object,
-      default: () => variants
     },
     /**
      * name attribute to match optional label element

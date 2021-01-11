@@ -1,17 +1,19 @@
 <template>
   <div>
     <ul :class="getTabStyle.tabNavContainer">
-      <li
-        v-for="(tab, index) in tabs"
-        :key="index"
-        :class="
-          tab.isActive ? getTabStyle.tabNavItemActive : getTabStyle.tabNavItem
-        "
-        :aria-selected="tab.isActive"
-        @click="setTab(tab)"
-      >
-        {{ tab.title }}
-      </li>
+      <slot name="tabsNav">
+        <li
+          v-for="(tab, index) in getAllTabs"
+          :key="index"
+          :class="
+            tab.isActive ? getTabStyle.tabNavItemActive : getTabStyle.tabNavItem
+          "
+          :aria-selected="tab.isActive"
+          @click="setTab(tab)"
+        >
+          {{ tab.title }}
+        </li>
+      </slot>
     </ul>
     <slot />
   </div>
@@ -55,6 +57,9 @@ export default {
     getTabStyle() {
       let style = findByKey(this.variant, this.variants)
       return { ...this.classes, ...style }
+    },
+    getAllTabs() {
+      return this.tabs.filter(tab => tab.title)
     }
   },
   watch: {
