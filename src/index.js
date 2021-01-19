@@ -35,6 +35,7 @@ import SwPopup from '../src/components/SwPopup.vue'
 import SwFileUpload from '../src/components/SwFileUpload.vue'
 import SwRadio from '../src/components/SwRadio.vue'
 import SwSwitch from '../src/components/SwSwitch.vue'
+import SwSelect from '../src/components/sw-select'
 import SwTabItem from '../src/components/sw-tabs/SwTabItem.vue'
 import SwTabs from '../src/components/sw-tabs/SwTabs.vue'
 import SwTextarea from '../src/components/SwTextarea.vue'
@@ -79,6 +80,7 @@ const components = {
   SwFileUpload,
   SwRadio,
   SwSwitch,
+  SwSelect,
   SwTabItem,
   SwTableComponent,
   SwTableColumn,

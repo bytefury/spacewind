@@ -1,6 +1,10 @@
 <template>
   <div :class="inputGroupStyle.container">
-    <sw-label v-if="label" :class="inputGroupStyle.label">
+    <sw-label
+      v-if="label"
+      :variant="labelVariant"
+      :class="inputGroupStyle.label"
+    >
       {{ label }}
       <span v-show="required" :class="inputGroupStyle.requiredSign"> *</span>
       <v-popover
@@ -108,6 +112,10 @@ export default {
       default: 'auto'
     },
     tooltip: {
+      type: String,
+      default: null
+    },
+    labelVariant: {
       type: String,
       default: null
     }
