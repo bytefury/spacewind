@@ -664,7 +664,7 @@ var IE8_DOM_DEFINE = __webpack_require__("0cfb");
 var nativeGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 
 // `Object.getOwnPropertyDescriptor` method
-// https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptor
+// https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
 exports.f = DESCRIPTORS ? nativeGetOwnPropertyDescriptor : function getOwnPropertyDescriptor(O, P) {
   O = toIndexedObject(O);
   P = toPrimitive(P, true);
@@ -2145,7 +2145,7 @@ var AddMarkStep = /*@__PURE__*/(function (Step) {
     var oldSlice = doc.slice(this.from, this.to), $from = doc.resolve(this.from);
     var parent = $from.node($from.sharedDepth(this.to));
     var slice = new prosemirror_model__WEBPACK_IMPORTED_MODULE_0__["Slice"](mapFragment(oldSlice.content, function (node, parent) {
-      if (!parent.type.allowsMarkType(this$1.mark.type)) { return node }
+      if (!node.isAtom || !parent.type.allowsMarkType(this$1.mark.type)) { return node }
       return node.mark(this$1.mark.addToSet(node.marks))
     }, parent), oldSlice.openStart, oldSlice.openEnd);
     return StepResult.fromReplace(doc, this.from, this.to, slice)
@@ -3034,6 +3034,53 @@ module.exports = getNative;
 
 /***/ }),
 
+/***/ "0cb2":
+/***/ (function(module, exports, __webpack_require__) {
+
+var toObject = __webpack_require__("7b0b");
+
+var floor = Math.floor;
+var replace = ''.replace;
+var SUBSTITUTION_SYMBOLS = /\$([$&'`]|\d\d?|<[^>]*>)/g;
+var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&'`]|\d\d?)/g;
+
+// https://tc39.es/ecma262/#sec-getsubstitution
+module.exports = function (matched, str, position, captures, namedCaptures, replacement) {
+  var tailPos = position + matched.length;
+  var m = captures.length;
+  var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
+  if (namedCaptures !== undefined) {
+    namedCaptures = toObject(namedCaptures);
+    symbols = SUBSTITUTION_SYMBOLS;
+  }
+  return replace.call(replacement, symbols, function (match, ch) {
+    var capture;
+    switch (ch.charAt(0)) {
+      case '$': return '$';
+      case '&': return matched;
+      case '`': return str.slice(0, position);
+      case "'": return str.slice(tailPos);
+      case '<':
+        capture = namedCaptures[ch.slice(1, -1)];
+        break;
+      default: // \d\d?
+        var n = +ch;
+        if (n === 0) return match;
+        if (n > m) {
+          var f = floor(n / 10);
+          if (f === 0) return match;
+          if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
+          return match;
+        }
+        capture = captures[n - 1];
+    }
+    return capture === undefined ? '' : capture;
+  });
+};
+
+
+/***/ }),
+
 /***/ "0cfb":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3637,6 +3684,2391 @@ module.exports = baseRest;
 
 /***/ }),
 
+/***/ "1020":
+/***/ (function(module, exports) {
+
+function deepFreeze(obj) {
+    if (obj instanceof Map) {
+        obj.clear = obj.delete = obj.set = function () {
+            throw new Error('map is read-only');
+        };
+    } else if (obj instanceof Set) {
+        obj.add = obj.clear = obj.delete = function () {
+            throw new Error('set is read-only');
+        };
+    }
+
+    // Freeze self
+    Object.freeze(obj);
+
+    Object.getOwnPropertyNames(obj).forEach(function (name) {
+        var prop = obj[name];
+
+        // Freeze prop if it is an object
+        if (typeof prop == 'object' && !Object.isFrozen(prop)) {
+            deepFreeze(prop);
+        }
+    });
+
+    return obj;
+}
+
+var deepFreezeEs6 = deepFreeze;
+var _default = deepFreeze;
+deepFreezeEs6.default = _default;
+
+class Response {
+  /**
+   * @param {CompiledMode} mode
+   */
+  constructor(mode) {
+    // eslint-disable-next-line no-undefined
+    if (mode.data === undefined) mode.data = {};
+
+    this.data = mode.data;
+  }
+
+  ignoreMatch() {
+    this.ignore = true;
+  }
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeHTML(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+/**
+ * performs a shallow merge of multiple objects into one
+ *
+ * @template T
+ * @param {T} original
+ * @param {Record<string,any>[]} objects
+ * @returns {T} a single new object
+ */
+function inherit(original, ...objects) {
+  /** @type Record<string,any> */
+  const result = Object.create(null);
+
+  for (const key in original) {
+    result[key] = original[key];
+  }
+  objects.forEach(function(obj) {
+    for (const key in obj) {
+      result[key] = obj[key];
+    }
+  });
+  return /** @type {T} */ (result);
+}
+
+/**
+ * @typedef {object} Renderer
+ * @property {(text: string) => void} addText
+ * @property {(node: Node) => void} openNode
+ * @property {(node: Node) => void} closeNode
+ * @property {() => string} value
+ */
+
+/** @typedef {{kind?: string, sublanguage?: boolean}} Node */
+/** @typedef {{walk: (r: Renderer) => void}} Tree */
+/** */
+
+const SPAN_CLOSE = '</span>';
+
+/**
+ * Determines if a node needs to be wrapped in <span>
+ *
+ * @param {Node} node */
+const emitsWrappingTags = (node) => {
+  return !!node.kind;
+};
+
+/** @type {Renderer} */
+class HTMLRenderer {
+  /**
+   * Creates a new HTMLRenderer
+   *
+   * @param {Tree} parseTree - the parse tree (must support `walk` API)
+   * @param {{classPrefix: string}} options
+   */
+  constructor(parseTree, options) {
+    this.buffer = "";
+    this.classPrefix = options.classPrefix;
+    parseTree.walk(this);
+  }
+
+  /**
+   * Adds texts to the output stream
+   *
+   * @param {string} text */
+  addText(text) {
+    this.buffer += escapeHTML(text);
+  }
+
+  /**
+   * Adds a node open to the output stream (if needed)
+   *
+   * @param {Node} node */
+  openNode(node) {
+    if (!emitsWrappingTags(node)) return;
+
+    let className = node.kind;
+    if (!node.sublanguage) {
+      className = `${this.classPrefix}${className}`;
+    }
+    this.span(className);
+  }
+
+  /**
+   * Adds a node close to the output stream (if needed)
+   *
+   * @param {Node} node */
+  closeNode(node) {
+    if (!emitsWrappingTags(node)) return;
+
+    this.buffer += SPAN_CLOSE;
+  }
+
+  /**
+   * returns the accumulated buffer
+  */
+  value() {
+    return this.buffer;
+  }
+
+  // helpers
+
+  /**
+   * Builds a span element
+   *
+   * @param {string} className */
+  span(className) {
+    this.buffer += `<span class="${className}">`;
+  }
+}
+
+/** @typedef {{kind?: string, sublanguage?: boolean, children: Node[]} | string} Node */
+/** @typedef {{kind?: string, sublanguage?: boolean, children: Node[]} } DataNode */
+/**  */
+
+class TokenTree {
+  constructor() {
+    /** @type DataNode */
+    this.rootNode = { children: [] };
+    this.stack = [this.rootNode];
+  }
+
+  get top() {
+    return this.stack[this.stack.length - 1];
+  }
+
+  get root() { return this.rootNode; }
+
+  /** @param {Node} node */
+  add(node) {
+    this.top.children.push(node);
+  }
+
+  /** @param {string} kind */
+  openNode(kind) {
+    /** @type Node */
+    const node = { kind, children: [] };
+    this.add(node);
+    this.stack.push(node);
+  }
+
+  closeNode() {
+    if (this.stack.length > 1) {
+      return this.stack.pop();
+    }
+    // eslint-disable-next-line no-undefined
+    return undefined;
+  }
+
+  closeAllNodes() {
+    while (this.closeNode());
+  }
+
+  toJSON() {
+    return JSON.stringify(this.rootNode, null, 4);
+  }
+
+  /**
+   * @typedef { import("./html_renderer").Renderer } Renderer
+   * @param {Renderer} builder
+   */
+  walk(builder) {
+    // this does not
+    return this.constructor._walk(builder, this.rootNode);
+    // this works
+    // return TokenTree._walk(builder, this.rootNode);
+  }
+
+  /**
+   * @param {Renderer} builder
+   * @param {Node} node
+   */
+  static _walk(builder, node) {
+    if (typeof node === "string") {
+      builder.addText(node);
+    } else if (node.children) {
+      builder.openNode(node);
+      node.children.forEach((child) => this._walk(builder, child));
+      builder.closeNode(node);
+    }
+    return builder;
+  }
+
+  /**
+   * @param {Node} node
+   */
+  static _collapse(node) {
+    if (typeof node === "string") return;
+    if (!node.children) return;
+
+    if (node.children.every(el => typeof el === "string")) {
+      // node.text = node.children.join("");
+      // delete node.children;
+      node.children = [node.children.join("")];
+    } else {
+      node.children.forEach((child) => {
+        TokenTree._collapse(child);
+      });
+    }
+  }
+}
+
+/**
+  Currently this is all private API, but this is the minimal API necessary
+  that an Emitter must implement to fully support the parser.
+
+  Minimal interface:
+
+  - addKeyword(text, kind)
+  - addText(text)
+  - addSublanguage(emitter, subLanguageName)
+  - finalize()
+  - openNode(kind)
+  - closeNode()
+  - closeAllNodes()
+  - toHTML()
+
+*/
+
+/**
+ * @implements {Emitter}
+ */
+class TokenTreeEmitter extends TokenTree {
+  /**
+   * @param {*} options
+   */
+  constructor(options) {
+    super();
+    this.options = options;
+  }
+
+  /**
+   * @param {string} text
+   * @param {string} kind
+   */
+  addKeyword(text, kind) {
+    if (text === "") { return; }
+
+    this.openNode(kind);
+    this.addText(text);
+    this.closeNode();
+  }
+
+  /**
+   * @param {string} text
+   */
+  addText(text) {
+    if (text === "") { return; }
+
+    this.add(text);
+  }
+
+  /**
+   * @param {Emitter & {root: DataNode}} emitter
+   * @param {string} name
+   */
+  addSublanguage(emitter, name) {
+    /** @type DataNode */
+    const node = emitter.root;
+    node.kind = name;
+    node.sublanguage = true;
+    this.add(node);
+  }
+
+  toHTML() {
+    const renderer = new HTMLRenderer(this, this.options);
+    return renderer.value();
+  }
+
+  finalize() {
+    return true;
+  }
+}
+
+/**
+ * @param {string} value
+ * @returns {RegExp}
+ * */
+function escape(value) {
+  return new RegExp(value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'm');
+}
+
+/**
+ * @param {RegExp | string } re
+ * @returns {string}
+ */
+function source(re) {
+  if (!re) return null;
+  if (typeof re === "string") return re;
+
+  return re.source;
+}
+
+/**
+ * @param {...(RegExp | string) } args
+ * @returns {string}
+ */
+function concat(...args) {
+  const joined = args.map((x) => source(x)).join("");
+  return joined;
+}
+
+/**
+ * Any of the passed expresssions may match
+ *
+ * Creates a huge this | this | that | that match
+ * @param {(RegExp | string)[] } args
+ * @returns {string}
+ */
+function either(...args) {
+  const joined = '(' + args.map((x) => source(x)).join("|") + ")";
+  return joined;
+}
+
+/**
+ * @param {RegExp} re
+ * @returns {number}
+ */
+function countMatchGroups(re) {
+  return (new RegExp(re.toString() + '|')).exec('').length - 1;
+}
+
+/**
+ * Does lexeme start with a regular expression match at the beginning
+ * @param {RegExp} re
+ * @param {string} lexeme
+ */
+function startsWith(re, lexeme) {
+  const match = re && re.exec(lexeme);
+  return match && match.index === 0;
+}
+
+// join logically computes regexps.join(separator), but fixes the
+// backreferences so they continue to match.
+// it also places each individual regular expression into it's own
+// match group, keeping track of the sequencing of those match groups
+// is currently an exercise for the caller. :-)
+/**
+ * @param {(string | RegExp)[]} regexps
+ * @param {string} separator
+ * @returns {string}
+ */
+function join(regexps, separator = "|") {
+  // backreferenceRe matches an open parenthesis or backreference. To avoid
+  // an incorrect parse, it additionally matches the following:
+  // - [...] elements, where the meaning of parentheses and escapes change
+  // - other escape sequences, so we do not misparse escape sequences as
+  //   interesting elements
+  // - non-matching or lookahead parentheses, which do not capture. These
+  //   follow the '(' with a '?'.
+  const backreferenceRe = /\[(?:[^\\\]]|\\.)*\]|\(\??|\\([1-9][0-9]*)|\\./;
+  let numCaptures = 0;
+  let ret = '';
+  for (let i = 0; i < regexps.length; i++) {
+    numCaptures += 1;
+    const offset = numCaptures;
+    let re = source(regexps[i]);
+    if (i > 0) {
+      ret += separator;
+    }
+    ret += "(";
+    while (re.length > 0) {
+      const match = backreferenceRe.exec(re);
+      if (match == null) {
+        ret += re;
+        break;
+      }
+      ret += re.substring(0, match.index);
+      re = re.substring(match.index + match[0].length);
+      if (match[0][0] === '\\' && match[1]) {
+        // Adjust the backreference.
+        ret += '\\' + String(Number(match[1]) + offset);
+      } else {
+        ret += match[0];
+        if (match[0] === '(') {
+          numCaptures++;
+        }
+      }
+    }
+    ret += ")";
+  }
+  return ret;
+}
+
+// Common regexps
+const IDENT_RE = '[a-zA-Z]\\w*';
+const UNDERSCORE_IDENT_RE = '[a-zA-Z_]\\w*';
+const NUMBER_RE = '\\b\\d+(\\.\\d+)?';
+const C_NUMBER_RE = '(-?)(\\b0[xX][a-fA-F0-9]+|(\\b\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?)'; // 0x..., 0..., decimal, float
+const BINARY_NUMBER_RE = '\\b(0b[01]+)'; // 0b...
+const RE_STARTERS_RE = '!|!=|!==|%|%=|&|&&|&=|\\*|\\*=|\\+|\\+=|,|-|-=|/=|/|:|;|<<|<<=|<=|<|===|==|=|>>>=|>>=|>=|>>>|>>|>|\\?|\\[|\\{|\\(|\\^|\\^=|\\||\\|=|\\|\\||~';
+
+/**
+* @param { Partial<Mode> & {binary?: string | RegExp} } opts
+*/
+const SHEBANG = (opts = {}) => {
+  const beginShebang = /^#![ ]*\//;
+  if (opts.binary) {
+    opts.begin = concat(
+      beginShebang,
+      /.*\b/,
+      opts.binary,
+      /\b.*/);
+  }
+  return inherit({
+    className: 'meta',
+    begin: beginShebang,
+    end: /$/,
+    relevance: 0,
+    /** @type {ModeCallback} */
+    "on:begin": (m, resp) => {
+      if (m.index !== 0) resp.ignoreMatch();
+    }
+  }, opts);
+};
+
+// Common modes
+const BACKSLASH_ESCAPE = {
+  begin: '\\\\[\\s\\S]', relevance: 0
+};
+const APOS_STRING_MODE = {
+  className: 'string',
+  begin: '\'',
+  end: '\'',
+  illegal: '\\n',
+  contains: [BACKSLASH_ESCAPE]
+};
+const QUOTE_STRING_MODE = {
+  className: 'string',
+  begin: '"',
+  end: '"',
+  illegal: '\\n',
+  contains: [BACKSLASH_ESCAPE]
+};
+const PHRASAL_WORDS_MODE = {
+  begin: /\b(a|an|the|are|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|they|like|more)\b/
+};
+/**
+ * Creates a comment mode
+ *
+ * @param {string | RegExp} begin
+ * @param {string | RegExp} end
+ * @param {Mode | {}} [modeOptions]
+ * @returns {Partial<Mode>}
+ */
+const COMMENT = function(begin, end, modeOptions = {}) {
+  const mode = inherit(
+    {
+      className: 'comment',
+      begin,
+      end,
+      contains: []
+    },
+    modeOptions
+  );
+  mode.contains.push(PHRASAL_WORDS_MODE);
+  mode.contains.push({
+    className: 'doctag',
+    begin: '(?:TODO|FIXME|NOTE|BUG|OPTIMIZE|HACK|XXX):',
+    relevance: 0
+  });
+  return mode;
+};
+const C_LINE_COMMENT_MODE = COMMENT('//', '$');
+const C_BLOCK_COMMENT_MODE = COMMENT('/\\*', '\\*/');
+const HASH_COMMENT_MODE = COMMENT('#', '$');
+const NUMBER_MODE = {
+  className: 'number',
+  begin: NUMBER_RE,
+  relevance: 0
+};
+const C_NUMBER_MODE = {
+  className: 'number',
+  begin: C_NUMBER_RE,
+  relevance: 0
+};
+const BINARY_NUMBER_MODE = {
+  className: 'number',
+  begin: BINARY_NUMBER_RE,
+  relevance: 0
+};
+const CSS_NUMBER_MODE = {
+  className: 'number',
+  begin: NUMBER_RE + '(' +
+    '%|em|ex|ch|rem' +
+    '|vw|vh|vmin|vmax' +
+    '|cm|mm|in|pt|pc|px' +
+    '|deg|grad|rad|turn' +
+    '|s|ms' +
+    '|Hz|kHz' +
+    '|dpi|dpcm|dppx' +
+    ')?',
+  relevance: 0
+};
+const REGEXP_MODE = {
+  // this outer rule makes sure we actually have a WHOLE regex and not simply
+  // an expression such as:
+  //
+  //     3 / something
+  //
+  // (which will then blow up when regex's `illegal` sees the newline)
+  begin: /(?=\/[^/\n]*\/)/,
+  contains: [{
+    className: 'regexp',
+    begin: /\//,
+    end: /\/[gimuy]*/,
+    illegal: /\n/,
+    contains: [
+      BACKSLASH_ESCAPE,
+      {
+        begin: /\[/,
+        end: /\]/,
+        relevance: 0,
+        contains: [BACKSLASH_ESCAPE]
+      }
+    ]
+  }]
+};
+const TITLE_MODE = {
+  className: 'title',
+  begin: IDENT_RE,
+  relevance: 0
+};
+const UNDERSCORE_TITLE_MODE = {
+  className: 'title',
+  begin: UNDERSCORE_IDENT_RE,
+  relevance: 0
+};
+const METHOD_GUARD = {
+  // excludes method names from keyword processing
+  begin: '\\.\\s*' + UNDERSCORE_IDENT_RE,
+  relevance: 0
+};
+
+/**
+ * Adds end same as begin mechanics to a mode
+ *
+ * Your mode must include at least a single () match group as that first match
+ * group is what is used for comparison
+ * @param {Partial<Mode>} mode
+ */
+const END_SAME_AS_BEGIN = function(mode) {
+  return Object.assign(mode,
+    {
+      /** @type {ModeCallback} */
+      'on:begin': (m, resp) => { resp.data._beginMatch = m[1]; },
+      /** @type {ModeCallback} */
+      'on:end': (m, resp) => { if (resp.data._beginMatch !== m[1]) resp.ignoreMatch(); }
+    });
+};
+
+var MODES = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    IDENT_RE: IDENT_RE,
+    UNDERSCORE_IDENT_RE: UNDERSCORE_IDENT_RE,
+    NUMBER_RE: NUMBER_RE,
+    C_NUMBER_RE: C_NUMBER_RE,
+    BINARY_NUMBER_RE: BINARY_NUMBER_RE,
+    RE_STARTERS_RE: RE_STARTERS_RE,
+    SHEBANG: SHEBANG,
+    BACKSLASH_ESCAPE: BACKSLASH_ESCAPE,
+    APOS_STRING_MODE: APOS_STRING_MODE,
+    QUOTE_STRING_MODE: QUOTE_STRING_MODE,
+    PHRASAL_WORDS_MODE: PHRASAL_WORDS_MODE,
+    COMMENT: COMMENT,
+    C_LINE_COMMENT_MODE: C_LINE_COMMENT_MODE,
+    C_BLOCK_COMMENT_MODE: C_BLOCK_COMMENT_MODE,
+    HASH_COMMENT_MODE: HASH_COMMENT_MODE,
+    NUMBER_MODE: NUMBER_MODE,
+    C_NUMBER_MODE: C_NUMBER_MODE,
+    BINARY_NUMBER_MODE: BINARY_NUMBER_MODE,
+    CSS_NUMBER_MODE: CSS_NUMBER_MODE,
+    REGEXP_MODE: REGEXP_MODE,
+    TITLE_MODE: TITLE_MODE,
+    UNDERSCORE_TITLE_MODE: UNDERSCORE_TITLE_MODE,
+    METHOD_GUARD: METHOD_GUARD,
+    END_SAME_AS_BEGIN: END_SAME_AS_BEGIN
+});
+
+// Grammar extensions / plugins
+// See: https://github.com/highlightjs/highlight.js/issues/2833
+
+// Grammar extensions allow "syntactic sugar" to be added to the grammar modes
+// without requiring any underlying changes to the compiler internals.
+
+// `compileMatch` being the perfect small example of now allowing a grammar
+// author to write `match` when they desire to match a single expression rather
+// than being forced to use `begin`.  The extension then just moves `match` into
+// `begin` when it runs.  Ie, no features have been added, but we've just made
+// the experience of writing (and reading grammars) a little bit nicer.
+
+// ------
+
+// TODO: We need negative look-behind support to do this properly
+/**
+ * Skip a match if it has a preceding dot
+ *
+ * This is used for `beginKeywords` to prevent matching expressions such as
+ * `bob.keyword.do()`. The mode compiler automatically wires this up as a
+ * special _internal_ 'on:begin' callback for modes with `beginKeywords`
+ * @param {RegExpMatchArray} match
+ * @param {CallbackResponse} response
+ */
+function skipIfhasPrecedingDot(match, response) {
+  const before = match.input[match.index - 1];
+  if (before === ".") {
+    response.ignoreMatch();
+  }
+}
+
+
+/**
+ * `beginKeywords` syntactic sugar
+ * @type {CompilerExt}
+ */
+function beginKeywords(mode, parent) {
+  if (!parent) return;
+  if (!mode.beginKeywords) return;
+
+  // for languages with keywords that include non-word characters checking for
+  // a word boundary is not sufficient, so instead we check for a word boundary
+  // or whitespace - this does no harm in any case since our keyword engine
+  // doesn't allow spaces in keywords anyways and we still check for the boundary
+  // first
+  mode.begin = '\\b(' + mode.beginKeywords.split(' ').join('|') + ')(?!\\.)(?=\\b|\\s)';
+  mode.__beforeBegin = skipIfhasPrecedingDot;
+  mode.keywords = mode.keywords || mode.beginKeywords;
+  delete mode.beginKeywords;
+}
+
+/**
+ * Allow `illegal` to contain an array of illegal values
+ * @type {CompilerExt}
+ */
+function compileIllegal(mode, _parent) {
+  if (!Array.isArray(mode.illegal)) return;
+
+  mode.illegal = either(...mode.illegal);
+}
+
+/**
+ * `match` to match a single expression for readability
+ * @type {CompilerExt}
+ */
+function compileMatch(mode, _parent) {
+  if (!mode.match) return;
+  if (mode.begin || mode.end) throw new Error("begin & end are not supported with match");
+
+  mode.begin = mode.match;
+  delete mode.match;
+}
+
+/**
+ * provides the default 1 relevance to all modes
+ * @type {CompilerExt}
+ */
+function compileRelevance(mode, _parent) {
+  // eslint-disable-next-line no-undefined
+  if (mode.relevance === undefined) mode.relevance = 1;
+}
+
+// keywords that should have no default relevance value
+const COMMON_KEYWORDS = [
+  'of',
+  'and',
+  'for',
+  'in',
+  'not',
+  'or',
+  'if',
+  'then',
+  'parent', // common variable name
+  'list', // common variable name
+  'value' // common variable name
+];
+
+/**
+ * Given raw keywords from a language definition, compile them.
+ *
+ * @param {string | Record<string,string>} rawKeywords
+ * @param {boolean} caseInsensitive
+ */
+function compileKeywords(rawKeywords, caseInsensitive) {
+  /** @type KeywordDict */
+  const compiledKeywords = {};
+
+  if (typeof rawKeywords === 'string') { // string
+    splitAndCompile('keyword', rawKeywords);
+  } else {
+    Object.keys(rawKeywords).forEach(function(className) {
+      splitAndCompile(className, rawKeywords[className]);
+    });
+  }
+  return compiledKeywords;
+
+  // ---
+
+  /**
+   * Compiles an individual list of keywords
+   *
+   * Ex: "for if when while|5"
+   *
+   * @param {string} className
+   * @param {string} keywordList
+   */
+  function splitAndCompile(className, keywordList) {
+    if (caseInsensitive) {
+      keywordList = keywordList.toLowerCase();
+    }
+    keywordList.split(' ').forEach(function(keyword) {
+      const pair = keyword.split('|');
+      compiledKeywords[pair[0]] = [className, scoreForKeyword(pair[0], pair[1])];
+    });
+  }
+}
+
+/**
+ * Returns the proper score for a given keyword
+ *
+ * Also takes into account comment keywords, which will be scored 0 UNLESS
+ * another score has been manually assigned.
+ * @param {string} keyword
+ * @param {string} [providedScore]
+ */
+function scoreForKeyword(keyword, providedScore) {
+  // manual scores always win over common keywords
+  // so you can force a score of 1 if you really insist
+  if (providedScore) {
+    return Number(providedScore);
+  }
+
+  return commonKeyword(keyword) ? 0 : 1;
+}
+
+/**
+ * Determines if a given keyword is common or not
+ *
+ * @param {string} keyword */
+function commonKeyword(keyword) {
+  return COMMON_KEYWORDS.includes(keyword.toLowerCase());
+}
+
+// compilation
+
+/**
+ * Compiles a language definition result
+ *
+ * Given the raw result of a language definition (Language), compiles this so
+ * that it is ready for highlighting code.
+ * @param {Language} language
+ * @param {{plugins: HLJSPlugin[]}} opts
+ * @returns {CompiledLanguage}
+ */
+function compileLanguage(language, { plugins }) {
+  /**
+   * Builds a regex with the case sensativility of the current language
+   *
+   * @param {RegExp | string} value
+   * @param {boolean} [global]
+   */
+  function langRe(value, global) {
+    return new RegExp(
+      source(value),
+      'm' + (language.case_insensitive ? 'i' : '') + (global ? 'g' : '')
+    );
+  }
+
+  /**
+    Stores multiple regular expressions and allows you to quickly search for
+    them all in a string simultaneously - returning the first match.  It does
+    this by creating a huge (a|b|c) regex - each individual item wrapped with ()
+    and joined by `|` - using match groups to track position.  When a match is
+    found checking which position in the array has content allows us to figure
+    out which of the original regexes / match groups triggered the match.
+
+    The match object itself (the result of `Regex.exec`) is returned but also
+    enhanced by merging in any meta-data that was registered with the regex.
+    This is how we keep track of which mode matched, and what type of rule
+    (`illegal`, `begin`, end, etc).
+  */
+  class MultiRegex {
+    constructor() {
+      this.matchIndexes = {};
+      // @ts-ignore
+      this.regexes = [];
+      this.matchAt = 1;
+      this.position = 0;
+    }
+
+    // @ts-ignore
+    addRule(re, opts) {
+      opts.position = this.position++;
+      // @ts-ignore
+      this.matchIndexes[this.matchAt] = opts;
+      this.regexes.push([opts, re]);
+      this.matchAt += countMatchGroups(re) + 1;
+    }
+
+    compile() {
+      if (this.regexes.length === 0) {
+        // avoids the need to check length every time exec is called
+        // @ts-ignore
+        this.exec = () => null;
+      }
+      const terminators = this.regexes.map(el => el[1]);
+      this.matcherRe = langRe(join(terminators), true);
+      this.lastIndex = 0;
+    }
+
+    /** @param {string} s */
+    exec(s) {
+      this.matcherRe.lastIndex = this.lastIndex;
+      const match = this.matcherRe.exec(s);
+      if (!match) { return null; }
+
+      // eslint-disable-next-line no-undefined
+      const i = match.findIndex((el, i) => i > 0 && el !== undefined);
+      // @ts-ignore
+      const matchData = this.matchIndexes[i];
+      // trim off any earlier non-relevant match groups (ie, the other regex
+      // match groups that make up the multi-matcher)
+      match.splice(0, i);
+
+      return Object.assign(match, matchData);
+    }
+  }
+
+  /*
+    Created to solve the key deficiently with MultiRegex - there is no way to
+    test for multiple matches at a single location.  Why would we need to do
+    that?  In the future a more dynamic engine will allow certain matches to be
+    ignored.  An example: if we matched say the 3rd regex in a large group but
+    decided to ignore it - we'd need to started testing again at the 4th
+    regex... but MultiRegex itself gives us no real way to do that.
+
+    So what this class creates MultiRegexs on the fly for whatever search
+    position they are needed.
+
+    NOTE: These additional MultiRegex objects are created dynamically.  For most
+    grammars most of the time we will never actually need anything more than the
+    first MultiRegex - so this shouldn't have too much overhead.
+
+    Say this is our search group, and we match regex3, but wish to ignore it.
+
+      regex1 | regex2 | regex3 | regex4 | regex5    ' ie, startAt = 0
+
+    What we need is a new MultiRegex that only includes the remaining
+    possibilities:
+
+      regex4 | regex5                               ' ie, startAt = 3
+
+    This class wraps all that complexity up in a simple API... `startAt` decides
+    where in the array of expressions to start doing the matching. It
+    auto-increments, so if a match is found at position 2, then startAt will be
+    set to 3.  If the end is reached startAt will return to 0.
+
+    MOST of the time the parser will be setting startAt manually to 0.
+  */
+  class ResumableMultiRegex {
+    constructor() {
+      // @ts-ignore
+      this.rules = [];
+      // @ts-ignore
+      this.multiRegexes = [];
+      this.count = 0;
+
+      this.lastIndex = 0;
+      this.regexIndex = 0;
+    }
+
+    // @ts-ignore
+    getMatcher(index) {
+      if (this.multiRegexes[index]) return this.multiRegexes[index];
+
+      const matcher = new MultiRegex();
+      this.rules.slice(index).forEach(([re, opts]) => matcher.addRule(re, opts));
+      matcher.compile();
+      this.multiRegexes[index] = matcher;
+      return matcher;
+    }
+
+    resumingScanAtSamePosition() {
+      return this.regexIndex !== 0;
+    }
+
+    considerAll() {
+      this.regexIndex = 0;
+    }
+
+    // @ts-ignore
+    addRule(re, opts) {
+      this.rules.push([re, opts]);
+      if (opts.type === "begin") this.count++;
+    }
+
+    /** @param {string} s */
+    exec(s) {
+      const m = this.getMatcher(this.regexIndex);
+      m.lastIndex = this.lastIndex;
+      let result = m.exec(s);
+
+      // The following is because we have no easy way to say "resume scanning at the
+      // existing position but also skip the current rule ONLY". What happens is
+      // all prior rules are also skipped which can result in matching the wrong
+      // thing. Example of matching "booger":
+
+      // our matcher is [string, "booger", number]
+      //
+      // ....booger....
+
+      // if "booger" is ignored then we'd really need a regex to scan from the
+      // SAME position for only: [string, number] but ignoring "booger" (if it
+      // was the first match), a simple resume would scan ahead who knows how
+      // far looking only for "number", ignoring potential string matches (or
+      // future "booger" matches that might be valid.)
+
+      // So what we do: We execute two matchers, one resuming at the same
+      // position, but the second full matcher starting at the position after:
+
+      //     /--- resume first regex match here (for [number])
+      //     |/---- full match here for [string, "booger", number]
+      //     vv
+      // ....booger....
+
+      // Which ever results in a match first is then used. So this 3-4 step
+      // process essentially allows us to say "match at this position, excluding
+      // a prior rule that was ignored".
+      //
+      // 1. Match "booger" first, ignore. Also proves that [string] does non match.
+      // 2. Resume matching for [number]
+      // 3. Match at index + 1 for [string, "booger", number]
+      // 4. If #2 and #3 result in matches, which came first?
+      if (this.resumingScanAtSamePosition()) {
+        if (result && result.index === this.lastIndex) ; else { // use the second matcher result
+          const m2 = this.getMatcher(0);
+          m2.lastIndex = this.lastIndex + 1;
+          result = m2.exec(s);
+        }
+      }
+
+      if (result) {
+        this.regexIndex += result.position + 1;
+        if (this.regexIndex === this.count) {
+          // wrap-around to considering all matches again
+          this.considerAll();
+        }
+      }
+
+      return result;
+    }
+  }
+
+  /**
+   * Given a mode, builds a huge ResumableMultiRegex that can be used to walk
+   * the content and find matches.
+   *
+   * @param {CompiledMode} mode
+   * @returns {ResumableMultiRegex}
+   */
+  function buildModeRegex(mode) {
+    const mm = new ResumableMultiRegex();
+
+    mode.contains.forEach(term => mm.addRule(term.begin, { rule: term, type: "begin" }));
+
+    if (mode.terminatorEnd) {
+      mm.addRule(mode.terminatorEnd, { type: "end" });
+    }
+    if (mode.illegal) {
+      mm.addRule(mode.illegal, { type: "illegal" });
+    }
+
+    return mm;
+  }
+
+  /** skip vs abort vs ignore
+   *
+   * @skip   - The mode is still entered and exited normally (and contains rules apply),
+   *           but all content is held and added to the parent buffer rather than being
+   *           output when the mode ends.  Mostly used with `sublanguage` to build up
+   *           a single large buffer than can be parsed by sublanguage.
+   *
+   *             - The mode begin ands ends normally.
+   *             - Content matched is added to the parent mode buffer.
+   *             - The parser cursor is moved forward normally.
+   *
+   * @abort  - A hack placeholder until we have ignore.  Aborts the mode (as if it
+   *           never matched) but DOES NOT continue to match subsequent `contains`
+   *           modes.  Abort is bad/suboptimal because it can result in modes
+   *           farther down not getting applied because an earlier rule eats the
+   *           content but then aborts.
+   *
+   *             - The mode does not begin.
+   *             - Content matched by `begin` is added to the mode buffer.
+   *             - The parser cursor is moved forward accordingly.
+   *
+   * @ignore - Ignores the mode (as if it never matched) and continues to match any
+   *           subsequent `contains` modes.  Ignore isn't technically possible with
+   *           the current parser implementation.
+   *
+   *             - The mode does not begin.
+   *             - Content matched by `begin` is ignored.
+   *             - The parser cursor is not moved forward.
+   */
+
+  /**
+   * Compiles an individual mode
+   *
+   * This can raise an error if the mode contains certain detectable known logic
+   * issues.
+   * @param {Mode} mode
+   * @param {CompiledMode | null} [parent]
+   * @returns {CompiledMode | never}
+   */
+  function compileMode(mode, parent) {
+    const cmode = /** @type CompiledMode */ (mode);
+    if (mode.compiled) return cmode;
+
+    [
+      // do this early so compiler extensions generally don't have to worry about
+      // the distinction between match/begin
+      compileMatch
+    ].forEach(ext => ext(mode, parent));
+
+    language.compilerExtensions.forEach(ext => ext(mode, parent));
+
+    // __beforeBegin is considered private API, internal use only
+    mode.__beforeBegin = null;
+
+    [
+      beginKeywords,
+      // do this later so compiler extensions that come earlier have access to the
+      // raw array if they wanted to perhaps manipulate it, etc.
+      compileIllegal,
+      // default to 1 relevance if not specified
+      compileRelevance
+    ].forEach(ext => ext(mode, parent));
+
+    mode.compiled = true;
+
+    let keywordPattern = null;
+    if (typeof mode.keywords === "object") {
+      keywordPattern = mode.keywords.$pattern;
+      delete mode.keywords.$pattern;
+    }
+
+    if (mode.keywords) {
+      mode.keywords = compileKeywords(mode.keywords, language.case_insensitive);
+    }
+
+    // both are not allowed
+    if (mode.lexemes && keywordPattern) {
+      throw new Error("ERR: Prefer `keywords.$pattern` to `mode.lexemes`, BOTH are not allowed. (see mode reference) ");
+    }
+
+    // `mode.lexemes` was the old standard before we added and now recommend
+    // using `keywords.$pattern` to pass the keyword pattern
+    keywordPattern = keywordPattern || mode.lexemes || /\w+/;
+    cmode.keywordPatternRe = langRe(keywordPattern, true);
+
+    if (parent) {
+      if (!mode.begin) mode.begin = /\B|\b/;
+      cmode.beginRe = langRe(mode.begin);
+      if (mode.endSameAsBegin) mode.end = mode.begin;
+      if (!mode.end && !mode.endsWithParent) mode.end = /\B|\b/;
+      if (mode.end) cmode.endRe = langRe(mode.end);
+      cmode.terminatorEnd = source(mode.end) || '';
+      if (mode.endsWithParent && parent.terminatorEnd) {
+        cmode.terminatorEnd += (mode.end ? '|' : '') + parent.terminatorEnd;
+      }
+    }
+    if (mode.illegal) cmode.illegalRe = langRe(/** @type {RegExp | string} */ (mode.illegal));
+    if (!mode.contains) mode.contains = [];
+
+    mode.contains = [].concat(...mode.contains.map(function(c) {
+      return expandOrCloneMode(c === 'self' ? mode : c);
+    }));
+    mode.contains.forEach(function(c) { compileMode(/** @type Mode */ (c), cmode); });
+
+    if (mode.starts) {
+      compileMode(mode.starts, parent);
+    }
+
+    cmode.matcher = buildModeRegex(cmode);
+    return cmode;
+  }
+
+  if (!language.compilerExtensions) language.compilerExtensions = [];
+
+  // self is not valid at the top-level
+  if (language.contains && language.contains.includes('self')) {
+    throw new Error("ERR: contains `self` is not supported at the top-level of a language.  See documentation.");
+  }
+
+  // we need a null object, which inherit will guarantee
+  language.classNameAliases = inherit(language.classNameAliases || {});
+
+  return compileMode(/** @type Mode */ (language));
+}
+
+/**
+ * Determines if a mode has a dependency on it's parent or not
+ *
+ * If a mode does have a parent dependency then often we need to clone it if
+ * it's used in multiple places so that each copy points to the correct parent,
+ * where-as modes without a parent can often safely be re-used at the bottom of
+ * a mode chain.
+ *
+ * @param {Mode | null} mode
+ * @returns {boolean} - is there a dependency on the parent?
+ * */
+function dependencyOnParent(mode) {
+  if (!mode) return false;
+
+  return mode.endsWithParent || dependencyOnParent(mode.starts);
+}
+
+/**
+ * Expands a mode or clones it if necessary
+ *
+ * This is necessary for modes with parental dependenceis (see notes on
+ * `dependencyOnParent`) and for nodes that have `variants` - which must then be
+ * exploded into their own individual modes at compile time.
+ *
+ * @param {Mode} mode
+ * @returns {Mode | Mode[]}
+ * */
+function expandOrCloneMode(mode) {
+  if (mode.variants && !mode.cachedVariants) {
+    mode.cachedVariants = mode.variants.map(function(variant) {
+      return inherit(mode, { variants: null }, variant);
+    });
+  }
+
+  // EXPAND
+  // if we have variants then essentially "replace" the mode with the variants
+  // this happens in compileMode, where this function is called from
+  if (mode.cachedVariants) {
+    return mode.cachedVariants;
+  }
+
+  // CLONE
+  // if we have dependencies on parents then we need a unique
+  // instance of ourselves, so we can be reused with many
+  // different parents without issue
+  if (dependencyOnParent(mode)) {
+    return inherit(mode, { starts: mode.starts ? inherit(mode.starts) : null });
+  }
+
+  if (Object.isFrozen(mode)) {
+    return inherit(mode);
+  }
+
+  // no special dependency issues, just return ourselves
+  return mode;
+}
+
+var version = "10.5.0";
+
+// @ts-nocheck
+
+function hasValueOrEmptyAttribute(value) {
+  return Boolean(value || value === "");
+}
+
+function BuildVuePlugin(hljs) {
+  const Component = {
+    props: ["language", "code", "autodetect"],
+    data: function() {
+      return {
+        detectedLanguage: "",
+        unknownLanguage: false
+      };
+    },
+    computed: {
+      className() {
+        if (this.unknownLanguage) return "";
+
+        return "hljs " + this.detectedLanguage;
+      },
+      highlighted() {
+        // no idea what language to use, return raw code
+        if (!this.autoDetect && !hljs.getLanguage(this.language)) {
+          console.warn(`The language "${this.language}" you specified could not be found.`);
+          this.unknownLanguage = true;
+          return escapeHTML(this.code);
+        }
+
+        let result = {};
+        if (this.autoDetect) {
+          result = hljs.highlightAuto(this.code);
+          this.detectedLanguage = result.language;
+        } else {
+          result = hljs.highlight(this.language, this.code, this.ignoreIllegals);
+          this.detectedLanguage = this.language;
+        }
+        return result.value;
+      },
+      autoDetect() {
+        return !this.language || hasValueOrEmptyAttribute(this.autodetect);
+      },
+      ignoreIllegals() {
+        return true;
+      }
+    },
+    // this avoids needing to use a whole Vue compilation pipeline just
+    // to build Highlight.js
+    render(createElement) {
+      return createElement("pre", {}, [
+        createElement("code", {
+          class: this.className,
+          domProps: { innerHTML: this.highlighted }
+        })
+      ]);
+    }
+    // template: `<pre><code :class="className" v-html="highlighted"></code></pre>`
+  };
+
+  const VuePlugin = {
+    install(Vue) {
+      Vue.component('highlightjs', Component);
+    }
+  };
+
+  return { Component, VuePlugin };
+}
+
+/* plugin itself */
+
+/** @type {HLJSPlugin} */
+const mergeHTMLPlugin = {
+  "after:highlightBlock": ({ block, result, text }) => {
+    const originalStream = nodeStream(block);
+    if (!originalStream.length) return;
+
+    const resultNode = document.createElement('div');
+    resultNode.innerHTML = result.value;
+    result.value = mergeStreams(originalStream, nodeStream(resultNode), text);
+  }
+};
+
+/* Stream merging support functions */
+
+/**
+ * @typedef Event
+ * @property {'start'|'stop'} event
+ * @property {number} offset
+ * @property {Node} node
+ */
+
+/**
+ * @param {Node} node
+ */
+function tag(node) {
+  return node.nodeName.toLowerCase();
+}
+
+/**
+ * @param {Node} node
+ */
+function nodeStream(node) {
+  /** @type Event[] */
+  const result = [];
+  (function _nodeStream(node, offset) {
+    for (let child = node.firstChild; child; child = child.nextSibling) {
+      if (child.nodeType === 3) {
+        offset += child.nodeValue.length;
+      } else if (child.nodeType === 1) {
+        result.push({
+          event: 'start',
+          offset: offset,
+          node: child
+        });
+        offset = _nodeStream(child, offset);
+        // Prevent void elements from having an end tag that would actually
+        // double them in the output. There are more void elements in HTML
+        // but we list only those realistically expected in code display.
+        if (!tag(child).match(/br|hr|img|input/)) {
+          result.push({
+            event: 'stop',
+            offset: offset,
+            node: child
+          });
+        }
+      }
+    }
+    return offset;
+  })(node, 0);
+  return result;
+}
+
+/**
+ * @param {any} original - the original stream
+ * @param {any} highlighted - stream of the highlighted source
+ * @param {string} value - the original source itself
+ */
+function mergeStreams(original, highlighted, value) {
+  let processed = 0;
+  let result = '';
+  const nodeStack = [];
+
+  function selectStream() {
+    if (!original.length || !highlighted.length) {
+      return original.length ? original : highlighted;
+    }
+    if (original[0].offset !== highlighted[0].offset) {
+      return (original[0].offset < highlighted[0].offset) ? original : highlighted;
+    }
+
+    /*
+    To avoid starting the stream just before it should stop the order is
+    ensured that original always starts first and closes last:
+
+    if (event1 == 'start' && event2 == 'start')
+      return original;
+    if (event1 == 'start' && event2 == 'stop')
+      return highlighted;
+    if (event1 == 'stop' && event2 == 'start')
+      return original;
+    if (event1 == 'stop' && event2 == 'stop')
+      return highlighted;
+
+    ... which is collapsed to:
+    */
+    return highlighted[0].event === 'start' ? original : highlighted;
+  }
+
+  /**
+   * @param {Node} node
+   */
+  function open(node) {
+    /** @param {Attr} attr */
+    function attributeString(attr) {
+      return ' ' + attr.nodeName + '="' + escapeHTML(attr.value) + '"';
+    }
+    // @ts-ignore
+    result += '<' + tag(node) + [].map.call(node.attributes, attributeString).join('') + '>';
+  }
+
+  /**
+   * @param {Node} node
+   */
+  function close(node) {
+    result += '</' + tag(node) + '>';
+  }
+
+  /**
+   * @param {Event} event
+   */
+  function render(event) {
+    (event.event === 'start' ? open : close)(event.node);
+  }
+
+  while (original.length || highlighted.length) {
+    let stream = selectStream();
+    result += escapeHTML(value.substring(processed, stream[0].offset));
+    processed = stream[0].offset;
+    if (stream === original) {
+      /*
+      On any opening or closing tag of the original markup we first close
+      the entire highlighted node stack, then render the original tag along
+      with all the following original tags at the same offset and then
+      reopen all the tags on the highlighted stack.
+      */
+      nodeStack.reverse().forEach(close);
+      do {
+        render(stream.splice(0, 1)[0]);
+        stream = selectStream();
+      } while (stream === original && stream.length && stream[0].offset === processed);
+      nodeStack.reverse().forEach(open);
+    } else {
+      if (stream[0].event === 'start') {
+        nodeStack.push(stream[0].node);
+      } else {
+        nodeStack.pop();
+      }
+      render(stream.splice(0, 1)[0]);
+    }
+  }
+  return result + escapeHTML(value.substr(processed));
+}
+
+/*
+
+For the reasoning behind this please see:
+https://github.com/highlightjs/highlight.js/issues/2880#issuecomment-747275419
+
+*/
+
+/**
+ * @param {string} message
+ */
+const error = (message) => {
+  console.error(message);
+};
+
+/**
+ * @param {string} message
+ * @param {any} args
+ */
+const warn = (message, ...args) => {
+  console.log(`WARN: ${message}`, ...args);
+};
+
+/**
+ * @param {string} version
+ * @param {string} message
+ */
+const deprecated = (version, message) => {
+  console.log(`Deprecated as of ${version}. ${message}`);
+};
+
+/*
+Syntax highlighting with language autodetection.
+https://highlightjs.org/
+*/
+
+const escape$1 = escapeHTML;
+const inherit$1 = inherit;
+const NO_MATCH = Symbol("nomatch");
+
+/**
+ * @param {any} hljs - object that is extended (legacy)
+ * @returns {HLJSApi}
+ */
+const HLJS = function(hljs) {
+  // Global internal variables used within the highlight.js library.
+  /** @type {Record<string, Language>} */
+  const languages = Object.create(null);
+  /** @type {Record<string, string>} */
+  const aliases = Object.create(null);
+  /** @type {HLJSPlugin[]} */
+  const plugins = [];
+
+  // safe/production mode - swallows more errors, tries to keep running
+  // even if a single syntax or parse hits a fatal error
+  let SAFE_MODE = true;
+  const fixMarkupRe = /(^(<[^>]+>|\t|)+|\n)/gm;
+  const LANGUAGE_NOT_FOUND = "Could not find the language '{}', did you forget to load/include a language module?";
+  /** @type {Language} */
+  const PLAINTEXT_LANGUAGE = { disableAutodetect: true, name: 'Plain text', contains: [] };
+
+  // Global options used when within external APIs. This is modified when
+  // calling the `hljs.configure` function.
+  /** @type HLJSOptions */
+  let options = {
+    noHighlightRe: /^(no-?highlight)$/i,
+    languageDetectRe: /\blang(?:uage)?-([\w-]+)\b/i,
+    classPrefix: 'hljs-',
+    tabReplace: null,
+    useBR: false,
+    languages: null,
+    // beta configuration options, subject to change, welcome to discuss
+    // https://github.com/highlightjs/highlight.js/issues/1086
+    __emitter: TokenTreeEmitter
+  };
+
+  /* Utility functions */
+
+  /**
+   * Tests a language name to see if highlighting should be skipped
+   * @param {string} languageName
+   */
+  function shouldNotHighlight(languageName) {
+    return options.noHighlightRe.test(languageName);
+  }
+
+  /**
+   * @param {HighlightedHTMLElement} block - the HTML element to determine language for
+   */
+  function blockLanguage(block) {
+    let classes = block.className + ' ';
+
+    classes += block.parentNode ? block.parentNode.className : '';
+
+    // language-* takes precedence over non-prefixed class names.
+    const match = options.languageDetectRe.exec(classes);
+    if (match) {
+      const language = getLanguage(match[1]);
+      if (!language) {
+        warn(LANGUAGE_NOT_FOUND.replace("{}", match[1]));
+        warn("Falling back to no-highlight mode for this block.", block);
+      }
+      return language ? match[1] : 'no-highlight';
+    }
+
+    return classes
+      .split(/\s+/)
+      .find((_class) => shouldNotHighlight(_class) || getLanguage(_class));
+  }
+
+  /**
+   * Core highlighting function.
+   *
+   * @param {string} languageName - the language to use for highlighting
+   * @param {string} code - the code to highlight
+   * @param {boolean} [ignoreIllegals] - whether to ignore illegal matches, default is to bail
+   * @param {CompiledMode} [continuation] - current continuation mode, if any
+   *
+   * @returns {HighlightResult} Result - an object that represents the result
+   * @property {string} language - the language name
+   * @property {number} relevance - the relevance score
+   * @property {string} value - the highlighted HTML code
+   * @property {string} code - the original raw code
+   * @property {CompiledMode} top - top of the current mode stack
+   * @property {boolean} illegal - indicates whether any illegal matches were found
+  */
+  function highlight(languageName, code, ignoreIllegals, continuation) {
+    /** @type {BeforeHighlightContext} */
+    const context = {
+      code,
+      language: languageName
+    };
+    // the plugin can change the desired language or the code to be highlighted
+    // just be changing the object it was passed
+    fire("before:highlight", context);
+
+    // a before plugin can usurp the result completely by providing it's own
+    // in which case we don't even need to call highlight
+    const result = context.result ?
+      context.result :
+      _highlight(context.language, context.code, ignoreIllegals, continuation);
+
+    result.code = context.code;
+    // the plugin can change anything in result to suite it
+    fire("after:highlight", result);
+
+    return result;
+  }
+
+  /**
+   * private highlight that's used internally and does not fire callbacks
+   *
+   * @param {string} languageName - the language to use for highlighting
+   * @param {string} code - the code to highlight
+   * @param {boolean} [ignoreIllegals] - whether to ignore illegal matches, default is to bail
+   * @param {CompiledMode} [continuation] - current continuation mode, if any
+   * @returns {HighlightResult} - result of the highlight operation
+  */
+  function _highlight(languageName, code, ignoreIllegals, continuation) {
+    const codeToHighlight = code;
+
+    /**
+     * Return keyword data if a match is a keyword
+     * @param {CompiledMode} mode - current mode
+     * @param {RegExpMatchArray} match - regexp match data
+     * @returns {KeywordData | false}
+     */
+    function keywordData(mode, match) {
+      const matchText = language.case_insensitive ? match[0].toLowerCase() : match[0];
+      return Object.prototype.hasOwnProperty.call(mode.keywords, matchText) && mode.keywords[matchText];
+    }
+
+    function processKeywords() {
+      if (!top.keywords) {
+        emitter.addText(modeBuffer);
+        return;
+      }
+
+      let lastIndex = 0;
+      top.keywordPatternRe.lastIndex = 0;
+      let match = top.keywordPatternRe.exec(modeBuffer);
+      let buf = "";
+
+      while (match) {
+        buf += modeBuffer.substring(lastIndex, match.index);
+        const data = keywordData(top, match);
+        if (data) {
+          const [kind, keywordRelevance] = data;
+          emitter.addText(buf);
+          buf = "";
+
+          relevance += keywordRelevance;
+          const cssClass = language.classNameAliases[kind] || kind;
+          emitter.addKeyword(match[0], cssClass);
+        } else {
+          buf += match[0];
+        }
+        lastIndex = top.keywordPatternRe.lastIndex;
+        match = top.keywordPatternRe.exec(modeBuffer);
+      }
+      buf += modeBuffer.substr(lastIndex);
+      emitter.addText(buf);
+    }
+
+    function processSubLanguage() {
+      if (modeBuffer === "") return;
+      /** @type HighlightResult */
+      let result = null;
+
+      if (typeof top.subLanguage === 'string') {
+        if (!languages[top.subLanguage]) {
+          emitter.addText(modeBuffer);
+          return;
+        }
+        result = _highlight(top.subLanguage, modeBuffer, true, continuations[top.subLanguage]);
+        continuations[top.subLanguage] = /** @type {CompiledMode} */ (result.top);
+      } else {
+        result = highlightAuto(modeBuffer, top.subLanguage.length ? top.subLanguage : null);
+      }
+
+      // Counting embedded language score towards the host language may be disabled
+      // with zeroing the containing mode relevance. Use case in point is Markdown that
+      // allows XML everywhere and makes every XML snippet to have a much larger Markdown
+      // score.
+      if (top.relevance > 0) {
+        relevance += result.relevance;
+      }
+      emitter.addSublanguage(result.emitter, result.language);
+    }
+
+    function processBuffer() {
+      if (top.subLanguage != null) {
+        processSubLanguage();
+      } else {
+        processKeywords();
+      }
+      modeBuffer = '';
+    }
+
+    /**
+     * @param {Mode} mode - new mode to start
+     */
+    function startNewMode(mode) {
+      if (mode.className) {
+        emitter.openNode(language.classNameAliases[mode.className] || mode.className);
+      }
+      top = Object.create(mode, { parent: { value: top } });
+      return top;
+    }
+
+    /**
+     * @param {CompiledMode } mode - the mode to potentially end
+     * @param {RegExpMatchArray} match - the latest match
+     * @param {string} matchPlusRemainder - match plus remainder of content
+     * @returns {CompiledMode | void} - the next mode, or if void continue on in current mode
+     */
+    function endOfMode(mode, match, matchPlusRemainder) {
+      let matched = startsWith(mode.endRe, matchPlusRemainder);
+
+      if (matched) {
+        if (mode["on:end"]) {
+          const resp = new Response(mode);
+          mode["on:end"](match, resp);
+          if (resp.ignore) matched = false;
+        }
+
+        if (matched) {
+          while (mode.endsParent && mode.parent) {
+            mode = mode.parent;
+          }
+          return mode;
+        }
+      }
+      // even if on:end fires an `ignore` it's still possible
+      // that we might trigger the end node because of a parent mode
+      if (mode.endsWithParent) {
+        return endOfMode(mode.parent, match, matchPlusRemainder);
+      }
+    }
+
+    /**
+     * Handle matching but then ignoring a sequence of text
+     *
+     * @param {string} lexeme - string containing full match text
+     */
+    function doIgnore(lexeme) {
+      if (top.matcher.regexIndex === 0) {
+        // no more regexs to potentially match here, so we move the cursor forward one
+        // space
+        modeBuffer += lexeme[0];
+        return 1;
+      } else {
+        // no need to move the cursor, we still have additional regexes to try and
+        // match at this very spot
+        resumeScanAtSamePosition = true;
+        return 0;
+      }
+    }
+
+    /**
+     * Handle the start of a new potential mode match
+     *
+     * @param {EnhancedMatch} match - the current match
+     * @returns {number} how far to advance the parse cursor
+     */
+    function doBeginMatch(match) {
+      const lexeme = match[0];
+      const newMode = match.rule;
+
+      const resp = new Response(newMode);
+      // first internal before callbacks, then the public ones
+      const beforeCallbacks = [newMode.__beforeBegin, newMode["on:begin"]];
+      for (const cb of beforeCallbacks) {
+        if (!cb) continue;
+        cb(match, resp);
+        if (resp.ignore) return doIgnore(lexeme);
+      }
+
+      if (newMode && newMode.endSameAsBegin) {
+        newMode.endRe = escape(lexeme);
+      }
+
+      if (newMode.skip) {
+        modeBuffer += lexeme;
+      } else {
+        if (newMode.excludeBegin) {
+          modeBuffer += lexeme;
+        }
+        processBuffer();
+        if (!newMode.returnBegin && !newMode.excludeBegin) {
+          modeBuffer = lexeme;
+        }
+      }
+      startNewMode(newMode);
+      // if (mode["after:begin"]) {
+      //   let resp = new Response(mode);
+      //   mode["after:begin"](match, resp);
+      // }
+      return newMode.returnBegin ? 0 : lexeme.length;
+    }
+
+    /**
+     * Handle the potential end of mode
+     *
+     * @param {RegExpMatchArray} match - the current match
+     */
+    function doEndMatch(match) {
+      const lexeme = match[0];
+      const matchPlusRemainder = codeToHighlight.substr(match.index);
+
+      const endMode = endOfMode(top, match, matchPlusRemainder);
+      if (!endMode) { return NO_MATCH; }
+
+      const origin = top;
+      if (origin.skip) {
+        modeBuffer += lexeme;
+      } else {
+        if (!(origin.returnEnd || origin.excludeEnd)) {
+          modeBuffer += lexeme;
+        }
+        processBuffer();
+        if (origin.excludeEnd) {
+          modeBuffer = lexeme;
+        }
+      }
+      do {
+        if (top.className) {
+          emitter.closeNode();
+        }
+        if (!top.skip && !top.subLanguage) {
+          relevance += top.relevance;
+        }
+        top = top.parent;
+      } while (top !== endMode.parent);
+      if (endMode.starts) {
+        if (endMode.endSameAsBegin) {
+          endMode.starts.endRe = endMode.endRe;
+        }
+        startNewMode(endMode.starts);
+      }
+      return origin.returnEnd ? 0 : lexeme.length;
+    }
+
+    function processContinuations() {
+      const list = [];
+      for (let current = top; current !== language; current = current.parent) {
+        if (current.className) {
+          list.unshift(current.className);
+        }
+      }
+      list.forEach(item => emitter.openNode(item));
+    }
+
+    /** @type {{type?: MatchType, index?: number, rule?: Mode}}} */
+    let lastMatch = {};
+
+    /**
+     *  Process an individual match
+     *
+     * @param {string} textBeforeMatch - text preceeding the match (since the last match)
+     * @param {EnhancedMatch} [match] - the match itself
+     */
+    function processLexeme(textBeforeMatch, match) {
+      const lexeme = match && match[0];
+
+      // add non-matched text to the current mode buffer
+      modeBuffer += textBeforeMatch;
+
+      if (lexeme == null) {
+        processBuffer();
+        return 0;
+      }
+
+      // we've found a 0 width match and we're stuck, so we need to advance
+      // this happens when we have badly behaved rules that have optional matchers to the degree that
+      // sometimes they can end up matching nothing at all
+      // Ref: https://github.com/highlightjs/highlight.js/issues/2140
+      if (lastMatch.type === "begin" && match.type === "end" && lastMatch.index === match.index && lexeme === "") {
+        // spit the "skipped" character that our regex choked on back into the output sequence
+        modeBuffer += codeToHighlight.slice(match.index, match.index + 1);
+        if (!SAFE_MODE) {
+          /** @type {AnnotatedError} */
+          const err = new Error('0 width match regex');
+          err.languageName = languageName;
+          err.badRule = lastMatch.rule;
+          throw err;
+        }
+        return 1;
+      }
+      lastMatch = match;
+
+      if (match.type === "begin") {
+        return doBeginMatch(match);
+      } else if (match.type === "illegal" && !ignoreIllegals) {
+        // illegal match, we do not continue processing
+        /** @type {AnnotatedError} */
+        const err = new Error('Illegal lexeme "' + lexeme + '" for mode "' + (top.className || '<unnamed>') + '"');
+        err.mode = top;
+        throw err;
+      } else if (match.type === "end") {
+        const processed = doEndMatch(match);
+        if (processed !== NO_MATCH) {
+          return processed;
+        }
+      }
+
+      // edge case for when illegal matches $ (end of line) which is technically
+      // a 0 width match but not a begin/end match so it's not caught by the
+      // first handler (when ignoreIllegals is true)
+      if (match.type === "illegal" && lexeme === "") {
+        // advance so we aren't stuck in an infinite loop
+        return 1;
+      }
+
+      // infinite loops are BAD, this is a last ditch catch all. if we have a
+      // decent number of iterations yet our index (cursor position in our
+      // parsing) still 3x behind our index then something is very wrong
+      // so we bail
+      if (iterations > 100000 && iterations > match.index * 3) {
+        const err = new Error('potential infinite loop, way more iterations than matches');
+        throw err;
+      }
+
+      /*
+      Why might be find ourselves here?  Only one occasion now.  An end match that was
+      triggered but could not be completed.  When might this happen?  When an `endSameasBegin`
+      rule sets the end rule to a specific match.  Since the overall mode termination rule that's
+      being used to scan the text isn't recompiled that means that any match that LOOKS like
+      the end (but is not, because it is not an exact match to the beginning) will
+      end up here.  A definite end match, but when `doEndMatch` tries to "reapply"
+      the end rule and fails to match, we wind up here, and just silently ignore the end.
+
+      This causes no real harm other than stopping a few times too many.
+      */
+
+      modeBuffer += lexeme;
+      return lexeme.length;
+    }
+
+    const language = getLanguage(languageName);
+    if (!language) {
+      error(LANGUAGE_NOT_FOUND.replace("{}", languageName));
+      throw new Error('Unknown language: "' + languageName + '"');
+    }
+
+    const md = compileLanguage(language, { plugins });
+    let result = '';
+    /** @type {CompiledMode} */
+    let top = continuation || md;
+    /** @type Record<string,CompiledMode> */
+    const continuations = {}; // keep continuations for sub-languages
+    const emitter = new options.__emitter(options);
+    processContinuations();
+    let modeBuffer = '';
+    let relevance = 0;
+    let index = 0;
+    let iterations = 0;
+    let resumeScanAtSamePosition = false;
+
+    try {
+      top.matcher.considerAll();
+
+      for (;;) {
+        iterations++;
+        if (resumeScanAtSamePosition) {
+          // only regexes not matched previously will now be
+          // considered for a potential match
+          resumeScanAtSamePosition = false;
+        } else {
+          top.matcher.considerAll();
+        }
+        top.matcher.lastIndex = index;
+
+        const match = top.matcher.exec(codeToHighlight);
+        // console.log("match", match[0], match.rule && match.rule.begin)
+
+        if (!match) break;
+
+        const beforeMatch = codeToHighlight.substring(index, match.index);
+        const processedCount = processLexeme(beforeMatch, match);
+        index = match.index + processedCount;
+      }
+      processLexeme(codeToHighlight.substr(index));
+      emitter.closeAllNodes();
+      emitter.finalize();
+      result = emitter.toHTML();
+
+      return {
+        relevance: relevance,
+        value: result,
+        language: languageName,
+        illegal: false,
+        emitter: emitter,
+        top: top
+      };
+    } catch (err) {
+      if (err.message && err.message.includes('Illegal')) {
+        return {
+          illegal: true,
+          illegalBy: {
+            msg: err.message,
+            context: codeToHighlight.slice(index - 100, index + 100),
+            mode: err.mode
+          },
+          sofar: result,
+          relevance: 0,
+          value: escape$1(codeToHighlight),
+          emitter: emitter
+        };
+      } else if (SAFE_MODE) {
+        return {
+          illegal: false,
+          relevance: 0,
+          value: escape$1(codeToHighlight),
+          emitter: emitter,
+          language: languageName,
+          top: top,
+          errorRaised: err
+        };
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  /**
+   * returns a valid highlight result, without actually doing any actual work,
+   * auto highlight starts with this and it's possible for small snippets that
+   * auto-detection may not find a better match
+   * @param {string} code
+   * @returns {HighlightResult}
+   */
+  function justTextHighlightResult(code) {
+    const result = {
+      relevance: 0,
+      emitter: new options.__emitter(options),
+      value: escape$1(code),
+      illegal: false,
+      top: PLAINTEXT_LANGUAGE
+    };
+    result.emitter.addText(code);
+    return result;
+  }
+
+  /**
+  Highlighting with language detection. Accepts a string with the code to
+  highlight. Returns an object with the following properties:
+
+  - language (detected language)
+  - relevance (int)
+  - value (an HTML string with highlighting markup)
+  - second_best (object with the same structure for second-best heuristically
+    detected language, may be absent)
+
+    @param {string} code
+    @param {Array<string>} [languageSubset]
+    @returns {AutoHighlightResult}
+  */
+  function highlightAuto(code, languageSubset) {
+    languageSubset = languageSubset || options.languages || Object.keys(languages);
+    const plaintext = justTextHighlightResult(code);
+
+    const results = languageSubset.filter(getLanguage).filter(autoDetection).map(name =>
+      _highlight(name, code, false)
+    );
+    results.unshift(plaintext); // plaintext is always an option
+
+    const sorted = results.sort((a, b) => {
+      // sort base on relevance
+      if (a.relevance !== b.relevance) return b.relevance - a.relevance;
+
+      // always award the tie to the base language
+      // ie if C++ and Arduino are tied, it's more likely to be C++
+      if (a.language && b.language) {
+        if (getLanguage(a.language).supersetOf === b.language) {
+          return 1;
+        } else if (getLanguage(b.language).supersetOf === a.language) {
+          return -1;
+        }
+      }
+
+      // otherwise say they are equal, which has the effect of sorting on
+      // relevance while preserving the original ordering - which is how ties
+      // have historically been settled, ie the language that comes first always
+      // wins in the case of a tie
+      return 0;
+    });
+
+    const [best, secondBest] = sorted;
+
+    /** @type {AutoHighlightResult} */
+    const result = best;
+    result.second_best = secondBest;
+
+    return result;
+  }
+
+  /**
+  Post-processing of the highlighted markup:
+
+  - replace TABs with something more useful
+  - replace real line-breaks with '<br>' for non-pre containers
+
+    @param {string} html
+    @returns {string}
+  */
+  function fixMarkup(html) {
+    if (!(options.tabReplace || options.useBR)) {
+      return html;
+    }
+
+    return html.replace(fixMarkupRe, match => {
+      if (match === '\n') {
+        return options.useBR ? '<br>' : match;
+      } else if (options.tabReplace) {
+        return match.replace(/\t/g, options.tabReplace);
+      }
+      return match;
+    });
+  }
+
+  /**
+   * Builds new class name for block given the language name
+   *
+   * @param {HTMLElement} element
+   * @param {string} [currentLang]
+   * @param {string} [resultLang]
+   */
+  function updateClassName(element, currentLang, resultLang) {
+    const language = currentLang ? aliases[currentLang] : resultLang;
+
+    element.classList.add("hljs");
+    if (language) element.classList.add(language);
+  }
+
+  /** @type {HLJSPlugin} */
+  const brPlugin = {
+    "before:highlightBlock": ({ block }) => {
+      if (options.useBR) {
+        block.innerHTML = block.innerHTML.replace(/\n/g, '').replace(/<br[ /]*>/g, '\n');
+      }
+    },
+    "after:highlightBlock": ({ result }) => {
+      if (options.useBR) {
+        result.value = result.value.replace(/\n/g, "<br>");
+      }
+    }
+  };
+
+  const TAB_REPLACE_RE = /^(<[^>]+>|\t)+/gm;
+  /** @type {HLJSPlugin} */
+  const tabReplacePlugin = {
+    "after:highlightBlock": ({ result }) => {
+      if (options.tabReplace) {
+        result.value = result.value.replace(TAB_REPLACE_RE, (m) =>
+          m.replace(/\t/g, options.tabReplace)
+        );
+      }
+    }
+  };
+
+  /**
+   * Applies highlighting to a DOM node containing code. Accepts a DOM node and
+   * two optional parameters for fixMarkup.
+   *
+   * @param {HighlightedHTMLElement} element - the HTML element to highlight
+  */
+  function highlightBlock(element) {
+    /** @type HTMLElement */
+    let node = null;
+    const language = blockLanguage(element);
+
+    if (shouldNotHighlight(language)) return;
+
+    fire("before:highlightBlock",
+      { block: element, language: language });
+
+    node = element;
+    const text = node.textContent;
+    const result = language ? highlight(language, text, true) : highlightAuto(text);
+
+    fire("after:highlightBlock", { block: element, result, text });
+
+    element.innerHTML = result.value;
+    updateClassName(element, language, result.language);
+    element.result = {
+      language: result.language,
+      // TODO: remove with version 11.0
+      re: result.relevance,
+      relavance: result.relevance
+    };
+    if (result.second_best) {
+      element.second_best = {
+        language: result.second_best.language,
+        // TODO: remove with version 11.0
+        re: result.second_best.relevance,
+        relavance: result.second_best.relevance
+      };
+    }
+  }
+
+  /**
+   * Updates highlight.js global options with the passed options
+   *
+   * @param {Partial<HLJSOptions>} userOptions
+   */
+  function configure(userOptions) {
+    if (userOptions.useBR) {
+      deprecated("10.3.0", "'useBR' will be removed entirely in v11.0");
+      deprecated("10.3.0", "Please see https://github.com/highlightjs/highlight.js/issues/2559");
+    }
+    options = inherit$1(options, userOptions);
+  }
+
+  /**
+   * Highlights to all <pre><code> blocks on a page
+   *
+   * @type {Function & {called?: boolean}}
+   */
+  const initHighlighting = () => {
+    if (initHighlighting.called) return;
+    initHighlighting.called = true;
+
+    const blocks = document.querySelectorAll('pre code');
+    blocks.forEach(highlightBlock);
+  };
+
+  // Higlights all when DOMContentLoaded fires
+  function initHighlightingOnLoad() {
+    // @ts-ignore
+    window.addEventListener('DOMContentLoaded', initHighlighting, false);
+  }
+
+  /**
+   * Register a language grammar module
+   *
+   * @param {string} languageName
+   * @param {LanguageFn} languageDefinition
+   */
+  function registerLanguage(languageName, languageDefinition) {
+    let lang = null;
+    try {
+      lang = languageDefinition(hljs);
+    } catch (error$1) {
+      error("Language definition for '{}' could not be registered.".replace("{}", languageName));
+      // hard or soft error
+      if (!SAFE_MODE) { throw error$1; } else { error(error$1); }
+      // languages that have serious errors are replaced with essentially a
+      // "plaintext" stand-in so that the code blocks will still get normal
+      // css classes applied to them - and one bad language won't break the
+      // entire highlighter
+      lang = PLAINTEXT_LANGUAGE;
+    }
+    // give it a temporary name if it doesn't have one in the meta-data
+    if (!lang.name) lang.name = languageName;
+    languages[languageName] = lang;
+    lang.rawDefinition = languageDefinition.bind(null, hljs);
+
+    if (lang.aliases) {
+      registerAliases(lang.aliases, { languageName });
+    }
+  }
+
+  /**
+   * @returns {string[]} List of language internal names
+   */
+  function listLanguages() {
+    return Object.keys(languages);
+  }
+
+  /**
+    intended usage: When one language truly requires another
+
+    Unlike `getLanguage`, this will throw when the requested language
+    is not available.
+
+    @param {string} name - name of the language to fetch/require
+    @returns {Language | never}
+  */
+  function requireLanguage(name) {
+    deprecated("10.4.0", "requireLanguage will be removed entirely in v11.");
+    deprecated("10.4.0", "Please see https://github.com/highlightjs/highlight.js/pull/2844");
+
+    const lang = getLanguage(name);
+    if (lang) { return lang; }
+
+    const err = new Error('The \'{}\' language is required, but not loaded.'.replace('{}', name));
+    throw err;
+  }
+
+  /**
+   * @param {string} name - name of the language to retrieve
+   * @returns {Language | undefined}
+   */
+  function getLanguage(name) {
+    name = (name || '').toLowerCase();
+    return languages[name] || languages[aliases[name]];
+  }
+
+  /**
+   *
+   * @param {string|string[]} aliasList - single alias or list of aliases
+   * @param {{languageName: string}} opts
+   */
+  function registerAliases(aliasList, { languageName }) {
+    if (typeof aliasList === 'string') {
+      aliasList = [aliasList];
+    }
+    aliasList.forEach(alias => { aliases[alias] = languageName; });
+  }
+
+  /**
+   * Determines if a given language has auto-detection enabled
+   * @param {string} name - name of the language
+   */
+  function autoDetection(name) {
+    const lang = getLanguage(name);
+    return lang && !lang.disableAutodetect;
+  }
+
+  /**
+   * @param {HLJSPlugin} plugin
+   */
+  function addPlugin(plugin) {
+    plugins.push(plugin);
+  }
+
+  /**
+   *
+   * @param {PluginEvent} event
+   * @param {any} args
+   */
+  function fire(event, args) {
+    const cb = event;
+    plugins.forEach(function(plugin) {
+      if (plugin[cb]) {
+        plugin[cb](args);
+      }
+    });
+  }
+
+  /**
+  Note: fixMarkup is deprecated and will be removed entirely in v11
+
+  @param {string} arg
+  @returns {string}
+  */
+  function deprecateFixMarkup(arg) {
+    deprecated("10.2.0", "fixMarkup will be removed entirely in v11.0");
+    deprecated("10.2.0", "Please see https://github.com/highlightjs/highlight.js/issues/2534");
+
+    return fixMarkup(arg);
+  }
+
+  /* Interface definition */
+  Object.assign(hljs, {
+    highlight,
+    highlightAuto,
+    fixMarkup: deprecateFixMarkup,
+    highlightBlock,
+    configure,
+    initHighlighting,
+    initHighlightingOnLoad,
+    registerLanguage,
+    listLanguages,
+    getLanguage,
+    registerAliases,
+    requireLanguage,
+    autoDetection,
+    inherit: inherit$1,
+    addPlugin,
+    // plugins for frameworks
+    vuePlugin: BuildVuePlugin(hljs).VuePlugin
+  });
+
+  hljs.debugMode = function() { SAFE_MODE = false; };
+  hljs.safeMode = function() { SAFE_MODE = true; };
+  hljs.versionString = version;
+
+  for (const key in MODES) {
+    // @ts-ignore
+    if (typeof MODES[key] === "object") {
+      // @ts-ignore
+      deepFreezeEs6(MODES[key]);
+    }
+  }
+
+  // merge all the modes/regexs into our main object
+  Object.assign(hljs, MODES);
+
+  // built-in plugins, likely to be moved out of core in the future
+  hljs.addPlugin(brPlugin); // slated to be removed in v11
+  hljs.addPlugin(mergeHTMLPlugin);
+  hljs.addPlugin(tabReplacePlugin);
+  return hljs;
+};
+
+// export an "instance" of the highlighter
+var highlight = HLJS({});
+
+module.exports = highlight;
+
+
+/***/ }),
+
 /***/ "10e8":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3795,7 +6227,7 @@ fixRegExpWellKnownSymbolLogic('split', 2, function (SPLIT, nativeSplit, maybeCal
 
   return [
     // `String.prototype.split` method
-    // https://tc39.github.io/ecma262/#sec-string.prototype.split
+    // https://tc39.es/ecma262/#sec-string.prototype.split
     function split(separator, limit) {
       var O = requireObjectCoercible(this);
       var splitter = separator == undefined ? undefined : separator[SPLIT];
@@ -3804,7 +6236,7 @@ fixRegExpWellKnownSymbolLogic('split', 2, function (SPLIT, nativeSplit, maybeCal
         : internalSplit.call(String(O), separator, limit);
     },
     // `RegExp.prototype[@@split]` method
-    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@split
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@split
     //
     // NOTE: This cannot be properly polyfilled in engines that don't support
     // the 'y' flag.
@@ -3885,7 +6317,7 @@ module.exports = isKeyable;
 /***/ (function(module, exports) {
 
 // `SameValue` abstract operation
-// https://tc39.github.io/ecma262/#sec-samevalue
+// https://tc39.es/ecma262/#sec-samevalue
 module.exports = Object.is || function is(x, y) {
   // eslint-disable-next-line no-self-compare
   return x === y ? x !== 0 || 1 / x === 1 / y : x != x && y != y;
@@ -3976,7 +6408,7 @@ var USES_TO_LENGTH = arrayMethodUsesToLength('reduce', { 1: 0 });
 var CHROME_BUG = !IS_NODE && CHROME_VERSION > 79 && CHROME_VERSION < 83;
 
 // `Array.prototype.reduce` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.reduce
+// https://tc39.es/ecma262/#sec-array.prototype.reduce
 $({ target: 'Array', proto: true, forced: !STRICT_METHOD || !USES_TO_LENGTH || CHROME_BUG }, {
   reduce: function reduce(callbackfn /* , initialValue */) {
     return $reduce(this, callbackfn, arguments.length, arguments.length > 1 ? arguments[1] : undefined);
@@ -4125,7 +6557,7 @@ var classof = __webpack_require__("c6b6");
 var regexpExec = __webpack_require__("9263");
 
 // `RegExpExec` abstract operation
-// https://tc39.github.io/ecma262/#sec-regexpexec
+// https://tc39.es/ecma262/#sec-regexpexec
 module.exports = function (R, S) {
   var exec = R.exec;
   if (typeof exec === 'function') {
@@ -4281,7 +6713,7 @@ var STRICT_METHOD = arrayMethodIsStrict('forEach');
 var USES_TO_LENGTH = arrayMethodUsesToLength('forEach');
 
 // `Array.prototype.forEach` method implementation
-// https://tc39.github.io/ecma262/#sec-array.prototype.foreach
+// https://tc39.es/ecma262/#sec-array.prototype.foreach
 module.exports = (!STRICT_METHOD || !USES_TO_LENGTH) ? function forEach(callbackfn /* , thisArg */) {
   return $forEach(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
 } : [].forEach;
@@ -4811,7 +7243,7 @@ module.exports = Promise;
 /***/ (function(module, exports) {
 
 // `RequireObjectCoercible` abstract operation
-// https://tc39.github.io/ecma262/#sec-requireobjectcoercible
+// https://tc39.es/ecma262/#sec-requireobjectcoercible
 module.exports = function (it) {
   if (it == undefined) throw TypeError("Can't call method on " + it);
   return it;
@@ -5452,7 +7884,7 @@ var enumBugKeys = __webpack_require__("7839");
 var hiddenKeys = enumBugKeys.concat('length', 'prototype');
 
 // `Object.getOwnPropertyNames` method
-// https://tc39.github.io/ecma262/#sec-object.getownpropertynames
+// https://tc39.es/ecma262/#sec-object.getownpropertynames
 exports.f = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
   return internalObjectKeys(O, hiddenKeys);
 };
@@ -5957,7 +8389,7 @@ var requireObjectCoercible = __webpack_require__("1d80");
 var correctIsRegExpLogic = __webpack_require__("ab13");
 
 // `String.prototype.includes` method
-// https://tc39.github.io/ecma262/#sec-string.prototype.includes
+// https://tc39.es/ecma262/#sec-string.prototype.includes
 $({ target: 'String', proto: true, forced: !correctIsRegExpLogic('includes') }, {
   includes: function includes(searchString /* , position = 0 */) {
     return !!~String(requireObjectCoercible(this))
@@ -6177,7 +8609,7 @@ var NOT_GENERIC = fails(function () { return nativeToString.call({ source: 'a', 
 var INCORRECT_NAME = nativeToString.name != TO_STRING;
 
 // `RegExp.prototype.toString` method
-// https://tc39.github.io/ecma262/#sec-regexp.prototype.tostring
+// https://tc39.es/ecma262/#sec-regexp.prototype.tostring
 if (NOT_GENERIC || INCORRECT_NAME) {
   redefine(RegExp.prototype, TO_STRING, function toString() {
     var R = anObject(this);
@@ -6777,7 +9209,7 @@ var MDN_POLYFILL_BUG = !IS_PURE && !CORRECT_IS_REGEXP_LOGIC && !!function () {
 }();
 
 // `String.prototype.startsWith` method
-// https://tc39.github.io/ecma262/#sec-string.prototype.startswith
+// https://tc39.es/ecma262/#sec-string.prototype.startswith
 $({ target: 'String', proto: true, forced: !MDN_POLYFILL_BUG && !CORRECT_IS_REGEXP_LOGIC }, {
   startsWith: function startsWith(searchString /* , position = 0 */) {
     var that = String(requireObjectCoercible(this));
@@ -7810,7 +10242,7 @@ Slice.fromJSON = function fromJSON (schema, json) {
   var openStart = json.openStart || 0, openEnd = json.openEnd || 0;
   if (typeof openStart != "number" || typeof openEnd != "number")
     { throw new RangeError("Invalid input for Slice.fromJSON") }
-  return new Slice(Fragment.fromJSON(schema, json.content), json.openStart || 0, json.openEnd || 0)
+  return new Slice(Fragment.fromJSON(schema, json.content), openStart, openEnd)
 };
 
 // :: (Fragment, ?bool) → Slice
@@ -8087,6 +10519,16 @@ prototypeAccessors$2.nodeBefore.get = function () {
   var dOff = this.pos - this.path[this.path.length - 1];
   if (dOff) { return this.parent.child(index).cut(0, dOff) }
   return index == 0 ? null : this.parent.child(index - 1)
+};
+
+// :: (number, ?number) → number
+// Get the position at the given index in the parent node at the
+// given depth (which defaults to `this.depth`).
+ResolvedPos.prototype.posAtIndex = function posAtIndex (index, depth) {
+  depth = this.resolveDepth(depth);
+  var node = this.path[depth * 3], pos = depth == 0 ? 0 : this.path[depth * 3 - 1] + 1;
+  for (var i = 0; i < index; i++) { pos += node.child(i).nodeSize; }
+  return pos
 };
 
 // :: () → [Mark]
@@ -8484,8 +10926,8 @@ Node.prototype.resolve = function resolve (pos) { return ResolvedPos.resolveCach
 
 Node.prototype.resolveNoCache = function resolveNoCache (pos) { return ResolvedPos.resolve(this, pos) };
 
-// :: (number, number, MarkType) → bool
-// Test whether a mark of the given type occurs in this document
+// :: (number, number, union<Mark, MarkType>) → bool
+// Test whether a given mark or mark type occurs in this document
 // between the two given positions.
 Node.prototype.rangeHasMark = function rangeHasMark (from, to, type) {
   var found = false;
@@ -8868,7 +11310,7 @@ var TokenStream = function TokenStream(string, nodeTypes) {
   this.pos = 0;
   this.tokens = string.split(/\s*(?=\b|\W|$)/);
   if (this.tokens[this.tokens.length - 1] == "") { this.tokens.pop(); }
-  if (this.tokens[0] == "") { this.tokens.unshift(); }
+  if (this.tokens[0] == "") { this.tokens.shift(); }
 };
 
 var prototypeAccessors$1$2 = { next: { configurable: true } };
@@ -9093,7 +11535,7 @@ function checkForDeadEnds(match, stream) {
       if (dead && !(node.isText || node.hasRequiredAttrs())) { dead = false; }
       if (work.indexOf(next) == -1) { work.push(next); }
     }
-    if (dead) { stream.err("Only non-generatable nodes (" + nodes.join(", ") + ") in a required position"); }
+    if (dead) { stream.err("Only non-generatable nodes (" + nodes.join(", ") + ") in a required position (see https://prosemirror.net/docs/guide/#generatable)"); }
   }
 }
 
@@ -9731,7 +12173,7 @@ function gatherMarks(schema, marks) {
 //   A CSS property name to match. When given, this rule matches
 //   inline styles that list that property. May also have the form
 //   `"property=value"`, in which case the rule only matches if the
-//   propery's value exactly matches the given value. (For more
+//   property's value exactly matches the given value. (For more
 //   complicated filters, use [`getAttrs`](#model.ParseRule.getAttrs)
 //   and return false to indicate that the match failed.)
 //
@@ -9741,6 +12183,12 @@ function gatherMarks(schema, marks) {
 //   without a priority are counted as having priority 50. This
 //   property is only meaningful in a schema—when directly
 //   constructing a parser, the order of the rule array is used.
+//
+//   consuming:: ?boolean
+//   By default, when a rule matches an element or style, no further
+//   rules get a chance to match it. By setting this to `false`, you
+//   indicate that even when this rule matches, other rules that come
+//   after it should also run.
 //
 //   context:: ?string
 //   When given, restricts this rule to only match when the current
@@ -9768,6 +12216,10 @@ function gatherMarks(schema, marks) {
 //
 //   ignore:: ?bool
 //   When true, ignore content that matches this rule.
+//
+//   closeParent:: ?bool
+//   When true, finding an element that matches this rule will close
+//   the current node.
 //
 //   skip:: ?bool
 //   When true, ignore the node that matches this rule, but do parse
@@ -9827,6 +12279,13 @@ var DOMParser = function DOMParser(schema, rules) {
     if (rule.tag) { this$1.tags.push(rule); }
     else if (rule.style) { this$1.styles.push(rule); }
   });
+
+  // Only normalize list elements when lists in the schema can't directly contain themselves
+  this.normalizeLists = !this.tags.some(function (r) {
+    if (!/^(ul|ol)\b/.test(r.tag) || !r.node) { return false }
+    var node = schema.nodes[r.node];
+    return node.contentMatch.matchType(node)
+  });
 };
 
 // :: (dom.Node, ?ParseOptions) → Node
@@ -9854,8 +12313,8 @@ DOMParser.prototype.parseSlice = function parseSlice (dom, options) {
   return Slice.maxOpen(context.finish())
 };
 
-DOMParser.prototype.matchTag = function matchTag (dom, context) {
-  for (var i = 0; i < this.tags.length; i++) {
+DOMParser.prototype.matchTag = function matchTag (dom, context, after) {
+  for (var i = after ? this.tags.indexOf(after) + 1 : 0; i < this.tags.length; i++) {
     var rule = this.tags[i];
     if (matches(dom, rule.tag) &&
         (rule.namespace === undefined || dom.namespaceURI == rule.namespace) &&
@@ -9870,8 +12329,8 @@ DOMParser.prototype.matchTag = function matchTag (dom, context) {
   }
 };
 
-DOMParser.prototype.matchStyle = function matchStyle (prop, value, context) {
-  for (var i = 0; i < this.styles.length; i++) {
+DOMParser.prototype.matchStyle = function matchStyle (prop, value, context, after) {
+  for (var i = after ? this.styles.indexOf(after) + 1 : 0; i < this.styles.length; i++) {
     var rule = this.styles[i];
     if (rule.style.indexOf(prop) != 0 ||
         rule.context && !context.matchesContext(rule.context) ||
@@ -9969,6 +12428,8 @@ var NodeContext = function NodeContext(type, attrs, marks, pendingMarks, solid, 
   this.activeMarks = Mark.none;
   // Marks that can't apply here, but will be used in children if possible
   this.pendingMarks = pendingMarks;
+  // Nested Marks with same type
+  this.stashMarks = [];
 };
 
 NodeContext.prototype.findWrapping = function findWrapping (node) {
@@ -10002,6 +12463,11 @@ NodeContext.prototype.finish = function finish (openEnd) {
   if (!openEnd && this.match)
     { content = content.append(this.match.fillBefore(Fragment.empty, true)); }
   return this.type ? this.type.create(this.attrs, content, this.marks) : content
+};
+
+NodeContext.prototype.popFromStashMark = function popFromStashMark (mark) {
+  for (var i = this.stashMarks.length - 1; i >= 0; i--)
+    { if (mark.eq(this.stashMarks[i])) { return this.stashMarks.splice(i, 1)[0] } }
 };
 
 NodeContext.prototype.applyPending = function applyPending (nextType) {
@@ -10086,17 +12552,19 @@ ParseContext.prototype.addTextNode = function addTextNode (dom) {
   }
 };
 
-// : (dom.Element)
+// : (dom.Element, ?ParseRule)
 // Try to find a handler for the given tag and use that to parse. If
 // none is found, the element's content nodes are added directly.
-ParseContext.prototype.addElement = function addElement (dom) {
-  var name = dom.nodeName.toLowerCase();
-  if (listTags.hasOwnProperty(name)) { normalizeList(dom); }
-  var rule = (this.options.ruleFromNode && this.options.ruleFromNode(dom)) || this.parser.matchTag(dom, this);
+ParseContext.prototype.addElement = function addElement (dom, matchAfter) {
+  var name = dom.nodeName.toLowerCase(), ruleID;
+  if (listTags.hasOwnProperty(name) && this.parser.normalizeLists) { normalizeList(dom); }
+  var rule = (this.options.ruleFromNode && this.options.ruleFromNode(dom)) ||
+      (ruleID = this.parser.matchTag(dom, this, matchAfter));
   if (rule ? rule.ignore : ignoreTags.hasOwnProperty(name)) {
     this.findInside(dom);
-  } else if (!rule || rule.skip) {
-    if (rule && rule.skip.nodeType) { dom = rule.skip; }
+  } else if (!rule || rule.skip || rule.closeParent) {
+    if (rule && rule.closeParent) { this.open = Math.max(0, this.open - 1); }
+    else if (rule && rule.skip.nodeType) { dom = rule.skip; }
     var sync, top = this.top, oldNeedsBlock = this.needsBlock;
     if (blockTags.hasOwnProperty(name)) {
       sync = true;
@@ -10109,7 +12577,7 @@ ParseContext.prototype.addElement = function addElement (dom) {
     if (sync) { this.sync(top); }
     this.needsBlock = oldNeedsBlock;
   } else {
-    this.addElementByRule(dom, rule);
+    this.addElementByRule(dom, rule, rule.consuming === false ? ruleID : null);
   }
 };
 
@@ -10124,11 +12592,15 @@ ParseContext.prototype.leafFallback = function leafFallback (dom) {
 // had a rule with `ignore` set.
 ParseContext.prototype.readStyles = function readStyles (styles) {
   var marks = Mark.none;
-  for (var i = 0; i < styles.length; i += 2) {
-    var rule = this.parser.matchStyle(styles[i], styles[i + 1], this);
-    if (!rule) { continue }
-    if (rule.ignore) { return null }
-    marks = this.parser.schema.marks[rule.mark].create(rule.attrs).addToSet(marks);
+  style: for (var i = 0; i < styles.length; i += 2) {
+    for (var after = null;;) {
+      var rule = this.parser.matchStyle(styles[i], styles[i + 1], this, after);
+      if (!rule) { continue style }
+      if (rule.ignore) { return null }
+      marks = this.parser.schema.marks[rule.mark].create(rule.attrs).addToSet(marks);
+      if (rule.consuming === false) { after = rule; }
+      else { break }
+    }
   }
   return marks
 };
@@ -10137,7 +12609,7 @@ ParseContext.prototype.readStyles = function readStyles (styles) {
 // Look up a handler for the given node. If none are found, return
 // false. Otherwise, apply it, use its return value to drive the way
 // the node's content is wrapped, and return true.
-ParseContext.prototype.addElementByRule = function addElementByRule (dom, rule) {
+ParseContext.prototype.addElementByRule = function addElementByRule (dom, rule, continueAfter) {
     var this$1 = this;
 
   var sync, nodeType, markType, mark;
@@ -10157,6 +12629,8 @@ ParseContext.prototype.addElementByRule = function addElementByRule (dom, rule) 
 
   if (nodeType && nodeType.isLeaf) {
     this.findInside(dom);
+  } else if (continueAfter) {
+    this.addElement(dom, continueAfter);
   } else if (rule.getContent) {
     this.findInside(dom);
     rule.getContent(dom, this.parser.schema).forEach(function (node) { return this$1.insertNode(node); });
@@ -10368,6 +12842,8 @@ ParseContext.prototype.textblockFromContext = function textblockFromContext () {
 };
 
 ParseContext.prototype.addPendingMark = function addPendingMark (mark) {
+  var found = findSameMarkInSet(mark, this.top.pendingMarks);
+  if (found) { this.top.stashMarks.push(found); }
   this.top.pendingMarks = mark.addToSet(this.top.pendingMarks);
 };
 
@@ -10375,8 +12851,13 @@ ParseContext.prototype.removePendingMark = function removePendingMark (mark, upt
   for (var depth = this.open; depth >= 0; depth--) {
     var level = this.nodes[depth];
     var found = level.pendingMarks.lastIndexOf(mark);
-    if (found > -1) { level.pendingMarks = mark.removeFromSet(level.pendingMarks); }
-    else { level.activeMarks = mark.removeFromSet(level.activeMarks); }
+    if (found > -1) {
+      level.pendingMarks = mark.removeFromSet(level.pendingMarks);
+    } else {
+      level.activeMarks = mark.removeFromSet(level.activeMarks);
+      var stashMark = level.popFromStashMark(mark);
+      if (stashMark) { level.activeMarks = stashMark.addToSet(level.activeMarks); }
+    }
     if (level == upto) { break }
   }
 };
@@ -10447,10 +12928,16 @@ function markMayApply(markType, nodeType) {
   }
 }
 
+function findSameMarkInSet(mark, set) {
+  for (var i = 0; i < set.length; i++) {
+    if (mark.eq(set[i])) { return set[i] }
+  }
+}
+
 // DOMOutputSpec:: interface
 // A description of a DOM structure. Can be either a string, which is
 // interpreted as a text node, a DOM node, which is interpreted as
-// itself, or an array.
+// itself, a `{dom: Node, contentDOM: ?Node}` object, or an array.
 //
 // An array describes a DOM element. The first value in the array
 // should be a string—the name of the DOM element, optionally prefixed
@@ -10574,6 +13061,8 @@ DOMSerializer.renderSpec = function renderSpec (doc, structure, xmlNS) {
     { return {dom: doc.createTextNode(structure)} }
   if (structure.nodeType != null)
     { return {dom: structure} }
+  if (structure.dom && structure.dom.nodeType != null)
+    { return structure }
   var tagName = structure[0], space = tagName.indexOf(" ");
   if (space > 0) {
     xmlNS = tagName.slice(0, space);
@@ -10926,7 +13415,7 @@ var anObject = __webpack_require__("825a");
 var objectKeys = __webpack_require__("df75");
 
 // `Object.defineProperties` method
-// https://tc39.github.io/ecma262/#sec-object.defineproperties
+// https://tc39.es/ecma262/#sec-object.defineproperties
 module.exports = DESCRIPTORS ? Object.defineProperties : function defineProperties(O, Properties) {
   anObject(O);
   var keys = objectKeys(Properties);
@@ -11953,7 +14442,7 @@ var setInternalState = InternalStateModule.set;
 var getInternalState = InternalStateModule.getterFor(STRING_ITERATOR);
 
 // `String.prototype[@@iterator]` method
-// https://tc39.github.io/ecma262/#sec-string.prototype-@@iterator
+// https://tc39.es/ecma262/#sec-string.prototype-@@iterator
 defineIterator(String, 'String', function (iterated) {
   setInternalState(this, {
     type: STRING_ITERATOR,
@@ -11961,7 +14450,7 @@ defineIterator(String, 'String', function (iterated) {
     index: 0
   });
 // `%StringIteratorPrototype%.next` method
-// https://tc39.github.io/ecma262/#sec-%stringiteratorprototype%.next
+// https://tc39.es/ecma262/#sec-%stringiteratorprototype%.next
 }, function next() {
   var state = getInternalState(this);
   var string = state.string;
@@ -11982,7 +14471,7 @@ defineIterator(String, 'String', function (iterated) {
 "use strict";
 
 
-var high = __webpack_require__("e2be")
+var high = __webpack_require__("1020")
 var fault = __webpack_require__("073e")
 
 exports.highlight = highlight
@@ -12492,7 +14981,7 @@ var $ = __webpack_require__("23e7");
 var forEach = __webpack_require__("17c2");
 
 // `Array.prototype.forEach` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.foreach
+// https://tc39.es/ecma262/#sec-array.prototype.foreach
 $({ target: 'Array', proto: true, forced: [].forEach != forEach }, {
   forEach: forEach
 });
@@ -12995,7 +15484,7 @@ var UNSCOPABLES = wellKnownSymbol('unscopables');
 var ArrayPrototype = Array.prototype;
 
 // Array.prototype[@@unscopables]
-// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 if (ArrayPrototype[UNSCOPABLES] == undefined) {
   definePropertyModule.f(ArrayPrototype, UNSCOPABLES, {
     configurable: true,
@@ -13036,7 +15525,7 @@ var wellKnownSymbol = __webpack_require__("b622");
 var MATCH = wellKnownSymbol('match');
 
 // `IsRegExp` abstract operation
-// https://tc39.github.io/ecma262/#sec-isregexp
+// https://tc39.es/ecma262/#sec-isregexp
 module.exports = function (it) {
   var isRegExp;
   return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classof(it) == 'RegExp');
@@ -13353,7 +15842,7 @@ var wellKnownSymbol = __webpack_require__("b622");
 var SPECIES = wellKnownSymbol('species');
 
 // `SpeciesConstructor` abstract operation
-// https://tc39.github.io/ecma262/#sec-speciesconstructor
+// https://tc39.es/ecma262/#sec-speciesconstructor
 module.exports = function (O, defaultConstructor) {
   var C = anObject(O).constructor;
   var S;
@@ -13504,7 +15993,7 @@ var $trim = __webpack_require__("58a8").trim;
 var forcedStringTrimMethod = __webpack_require__("c8d2");
 
 // `String.prototype.trim` method
-// https://tc39.github.io/ecma262/#sec-string.prototype.trim
+// https://tc39.es/ecma262/#sec-string.prototype.trim
 $({ target: 'String', proto: true, forced: forcedStringTrimMethod('trim') }, {
   trim: function trim() {
     return $trim(this);
@@ -13852,10 +16341,10 @@ var createMethod = function (IS_INCLUDES) {
 
 module.exports = {
   // `Array.prototype.includes` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.includes
+  // https://tc39.es/ecma262/#sec-array.prototype.includes
   includes: createMethod(true),
   // `Array.prototype.indexOf` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.indexof
+  // https://tc39.es/ecma262/#sec-array.prototype.indexof
   indexOf: createMethod(false)
 };
 
@@ -13877,7 +16366,7 @@ var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('filter');
 var USES_TO_LENGTH = arrayMethodUsesToLength('filter');
 
 // `Array.prototype.filter` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.filter
+// https://tc39.es/ecma262/#sec-array.prototype.filter
 // with adding support of @@species
 $({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT || !USES_TO_LENGTH }, {
   filter: function filter(callbackfn /* , thisArg */) {
@@ -13902,7 +16391,7 @@ var createProperty = __webpack_require__("8418");
 var getIteratorMethod = __webpack_require__("35a1");
 
 // `Array.from` method implementation
-// https://tc39.github.io/ecma262/#sec-array.from
+// https://tc39.es/ecma262/#sec-array.from
 module.exports = function from(arrayLike /* , mapfn = undefined, thisArg = undefined */) {
   var O = toObject(arrayLike);
   var C = typeof this == 'function' ? this : Array;
@@ -14138,7 +16627,7 @@ var toInteger = __webpack_require__("a691");
 var min = Math.min;
 
 // `ToLength` abstract operation
-// https://tc39.github.io/ecma262/#sec-tolength
+// https://tc39.es/ecma262/#sec-tolength
 module.exports = function (argument) {
   return argument > 0 ? min(toInteger(argument), 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
 };
@@ -15657,18 +18146,15 @@ PluginKey.prototype.getState = function getState (state) { return state[this.key
 
 var fixRegExpWellKnownSymbolLogic = __webpack_require__("d784");
 var anObject = __webpack_require__("825a");
-var toObject = __webpack_require__("7b0b");
 var toLength = __webpack_require__("50c4");
 var toInteger = __webpack_require__("a691");
 var requireObjectCoercible = __webpack_require__("1d80");
 var advanceStringIndex = __webpack_require__("8aa5");
+var getSubstitution = __webpack_require__("0cb2");
 var regExpExec = __webpack_require__("14c3");
 
 var max = Math.max;
 var min = Math.min;
-var floor = Math.floor;
-var SUBSTITUTION_SYMBOLS = /\$([$&'`]|\d\d?|<[^>]*>)/g;
-var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&'`]|\d\d?)/g;
 
 var maybeToString = function (it) {
   return it === undefined ? it : String(it);
@@ -15682,7 +18168,7 @@ fixRegExpWellKnownSymbolLogic('replace', 2, function (REPLACE, nativeReplace, ma
 
   return [
     // `String.prototype.replace` method
-    // https://tc39.github.io/ecma262/#sec-string.prototype.replace
+    // https://tc39.es/ecma262/#sec-string.prototype.replace
     function replace(searchValue, replaceValue) {
       var O = requireObjectCoercible(this);
       var replacer = searchValue == undefined ? undefined : searchValue[REPLACE];
@@ -15691,7 +18177,7 @@ fixRegExpWellKnownSymbolLogic('replace', 2, function (REPLACE, nativeReplace, ma
         : nativeReplace.call(String(O), searchValue, replaceValue);
     },
     // `RegExp.prototype[@@replace]` method
-    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@replace
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@replace
     function (regexp, replaceValue) {
       if (
         (!REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE && REPLACE_KEEPS_$0) ||
@@ -15754,40 +18240,6 @@ fixRegExpWellKnownSymbolLogic('replace', 2, function (REPLACE, nativeReplace, ma
       return accumulatedResult + S.slice(nextSourcePosition);
     }
   ];
-
-  // https://tc39.github.io/ecma262/#sec-getsubstitution
-  function getSubstitution(matched, str, position, captures, namedCaptures, replacement) {
-    var tailPos = position + matched.length;
-    var m = captures.length;
-    var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
-    if (namedCaptures !== undefined) {
-      namedCaptures = toObject(namedCaptures);
-      symbols = SUBSTITUTION_SYMBOLS;
-    }
-    return nativeReplace.call(replacement, symbols, function (match, ch) {
-      var capture;
-      switch (ch.charAt(0)) {
-        case '$': return '$';
-        case '&': return matched;
-        case '`': return str.slice(0, position);
-        case "'": return str.slice(tailPos);
-        case '<':
-          capture = namedCaptures[ch.slice(1, -1)];
-          break;
-        default: // \d\d?
-          var n = +ch;
-          if (n === 0) return match;
-          if (n > m) {
-            var f = floor(n / 10);
-            if (f === 0) return match;
-            if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
-            return match;
-          }
-          capture = captures[n - 1];
-      }
-      return capture === undefined ? '' : capture;
-    });
-  }
 });
 
 
@@ -18178,9 +20630,9 @@ var store = __webpack_require__("c6cd");
 (module.exports = function (key, value) {
   return store[key] || (store[key] = value !== undefined ? value : {});
 })('versions', []).push({
-  version: '3.8.1',
+  version: '3.8.3',
   mode: IS_PURE ? 'pure' : 'global',
-  copyright: '© 2020 Denis Pushkarev (zloirock.ru)'
+  copyright: '© 2021 Denis Pushkarev (zloirock.ru)'
 });
 
 
@@ -18210,7 +20662,7 @@ module.exports = getBuiltIn('Reflect', 'ownKeys') || function ownKeys(it) {
 "use strict";
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return Decoration; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return DecorationSet; });
-/* unused harmony export EditorView */
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return EditorView; });
 /* unused harmony export __endComposition */
 /* unused harmony export __parseFromClipboard */
 /* unused harmony export __serializeForClipboard */
@@ -23543,13 +25995,13 @@ var createMethod = function (TYPE) {
 
 module.exports = {
   // `String.prototype.{ trimLeft, trimStart }` methods
-  // https://tc39.github.io/ecma262/#sec-string.prototype.trimstart
+  // https://tc39.es/ecma262/#sec-string.prototype.trimstart
   start: createMethod(1),
   // `String.prototype.{ trimRight, trimEnd }` methods
-  // https://tc39.github.io/ecma262/#sec-string.prototype.trimend
+  // https://tc39.es/ecma262/#sec-string.prototype.trimend
   end: createMethod(2),
   // `String.prototype.trim` method
-  // https://tc39.github.io/ecma262/#sec-string.prototype.trim
+  // https://tc39.es/ecma262/#sec-string.prototype.trim
   trim: createMethod(3)
 };
 
@@ -24831,7 +27283,7 @@ var createMethod = function (CONVERT_TO_STRING) {
 
 module.exports = {
   // `String.prototype.codePointAt` method
-  // https://tc39.github.io/ecma262/#sec-string.prototype.codepointat
+  // https://tc39.es/ecma262/#sec-string.prototype.codepointat
   codeAt: createMethod(false),
   // `String.prototype.at` method
   // https://github.com/mathiasbynens/String.prototype.at
@@ -24935,7 +27387,7 @@ var wellKnownSymbol = __webpack_require__("b622");
 var SPECIES = wellKnownSymbol('species');
 
 // `ArraySpeciesCreate` abstract operation
-// https://tc39.github.io/ecma262/#sec-arrayspeciescreate
+// https://tc39.es/ecma262/#sec-arrayspeciescreate
 module.exports = function (originalArray, length) {
   var C;
   if (isArray(originalArray)) {
@@ -26781,7 +29233,7 @@ module.exports = hashHas;
 var requireObjectCoercible = __webpack_require__("1d80");
 
 // `ToObject` abstract operation
-// https://tc39.github.io/ecma262/#sec-toobject
+// https://tc39.es/ecma262/#sec-toobject
 module.exports = function (argument) {
   return Object(requireObjectCoercible(argument));
 };
@@ -27175,7 +29627,7 @@ var NullProtoObject = function () {
 hiddenKeys[IE_PROTO] = true;
 
 // `Object.create` method
-// https://tc39.github.io/ecma262/#sec-object.create
+// https://tc39.es/ecma262/#sec-object.create
 module.exports = Object.create || function create(O, Properties) {
   var result;
   if (O !== null) {
@@ -27237,14 +29689,14 @@ var USES_TO_LENGTH = arrayMethodUsesToLength(FIND);
 if (FIND in []) Array(1)[FIND](function () { SKIPS_HOLES = false; });
 
 // `Array.prototype.find` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.find
+// https://tc39.es/ecma262/#sec-array.prototype.find
 $({ target: 'Array', proto: true, forced: SKIPS_HOLES || !USES_TO_LENGTH }, {
   find: function find(callbackfn /* , that = undefined */) {
     return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
   }
 });
 
-// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables(FIND);
 
 
@@ -28221,7 +30673,7 @@ module.exports = function (it) {
 
 var fails = __webpack_require__("d039");
 
-// Thank's IE8 for his funny defineProperty
+// Detect IE8's incomplete defineProperty implementation
 module.exports = !fails(function () {
   return Object.defineProperty({}, 1, { get: function () { return 7; } })[1] != 7;
 });
@@ -28262,14 +30714,14 @@ var regExpExec = __webpack_require__("14c3");
 fixRegExpWellKnownSymbolLogic('search', 1, function (SEARCH, nativeSearch, maybeCallNative) {
   return [
     // `String.prototype.search` method
-    // https://tc39.github.io/ecma262/#sec-string.prototype.search
+    // https://tc39.es/ecma262/#sec-string.prototype.search
     function search(regexp) {
       var O = requireObjectCoercible(this);
       var searcher = regexp == undefined ? undefined : regexp[SEARCH];
       return searcher !== undefined ? searcher.call(regexp, O) : new RegExp(regexp)[SEARCH](String(O));
     },
     // `RegExp.prototype[@@search]` method
-    // https://tc39.github.io/ecma262/#sec-regexp.prototype-@@search
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@search
     function (regexp) {
       var res = maybeCallNative(nativeSearch, regexp, this);
       if (res.done) return res.value;
@@ -28893,7 +31345,7 @@ module.exports = store.inspectSource;
 var charAt = __webpack_require__("6547").charAt;
 
 // `AdvanceStringIndex` abstract operation
-// https://tc39.github.io/ecma262/#sec-advancestringindex
+// https://tc39.es/ecma262/#sec-advancestringindex
 module.exports = function (S, index, unicode) {
   return index + (unicode ? charAt(S, index).length : 1);
 };
@@ -34071,7 +36523,7 @@ var isConcatSpreadable = function (O) {
 var FORCED = !IS_CONCAT_SPREADABLE_SUPPORT || !SPECIES_SUPPORT;
 
 // `Array.prototype.concat` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.concat
+// https://tc39.es/ecma262/#sec-array.prototype.concat
 // with adding support of @@isConcatSpreadable and @@species
 $({ target: 'Array', proto: true, forced: FORCED }, {
   concat: function concat(arg) { // eslint-disable-line no-unused-vars
@@ -34236,7 +36688,7 @@ var toPrimitive = __webpack_require__("c04e");
 var nativeDefineProperty = Object.defineProperty;
 
 // `Object.defineProperty` method
-// https://tc39.github.io/ecma262/#sec-object.defineproperty
+// https://tc39.es/ecma262/#sec-object.defineproperty
 exports.f = DESCRIPTORS ? nativeDefineProperty : function defineProperty(O, P, Attributes) {
   anObject(O);
   P = toPrimitive(P, true);
@@ -34727,7 +37179,7 @@ var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF;
 var MAXIMUM_ALLOWED_LENGTH_EXCEEDED = 'Maximum allowed length exceeded';
 
 // `Array.prototype.splice` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.splice
+// https://tc39.es/ecma262/#sec-array.prototype.splice
 // with adding support of @@species
 $({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT || !USES_TO_LENGTH }, {
   splice: function splice(start, deleteCount /* , ...items */) {
@@ -34806,6 +37258,16 @@ var baseSetToString = !defineProperty ? identity : function(func, string) {
 };
 
 module.exports = baseSetToString;
+
+
+/***/ }),
+
+/***/ "a4b4":
+/***/ (function(module, exports, __webpack_require__) {
+
+var userAgent = __webpack_require__("342f");
+
+module.exports = /web0s(?!.*chrome)/i.test(userAgent);
 
 
 /***/ }),
@@ -34975,7 +37437,7 @@ var $getOwnPropertySymbols = function getOwnPropertySymbols(O) {
 };
 
 // `Symbol` constructor
-// https://tc39.github.io/ecma262/#sec-symbol-constructor
+// https://tc39.es/ecma262/#sec-symbol-constructor
 if (!NATIVE_SYMBOL) {
   $Symbol = function Symbol() {
     if (this instanceof $Symbol) throw TypeError('Symbol is not a constructor');
@@ -35032,7 +37494,7 @@ $forEach(objectKeys(WellKnownSymbolsStore), function (name) {
 
 $({ target: SYMBOL, stat: true, forced: !NATIVE_SYMBOL }, {
   // `Symbol.for` method
-  // https://tc39.github.io/ecma262/#sec-symbol.for
+  // https://tc39.es/ecma262/#sec-symbol.for
   'for': function (key) {
     var string = String(key);
     if (has(StringToSymbolRegistry, string)) return StringToSymbolRegistry[string];
@@ -35042,7 +37504,7 @@ $({ target: SYMBOL, stat: true, forced: !NATIVE_SYMBOL }, {
     return symbol;
   },
   // `Symbol.keyFor` method
-  // https://tc39.github.io/ecma262/#sec-symbol.keyfor
+  // https://tc39.es/ecma262/#sec-symbol.keyfor
   keyFor: function keyFor(sym) {
     if (!isSymbol(sym)) throw TypeError(sym + ' is not a symbol');
     if (has(SymbolToStringRegistry, sym)) return SymbolToStringRegistry[sym];
@@ -35053,25 +37515,25 @@ $({ target: SYMBOL, stat: true, forced: !NATIVE_SYMBOL }, {
 
 $({ target: 'Object', stat: true, forced: !NATIVE_SYMBOL, sham: !DESCRIPTORS }, {
   // `Object.create` method
-  // https://tc39.github.io/ecma262/#sec-object.create
+  // https://tc39.es/ecma262/#sec-object.create
   create: $create,
   // `Object.defineProperty` method
-  // https://tc39.github.io/ecma262/#sec-object.defineproperty
+  // https://tc39.es/ecma262/#sec-object.defineproperty
   defineProperty: $defineProperty,
   // `Object.defineProperties` method
-  // https://tc39.github.io/ecma262/#sec-object.defineproperties
+  // https://tc39.es/ecma262/#sec-object.defineproperties
   defineProperties: $defineProperties,
   // `Object.getOwnPropertyDescriptor` method
-  // https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptors
+  // https://tc39.es/ecma262/#sec-object.getownpropertydescriptors
   getOwnPropertyDescriptor: $getOwnPropertyDescriptor
 });
 
 $({ target: 'Object', stat: true, forced: !NATIVE_SYMBOL }, {
   // `Object.getOwnPropertyNames` method
-  // https://tc39.github.io/ecma262/#sec-object.getownpropertynames
+  // https://tc39.es/ecma262/#sec-object.getownpropertynames
   getOwnPropertyNames: $getOwnPropertyNames,
   // `Object.getOwnPropertySymbols` method
-  // https://tc39.github.io/ecma262/#sec-object.getownpropertysymbols
+  // https://tc39.es/ecma262/#sec-object.getownpropertysymbols
   getOwnPropertySymbols: $getOwnPropertySymbols
 });
 
@@ -35084,7 +37546,7 @@ $({ target: 'Object', stat: true, forced: fails(function () { getOwnPropertySymb
 });
 
 // `JSON.stringify` method behavior with symbols
-// https://tc39.github.io/ecma262/#sec-json.stringify
+// https://tc39.es/ecma262/#sec-json.stringify
 if ($stringify) {
   var FORCED_JSON_STRINGIFY = !NATIVE_SYMBOL || fails(function () {
     var symbol = $Symbol();
@@ -35116,12 +37578,12 @@ if ($stringify) {
 }
 
 // `Symbol.prototype[@@toPrimitive]` method
-// https://tc39.github.io/ecma262/#sec-symbol.prototype-@@toprimitive
+// https://tc39.es/ecma262/#sec-symbol.prototype-@@toprimitive
 if (!$Symbol[PROTOTYPE][TO_PRIMITIVE]) {
   createNonEnumerableProperty($Symbol[PROTOTYPE], TO_PRIMITIVE, $Symbol[PROTOTYPE].valueOf);
 }
 // `Symbol.prototype[@@toStringTag]` property
-// https://tc39.github.io/ecma262/#sec-symbol.prototype-@@tostringtag
+// https://tc39.es/ecma262/#sec-symbol.prototype-@@tostringtag
 setToStringTag($Symbol, SYMBOL);
 
 hiddenKeys[HIDDEN] = true;
@@ -35174,7 +37636,7 @@ var STRICT_METHOD = arrayMethodIsStrict('every');
 var USES_TO_LENGTH = arrayMethodUsesToLength('every');
 
 // `Array.prototype.every` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.every
+// https://tc39.es/ecma262/#sec-array.prototype.every
 $({ target: 'Array', proto: true, forced: !STRICT_METHOD || !USES_TO_LENGTH }, {
   every: function every(callbackfn /* , thisArg */) {
     return $every(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
@@ -35196,7 +37658,7 @@ var INCORRECT_ITERATION = !checkCorrectnessOfIteration(function (iterable) {
 });
 
 // `Array.from` method
-// https://tc39.github.io/ecma262/#sec-array.from
+// https://tc39.es/ecma262/#sec-array.from
 $({ target: 'Array', stat: true, forced: INCORRECT_ITERATION }, {
   from: from
 });
@@ -35229,7 +37691,7 @@ var ceil = Math.ceil;
 var floor = Math.floor;
 
 // `ToInteger` abstract operation
-// https://tc39.github.io/ecma262/#sec-tointeger
+// https://tc39.es/ecma262/#sec-tointeger
 module.exports = function (argument) {
   return isNaN(argument = +argument) ? 0 : (argument > 0 ? floor : ceil)(argument);
 };
@@ -35355,7 +37817,7 @@ var NumberPrototype = NativeNumber.prototype;
 var BROKEN_CLASSOF = classof(create(NumberPrototype)) == NUMBER;
 
 // `ToNumber` abstract operation
-// https://tc39.github.io/ecma262/#sec-tonumber
+// https://tc39.es/ecma262/#sec-tonumber
 var toNumber = function (argument) {
   var it = toPrimitive(argument, false);
   var first, third, radix, maxCode, digits, length, index, code;
@@ -35384,7 +37846,7 @@ var toNumber = function (argument) {
 };
 
 // `Number` constructor
-// https://tc39.github.io/ecma262/#sec-number-constructor
+// https://tc39.es/ecma262/#sec-number-constructor
 if (isForced(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'))) {
   var NumberWrapper = function Number(value) {
     var it = arguments.length < 1 ? 0 : value;
@@ -35585,6 +38047,8 @@ module.exports = function (METHOD_NAME) {
 var $ = __webpack_require__("23e7");
 var exec = __webpack_require__("9263");
 
+// `RegExp.prototype.exec` method
+// https://tc39.es/ecma262/#sec-regexp.prototype.exec
 $({ target: 'RegExp', proto: true, forced: /./.exec !== exec }, {
   exec: exec
 });
@@ -35625,7 +38089,7 @@ module.exports = setToArray;
 var anObject = __webpack_require__("825a");
 
 // `RegExp.prototype.flags` getter implementation
-// https://tc39.github.io/ecma262/#sec-get-regexp.prototype.flags
+// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
 module.exports = function () {
   var that = anObject(this);
   var result = '';
@@ -35859,6 +38323,7 @@ module.exports = function (METHOD_NAME, options) {
 
 "use strict";
 
+var fails = __webpack_require__("d039");
 var getPrototypeOf = __webpack_require__("e163");
 var createNonEnumerableProperty = __webpack_require__("9112");
 var has = __webpack_require__("5135");
@@ -35871,7 +38336,7 @@ var BUGGY_SAFARI_ITERATORS = false;
 var returnThis = function () { return this; };
 
 // `%IteratorPrototype%` object
-// https://tc39.github.io/ecma262/#sec-%iteratorprototype%-object
+// https://tc39.es/ecma262/#sec-%iteratorprototype%-object
 var IteratorPrototype, PrototypeOfArrayIteratorPrototype, arrayIterator;
 
 if ([].keys) {
@@ -35884,10 +38349,16 @@ if ([].keys) {
   }
 }
 
-if (IteratorPrototype == undefined) IteratorPrototype = {};
+var NEW_ITERATOR_PROTOTYPE = IteratorPrototype == undefined || fails(function () {
+  var test = {};
+  // FF44- legacy iterators case
+  return IteratorPrototype[ITERATOR].call(test) !== test;
+});
+
+if (NEW_ITERATOR_PROTOTYPE) IteratorPrototype = {};
 
 // 25.1.2.1.1 %IteratorPrototype%[@@iterator]()
-if (!IS_PURE && !has(IteratorPrototype, ITERATOR)) {
+if ((!IS_PURE || NEW_ITERATOR_PROTOTYPE) && !has(IteratorPrototype, ITERATOR)) {
   createNonEnumerableProperty(IteratorPrototype, ITERATOR, returnThis);
 }
 
@@ -35908,7 +38379,7 @@ var TO_STRING_TAG_SUPPORT = __webpack_require__("00ee");
 var classof = __webpack_require__("f5df");
 
 // `Object.prototype.toString` method implementation
-// https://tc39.github.io/ecma262/#sec-object.prototype.tostring
+// https://tc39.es/ecma262/#sec-object.prototype.tostring
 module.exports = TO_STRING_TAG_SUPPORT ? {}.toString : function toString() {
   return '[object ' + classof(this) + ']';
 };
@@ -35949,7 +38420,7 @@ var nameRE = /^\s*function ([^ (]*)/;
 var NAME = 'name';
 
 // Function instances `.name` property
-// https://tc39.github.io/ecma262/#sec-function-instances-name
+// https://tc39.es/ecma262/#sec-function-instances-name
 if (DESCRIPTORS && !(NAME in FunctionPrototype)) {
   defineProperty(FunctionPrototype, NAME, {
     configurable: true,
@@ -36569,6 +39040,7 @@ var global = __webpack_require__("da84");
 var getOwnPropertyDescriptor = __webpack_require__("06cf").f;
 var macrotask = __webpack_require__("2cf4").set;
 var IS_IOS = __webpack_require__("1cdc");
+var IS_WEBOS_WEBKIT = __webpack_require__("a4b4");
 var IS_NODE = __webpack_require__("605d");
 
 var MutationObserver = global.MutationObserver || global.WebKitMutationObserver;
@@ -36601,7 +39073,8 @@ if (!queueMicrotask) {
   };
 
   // browsers with MutationObserver, except iOS - https://github.com/zloirock/core-js/issues/339
-  if (!IS_IOS && !IS_NODE && MutationObserver && document) {
+  // also except WebOS Webkit https://github.com/zloirock/core-js/issues/898
+  if (!IS_IOS && !IS_NODE && !IS_WEBOS_WEBKIT && MutationObserver && document) {
     toggle = true;
     node = document.createTextNode('');
     new MutationObserver(flush).observe(node, { characterData: true });
@@ -36818,7 +39291,7 @@ var fails = __webpack_require__("d039");
 var FAILS_ON_PRIMITIVES = fails(function () { nativeKeys(1); });
 
 // `Object.keys` method
-// https://tc39.github.io/ecma262/#sec-object.keys
+// https://tc39.es/ecma262/#sec-object.keys
 $({ target: 'Object', stat: true, forced: FAILS_ON_PRIMITIVES }, {
   keys: function keys(it) {
     return nativeKeys(toObject(it));
@@ -36879,25 +39352,25 @@ var createMethod = function (TYPE) {
 
 module.exports = {
   // `Array.prototype.forEach` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.foreach
+  // https://tc39.es/ecma262/#sec-array.prototype.foreach
   forEach: createMethod(0),
   // `Array.prototype.map` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.map
+  // https://tc39.es/ecma262/#sec-array.prototype.map
   map: createMethod(1),
   // `Array.prototype.filter` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.filter
+  // https://tc39.es/ecma262/#sec-array.prototype.filter
   filter: createMethod(2),
   // `Array.prototype.some` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.some
+  // https://tc39.es/ecma262/#sec-array.prototype.some
   some: createMethod(3),
   // `Array.prototype.every` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.every
+  // https://tc39.es/ecma262/#sec-array.prototype.every
   every: createMethod(4),
   // `Array.prototype.find` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.find
+  // https://tc39.es/ecma262/#sec-array.prototype.find
   find: createMethod(5),
   // `Array.prototype.findIndex` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.findIndex
+  // https://tc39.es/ecma262/#sec-array.prototype.findIndex
   findIndex: createMethod(6),
   // `Array.prototype.filterOut` method
   // https://github.com/tc39/proposal-array-filtering
@@ -37338,7 +39811,7 @@ module.exports = hashGet;
 var isObject = __webpack_require__("861d");
 
 // `ToPrimitive` abstract operation
-// https://tc39.github.io/ecma262/#sec-toprimitive
+// https://tc39.es/ecma262/#sec-toprimitive
 // instead of the ES6 spec version, we didn't implement @@toPrimitive case
 // and the second argument - flag - preferred type is a string
 module.exports = function (input, PREFERRED_STRING) {
@@ -43260,14 +45733,14 @@ var USES_TO_LENGTH = arrayMethodUsesToLength(FIND_INDEX);
 if (FIND_INDEX in []) Array(1)[FIND_INDEX](function () { SKIPS_HOLES = false; });
 
 // `Array.prototype.findIndex` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.findindex
+// https://tc39.es/ecma262/#sec-array.prototype.findindex
 $({ target: 'Array', proto: true, forced: SKIPS_HOLES || !USES_TO_LENGTH }, {
   findIndex: function findIndex(callbackfn /* , that = undefined */) {
     return $findIndex(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
   }
 });
 
-// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables(FIND_INDEX);
 
 
@@ -43564,7 +46037,7 @@ var STRICT_METHOD = arrayMethodIsStrict('indexOf');
 var USES_TO_LENGTH = arrayMethodUsesToLength('indexOf', { ACCESSORS: true, 1: 0 });
 
 // `Array.prototype.indexOf` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.indexof
+// https://tc39.es/ecma262/#sec-array.prototype.indexof
 $({ target: 'Array', proto: true, forced: NEGATIVE_ZERO || !STRICT_METHOD || !USES_TO_LENGTH }, {
   indexOf: function indexOf(searchElement /* , fromIndex = 0 */) {
     return NEGATIVE_ZERO
@@ -43614,14 +46087,14 @@ var arrayMethodUsesToLength = __webpack_require__("ae40");
 var USES_TO_LENGTH = arrayMethodUsesToLength('indexOf', { ACCESSORS: true, 1: 0 });
 
 // `Array.prototype.includes` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.includes
+// https://tc39.es/ecma262/#sec-array.prototype.includes
 $({ target: 'Array', proto: true, forced: !USES_TO_LENGTH }, {
   includes: function includes(el /* , fromIndex = 0 */) {
     return $includes(this, el, arguments.length > 1 ? arguments[1] : undefined);
   }
 });
 
-// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables('includes');
 
 
@@ -44209,7 +46682,7 @@ var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 var NASHORN_BUG = getOwnPropertyDescriptor && !nativePropertyIsEnumerable.call({ 1: 2 }, 1);
 
 // `Object.prototype.propertyIsEnumerable` method implementation
-// https://tc39.github.io/ecma262/#sec-object.prototype.propertyisenumerable
+// https://tc39.es/ecma262/#sec-object.prototype.propertyisenumerable
 exports.f = NASHORN_BUG ? function propertyIsEnumerable(V) {
   var descriptor = getOwnPropertyDescriptor(this, V);
   return !!descriptor && descriptor.enumerable;
@@ -44362,7 +46835,7 @@ exports.f = NASHORN_BUG ? function propertyIsEnumerable(V) {
 var defineWellKnownSymbol = __webpack_require__("746f");
 
 // `Symbol.iterator` well-known symbol
-// https://tc39.github.io/ecma262/#sec-symbol.iterator
+// https://tc39.es/ecma262/#sec-symbol.iterator
 defineWellKnownSymbol('iterator');
 
 
@@ -44375,7 +46848,7 @@ var anObject = __webpack_require__("825a");
 var aPossiblePrototype = __webpack_require__("3bbe");
 
 // `Object.setPrototypeOf` method
-// https://tc39.github.io/ecma262/#sec-object.setprototypeof
+// https://tc39.es/ecma262/#sec-object.setprototypeof
 // Works with __proto__ only. Old v8 can't work with null proto objects.
 /* eslint-disable no-proto */
 module.exports = Object.setPrototypeOf || ('__proto__' in {} ? function () {
@@ -44553,7 +47026,7 @@ var redefine = __webpack_require__("6eeb");
 var toString = __webpack_require__("b041");
 
 // `Object.prototype.toString` method
-// https://tc39.github.io/ecma262/#sec-object.prototype.tostring
+// https://tc39.es/ecma262/#sec-object.prototype.tostring
 if (!TO_STRING_TAG_SUPPORT) {
   redefine(Object.prototype, 'toString', toString, { unsafe: true });
 }
@@ -44616,10 +47089,10 @@ var createMethod = function (IS_RIGHT) {
 
 module.exports = {
   // `Array.prototype.reduce` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.reduce
+  // https://tc39.es/ecma262/#sec-array.prototype.reduce
   left: createMethod(false),
   // `Array.prototype.reduceRight` method
-  // https://tc39.github.io/ecma262/#sec-array.prototype.reduceright
+  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
   right: createMethod(true)
 };
 
@@ -45103,7 +47576,7 @@ var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('map');
 var USES_TO_LENGTH = arrayMethodUsesToLength('map');
 
 // `Array.prototype.map` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.map
+// https://tc39.es/ecma262/#sec-array.prototype.map
 // with adding support of @@species
 $({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT || !USES_TO_LENGTH }, {
   map: function map(callbackfn /* , thisArg */) {
@@ -45362,7 +47835,7 @@ var getOwnPropertyDescriptorModule = __webpack_require__("06cf");
 var createProperty = __webpack_require__("8418");
 
 // `Object.getOwnPropertyDescriptors` method
-// https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptors
+// https://tc39.es/ecma262/#sec-object.getownpropertydescriptors
 $({ target: 'Object', stat: true, sham: !DESCRIPTORS }, {
   getOwnPropertyDescriptors: function getOwnPropertyDescriptors(object) {
     var O = toIndexedObject(object);
@@ -45703,7 +48176,7 @@ var internalObjectKeys = __webpack_require__("ca84");
 var enumBugKeys = __webpack_require__("7839");
 
 // `Object.keys` method
-// https://tc39.github.io/ecma262/#sec-object.keys
+// https://tc39.es/ecma262/#sec-object.keys
 module.exports = Object.keys || function keys(O) {
   return internalObjectKeys(O, enumBugKeys);
 };
@@ -45716,7 +48189,7 @@ module.exports = Object.keys || function keys(O) {
 
 "use strict";
 // `Symbol.prototype.description` getter
-// https://tc39.github.io/ecma262/#sec-symbol.prototype.description
+// https://tc39.es/ecma262/#sec-symbol.prototype.description
 
 var $ = __webpack_require__("23e7");
 var DESCRIPTORS = __webpack_require__("83ab");
@@ -45918,7 +48391,7 @@ var IE_PROTO = sharedKey('IE_PROTO');
 var ObjectPrototype = Object.prototype;
 
 // `Object.getPrototypeOf` method
-// https://tc39.github.io/ecma262/#sec-object.getprototypeof
+// https://tc39.es/ecma262/#sec-object.getprototypeof
 module.exports = CORRECT_PROTOTYPE_GETTER ? Object.getPrototypeOf : function (O) {
   O = toObject(O);
   if (has(O, IE_PROTO)) return O[IE_PROTO];
@@ -46083,15 +48556,15 @@ var setInternalState = InternalStateModule.set;
 var getInternalState = InternalStateModule.getterFor(ARRAY_ITERATOR);
 
 // `Array.prototype.entries` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.entries
+// https://tc39.es/ecma262/#sec-array.prototype.entries
 // `Array.prototype.keys` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.keys
+// https://tc39.es/ecma262/#sec-array.prototype.keys
 // `Array.prototype.values` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.values
+// https://tc39.es/ecma262/#sec-array.prototype.values
 // `Array.prototype[@@iterator]` method
-// https://tc39.github.io/ecma262/#sec-array.prototype-@@iterator
+// https://tc39.es/ecma262/#sec-array.prototype-@@iterator
 // `CreateArrayIterator` internal method
-// https://tc39.github.io/ecma262/#sec-createarrayiterator
+// https://tc39.es/ecma262/#sec-createarrayiterator
 module.exports = defineIterator(Array, 'Array', function (iterated, kind) {
   setInternalState(this, {
     type: ARRAY_ITERATOR,
@@ -46100,7 +48573,7 @@ module.exports = defineIterator(Array, 'Array', function (iterated, kind) {
     kind: kind                         // kind
   });
 // `%ArrayIteratorPrototype%.next` method
-// https://tc39.github.io/ecma262/#sec-%arrayiteratorprototype%.next
+// https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next
 }, function () {
   var state = getInternalState(this);
   var target = state.target;
@@ -46116,2277 +48589,14 @@ module.exports = defineIterator(Array, 'Array', function (iterated, kind) {
 }, 'values');
 
 // argumentsList[@@iterator] is %ArrayProto_values%
-// https://tc39.github.io/ecma262/#sec-createunmappedargumentsobject
-// https://tc39.github.io/ecma262/#sec-createmappedargumentsobject
+// https://tc39.es/ecma262/#sec-createunmappedargumentsobject
+// https://tc39.es/ecma262/#sec-createmappedargumentsobject
 Iterators.Arguments = Iterators.Array;
 
-// https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables('keys');
 addToUnscopables('values');
 addToUnscopables('entries');
-
-
-/***/ }),
-
-/***/ "e2be":
-/***/ (function(module, exports) {
-
-function deepFreeze(obj) {
-    if (obj instanceof Map) {
-        obj.clear = obj.delete = obj.set = function () {
-            throw new Error('map is read-only');
-        };
-    } else if (obj instanceof Set) {
-        obj.add = obj.clear = obj.delete = function () {
-            throw new Error('set is read-only');
-        };
-    }
-
-    // Freeze self
-    Object.freeze(obj);
-
-    Object.getOwnPropertyNames(obj).forEach(function (name) {
-        var prop = obj[name];
-
-        // Freeze prop if it is an object
-        if (typeof prop == 'object' && !Object.isFrozen(prop)) {
-            deepFreeze(prop);
-        }
-    });
-
-    return obj;
-}
-
-var deepFreezeEs6 = deepFreeze;
-var _default = deepFreeze;
-deepFreezeEs6.default = _default;
-
-class Response {
-  /**
-   * @param {CompiledMode} mode
-   */
-  constructor(mode) {
-    // eslint-disable-next-line no-undefined
-    if (mode.data === undefined) mode.data = {};
-
-    this.data = mode.data;
-  }
-
-  ignoreMatch() {
-    this.ignore = true;
-  }
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function escapeHTML(value) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
-
-/**
- * performs a shallow merge of multiple objects into one
- *
- * @template T
- * @param {T} original
- * @param {Record<string,any>[]} objects
- * @returns {T} a single new object
- */
-function inherit(original, ...objects) {
-  /** @type Record<string,any> */
-  const result = Object.create(null);
-
-  for (const key in original) {
-    result[key] = original[key];
-  }
-  objects.forEach(function(obj) {
-    for (const key in obj) {
-      result[key] = obj[key];
-    }
-  });
-  return /** @type {T} */ (result);
-}
-
-/* Stream merging */
-
-/**
- * @typedef Event
- * @property {'start'|'stop'} event
- * @property {number} offset
- * @property {Node} node
- */
-
-/**
- * @param {Node} node
- */
-function tag(node) {
-  return node.nodeName.toLowerCase();
-}
-
-/**
- * @param {Node} node
- */
-function nodeStream(node) {
-  /** @type Event[] */
-  const result = [];
-  (function _nodeStream(node, offset) {
-    for (let child = node.firstChild; child; child = child.nextSibling) {
-      if (child.nodeType === 3) {
-        offset += child.nodeValue.length;
-      } else if (child.nodeType === 1) {
-        result.push({
-          event: 'start',
-          offset: offset,
-          node: child
-        });
-        offset = _nodeStream(child, offset);
-        // Prevent void elements from having an end tag that would actually
-        // double them in the output. There are more void elements in HTML
-        // but we list only those realistically expected in code display.
-        if (!tag(child).match(/br|hr|img|input/)) {
-          result.push({
-            event: 'stop',
-            offset: offset,
-            node: child
-          });
-        }
-      }
-    }
-    return offset;
-  })(node, 0);
-  return result;
-}
-
-/**
- * @param {any} original - the original stream
- * @param {any} highlighted - stream of the highlighted source
- * @param {string} value - the original source itself
- */
-function mergeStreams(original, highlighted, value) {
-  let processed = 0;
-  let result = '';
-  const nodeStack = [];
-
-  function selectStream() {
-    if (!original.length || !highlighted.length) {
-      return original.length ? original : highlighted;
-    }
-    if (original[0].offset !== highlighted[0].offset) {
-      return (original[0].offset < highlighted[0].offset) ? original : highlighted;
-    }
-
-    /*
-    To avoid starting the stream just before it should stop the order is
-    ensured that original always starts first and closes last:
-
-    if (event1 == 'start' && event2 == 'start')
-      return original;
-    if (event1 == 'start' && event2 == 'stop')
-      return highlighted;
-    if (event1 == 'stop' && event2 == 'start')
-      return original;
-    if (event1 == 'stop' && event2 == 'stop')
-      return highlighted;
-
-    ... which is collapsed to:
-    */
-    return highlighted[0].event === 'start' ? original : highlighted;
-  }
-
-  /**
-   * @param {Node} node
-   */
-  function open(node) {
-    /** @param {Attr} attr */
-    function attributeString(attr) {
-      return ' ' + attr.nodeName + '="' + escapeHTML(attr.value) + '"';
-    }
-    // @ts-ignore
-    result += '<' + tag(node) + [].map.call(node.attributes, attributeString).join('') + '>';
-  }
-
-  /**
-   * @param {Node} node
-   */
-  function close(node) {
-    result += '</' + tag(node) + '>';
-  }
-
-  /**
-   * @param {Event} event
-   */
-  function render(event) {
-    (event.event === 'start' ? open : close)(event.node);
-  }
-
-  while (original.length || highlighted.length) {
-    let stream = selectStream();
-    result += escapeHTML(value.substring(processed, stream[0].offset));
-    processed = stream[0].offset;
-    if (stream === original) {
-      /*
-      On any opening or closing tag of the original markup we first close
-      the entire highlighted node stack, then render the original tag along
-      with all the following original tags at the same offset and then
-      reopen all the tags on the highlighted stack.
-      */
-      nodeStack.reverse().forEach(close);
-      do {
-        render(stream.splice(0, 1)[0]);
-        stream = selectStream();
-      } while (stream === original && stream.length && stream[0].offset === processed);
-      nodeStack.reverse().forEach(open);
-    } else {
-      if (stream[0].event === 'start') {
-        nodeStack.push(stream[0].node);
-      } else {
-        nodeStack.pop();
-      }
-      render(stream.splice(0, 1)[0]);
-    }
-  }
-  return result + escapeHTML(value.substr(processed));
-}
-
-var utils = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    escapeHTML: escapeHTML,
-    inherit: inherit,
-    nodeStream: nodeStream,
-    mergeStreams: mergeStreams
-});
-
-/**
- * @typedef {object} Renderer
- * @property {(text: string) => void} addText
- * @property {(node: Node) => void} openNode
- * @property {(node: Node) => void} closeNode
- * @property {() => string} value
- */
-
-/** @typedef {{kind?: string, sublanguage?: boolean}} Node */
-/** @typedef {{walk: (r: Renderer) => void}} Tree */
-/** */
-
-const SPAN_CLOSE = '</span>';
-
-/**
- * Determines if a node needs to be wrapped in <span>
- *
- * @param {Node} node */
-const emitsWrappingTags = (node) => {
-  return !!node.kind;
-};
-
-/** @type {Renderer} */
-class HTMLRenderer {
-  /**
-   * Creates a new HTMLRenderer
-   *
-   * @param {Tree} parseTree - the parse tree (must support `walk` API)
-   * @param {{classPrefix: string}} options
-   */
-  constructor(parseTree, options) {
-    this.buffer = "";
-    this.classPrefix = options.classPrefix;
-    parseTree.walk(this);
-  }
-
-  /**
-   * Adds texts to the output stream
-   *
-   * @param {string} text */
-  addText(text) {
-    this.buffer += escapeHTML(text);
-  }
-
-  /**
-   * Adds a node open to the output stream (if needed)
-   *
-   * @param {Node} node */
-  openNode(node) {
-    if (!emitsWrappingTags(node)) return;
-
-    let className = node.kind;
-    if (!node.sublanguage) {
-      className = `${this.classPrefix}${className}`;
-    }
-    this.span(className);
-  }
-
-  /**
-   * Adds a node close to the output stream (if needed)
-   *
-   * @param {Node} node */
-  closeNode(node) {
-    if (!emitsWrappingTags(node)) return;
-
-    this.buffer += SPAN_CLOSE;
-  }
-
-  /**
-   * returns the accumulated buffer
-  */
-  value() {
-    return this.buffer;
-  }
-
-  // helpers
-
-  /**
-   * Builds a span element
-   *
-   * @param {string} className */
-  span(className) {
-    this.buffer += `<span class="${className}">`;
-  }
-}
-
-/** @typedef {{kind?: string, sublanguage?: boolean, children: Node[]} | string} Node */
-/** @typedef {{kind?: string, sublanguage?: boolean, children: Node[]} } DataNode */
-/**  */
-
-class TokenTree {
-  constructor() {
-    /** @type DataNode */
-    this.rootNode = { children: [] };
-    this.stack = [this.rootNode];
-  }
-
-  get top() {
-    return this.stack[this.stack.length - 1];
-  }
-
-  get root() { return this.rootNode; }
-
-  /** @param {Node} node */
-  add(node) {
-    this.top.children.push(node);
-  }
-
-  /** @param {string} kind */
-  openNode(kind) {
-    /** @type Node */
-    const node = { kind, children: [] };
-    this.add(node);
-    this.stack.push(node);
-  }
-
-  closeNode() {
-    if (this.stack.length > 1) {
-      return this.stack.pop();
-    }
-    // eslint-disable-next-line no-undefined
-    return undefined;
-  }
-
-  closeAllNodes() {
-    while (this.closeNode());
-  }
-
-  toJSON() {
-    return JSON.stringify(this.rootNode, null, 4);
-  }
-
-  /**
-   * @typedef { import("./html_renderer").Renderer } Renderer
-   * @param {Renderer} builder
-   */
-  walk(builder) {
-    // this does not
-    return this.constructor._walk(builder, this.rootNode);
-    // this works
-    // return TokenTree._walk(builder, this.rootNode);
-  }
-
-  /**
-   * @param {Renderer} builder
-   * @param {Node} node
-   */
-  static _walk(builder, node) {
-    if (typeof node === "string") {
-      builder.addText(node);
-    } else if (node.children) {
-      builder.openNode(node);
-      node.children.forEach((child) => this._walk(builder, child));
-      builder.closeNode(node);
-    }
-    return builder;
-  }
-
-  /**
-   * @param {Node} node
-   */
-  static _collapse(node) {
-    if (typeof node === "string") return;
-    if (!node.children) return;
-
-    if (node.children.every(el => typeof el === "string")) {
-      // node.text = node.children.join("");
-      // delete node.children;
-      node.children = [node.children.join("")];
-    } else {
-      node.children.forEach((child) => {
-        TokenTree._collapse(child);
-      });
-    }
-  }
-}
-
-/**
-  Currently this is all private API, but this is the minimal API necessary
-  that an Emitter must implement to fully support the parser.
-
-  Minimal interface:
-
-  - addKeyword(text, kind)
-  - addText(text)
-  - addSublanguage(emitter, subLanguageName)
-  - finalize()
-  - openNode(kind)
-  - closeNode()
-  - closeAllNodes()
-  - toHTML()
-
-*/
-
-/**
- * @implements {Emitter}
- */
-class TokenTreeEmitter extends TokenTree {
-  /**
-   * @param {*} options
-   */
-  constructor(options) {
-    super();
-    this.options = options;
-  }
-
-  /**
-   * @param {string} text
-   * @param {string} kind
-   */
-  addKeyword(text, kind) {
-    if (text === "") { return; }
-
-    this.openNode(kind);
-    this.addText(text);
-    this.closeNode();
-  }
-
-  /**
-   * @param {string} text
-   */
-  addText(text) {
-    if (text === "") { return; }
-
-    this.add(text);
-  }
-
-  /**
-   * @param {Emitter & {root: DataNode}} emitter
-   * @param {string} name
-   */
-  addSublanguage(emitter, name) {
-    /** @type DataNode */
-    const node = emitter.root;
-    node.kind = name;
-    node.sublanguage = true;
-    this.add(node);
-  }
-
-  toHTML() {
-    const renderer = new HTMLRenderer(this, this.options);
-    return renderer.value();
-  }
-
-  finalize() {
-    return true;
-  }
-}
-
-/**
- * @param {string} value
- * @returns {RegExp}
- * */
-function escape(value) {
-  return new RegExp(value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'm');
-}
-
-/**
- * @param {RegExp | string } re
- * @returns {string}
- */
-function source(re) {
-  if (!re) return null;
-  if (typeof re === "string") return re;
-
-  return re.source;
-}
-
-/**
- * @param {...(RegExp | string) } args
- * @returns {string}
- */
-function concat(...args) {
-  const joined = args.map((x) => source(x)).join("");
-  return joined;
-}
-
-/**
- * @param {RegExp} re
- * @returns {number}
- */
-function countMatchGroups(re) {
-  return (new RegExp(re.toString() + '|')).exec('').length - 1;
-}
-
-/**
- * Does lexeme start with a regular expression match at the beginning
- * @param {RegExp} re
- * @param {string} lexeme
- */
-function startsWith(re, lexeme) {
-  const match = re && re.exec(lexeme);
-  return match && match.index === 0;
-}
-
-// join logically computes regexps.join(separator), but fixes the
-// backreferences so they continue to match.
-// it also places each individual regular expression into it's own
-// match group, keeping track of the sequencing of those match groups
-// is currently an exercise for the caller. :-)
-/**
- * @param {(string | RegExp)[]} regexps
- * @param {string} separator
- * @returns {string}
- */
-function join(regexps, separator = "|") {
-  // backreferenceRe matches an open parenthesis or backreference. To avoid
-  // an incorrect parse, it additionally matches the following:
-  // - [...] elements, where the meaning of parentheses and escapes change
-  // - other escape sequences, so we do not misparse escape sequences as
-  //   interesting elements
-  // - non-matching or lookahead parentheses, which do not capture. These
-  //   follow the '(' with a '?'.
-  const backreferenceRe = /\[(?:[^\\\]]|\\.)*\]|\(\??|\\([1-9][0-9]*)|\\./;
-  let numCaptures = 0;
-  let ret = '';
-  for (let i = 0; i < regexps.length; i++) {
-    numCaptures += 1;
-    const offset = numCaptures;
-    let re = source(regexps[i]);
-    if (i > 0) {
-      ret += separator;
-    }
-    ret += "(";
-    while (re.length > 0) {
-      const match = backreferenceRe.exec(re);
-      if (match == null) {
-        ret += re;
-        break;
-      }
-      ret += re.substring(0, match.index);
-      re = re.substring(match.index + match[0].length);
-      if (match[0][0] === '\\' && match[1]) {
-        // Adjust the backreference.
-        ret += '\\' + String(Number(match[1]) + offset);
-      } else {
-        ret += match[0];
-        if (match[0] === '(') {
-          numCaptures++;
-        }
-      }
-    }
-    ret += ")";
-  }
-  return ret;
-}
-
-// Common regexps
-const IDENT_RE = '[a-zA-Z]\\w*';
-const UNDERSCORE_IDENT_RE = '[a-zA-Z_]\\w*';
-const NUMBER_RE = '\\b\\d+(\\.\\d+)?';
-const C_NUMBER_RE = '(-?)(\\b0[xX][a-fA-F0-9]+|(\\b\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?)'; // 0x..., 0..., decimal, float
-const BINARY_NUMBER_RE = '\\b(0b[01]+)'; // 0b...
-const RE_STARTERS_RE = '!|!=|!==|%|%=|&|&&|&=|\\*|\\*=|\\+|\\+=|,|-|-=|/=|/|:|;|<<|<<=|<=|<|===|==|=|>>>=|>>=|>=|>>>|>>|>|\\?|\\[|\\{|\\(|\\^|\\^=|\\||\\|=|\\|\\||~';
-
-/**
-* @param { Partial<Mode> & {binary?: string | RegExp} } opts
-*/
-const SHEBANG = (opts = {}) => {
-  const beginShebang = /^#![ ]*\//;
-  if (opts.binary) {
-    opts.begin = concat(
-      beginShebang,
-      /.*\b/,
-      opts.binary,
-      /\b.*/);
-  }
-  return inherit({
-    className: 'meta',
-    begin: beginShebang,
-    end: /$/,
-    relevance: 0,
-    /** @type {ModeCallback} */
-    "on:begin": (m, resp) => {
-      if (m.index !== 0) resp.ignoreMatch();
-    }
-  }, opts);
-};
-
-// Common modes
-const BACKSLASH_ESCAPE = {
-  begin: '\\\\[\\s\\S]', relevance: 0
-};
-const APOS_STRING_MODE = {
-  className: 'string',
-  begin: '\'',
-  end: '\'',
-  illegal: '\\n',
-  contains: [BACKSLASH_ESCAPE]
-};
-const QUOTE_STRING_MODE = {
-  className: 'string',
-  begin: '"',
-  end: '"',
-  illegal: '\\n',
-  contains: [BACKSLASH_ESCAPE]
-};
-const PHRASAL_WORDS_MODE = {
-  begin: /\b(a|an|the|are|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|they|like|more)\b/
-};
-/**
- * Creates a comment mode
- *
- * @param {string | RegExp} begin
- * @param {string | RegExp} end
- * @param {Mode | {}} [modeOptions]
- * @returns {Partial<Mode>}
- */
-const COMMENT = function(begin, end, modeOptions = {}) {
-  const mode = inherit(
-    {
-      className: 'comment',
-      begin,
-      end,
-      contains: []
-    },
-    modeOptions
-  );
-  mode.contains.push(PHRASAL_WORDS_MODE);
-  mode.contains.push({
-    className: 'doctag',
-    begin: '(?:TODO|FIXME|NOTE|BUG|OPTIMIZE|HACK|XXX):',
-    relevance: 0
-  });
-  return mode;
-};
-const C_LINE_COMMENT_MODE = COMMENT('//', '$');
-const C_BLOCK_COMMENT_MODE = COMMENT('/\\*', '\\*/');
-const HASH_COMMENT_MODE = COMMENT('#', '$');
-const NUMBER_MODE = {
-  className: 'number',
-  begin: NUMBER_RE,
-  relevance: 0
-};
-const C_NUMBER_MODE = {
-  className: 'number',
-  begin: C_NUMBER_RE,
-  relevance: 0
-};
-const BINARY_NUMBER_MODE = {
-  className: 'number',
-  begin: BINARY_NUMBER_RE,
-  relevance: 0
-};
-const CSS_NUMBER_MODE = {
-  className: 'number',
-  begin: NUMBER_RE + '(' +
-    '%|em|ex|ch|rem' +
-    '|vw|vh|vmin|vmax' +
-    '|cm|mm|in|pt|pc|px' +
-    '|deg|grad|rad|turn' +
-    '|s|ms' +
-    '|Hz|kHz' +
-    '|dpi|dpcm|dppx' +
-    ')?',
-  relevance: 0
-};
-const REGEXP_MODE = {
-  // this outer rule makes sure we actually have a WHOLE regex and not simply
-  // an expression such as:
-  //
-  //     3 / something
-  //
-  // (which will then blow up when regex's `illegal` sees the newline)
-  begin: /(?=\/[^/\n]*\/)/,
-  contains: [{
-    className: 'regexp',
-    begin: /\//,
-    end: /\/[gimuy]*/,
-    illegal: /\n/,
-    contains: [
-      BACKSLASH_ESCAPE,
-      {
-        begin: /\[/,
-        end: /\]/,
-        relevance: 0,
-        contains: [BACKSLASH_ESCAPE]
-      }
-    ]
-  }]
-};
-const TITLE_MODE = {
-  className: 'title',
-  begin: IDENT_RE,
-  relevance: 0
-};
-const UNDERSCORE_TITLE_MODE = {
-  className: 'title',
-  begin: UNDERSCORE_IDENT_RE,
-  relevance: 0
-};
-const METHOD_GUARD = {
-  // excludes method names from keyword processing
-  begin: '\\.\\s*' + UNDERSCORE_IDENT_RE,
-  relevance: 0
-};
-
-/**
- * Adds end same as begin mechanics to a mode
- *
- * Your mode must include at least a single () match group as that first match
- * group is what is used for comparison
- * @param {Partial<Mode>} mode
- */
-const END_SAME_AS_BEGIN = function(mode) {
-  return Object.assign(mode,
-    {
-      /** @type {ModeCallback} */
-      'on:begin': (m, resp) => { resp.data._beginMatch = m[1]; },
-      /** @type {ModeCallback} */
-      'on:end': (m, resp) => { if (resp.data._beginMatch !== m[1]) resp.ignoreMatch(); }
-    });
-};
-
-var MODES = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    IDENT_RE: IDENT_RE,
-    UNDERSCORE_IDENT_RE: UNDERSCORE_IDENT_RE,
-    NUMBER_RE: NUMBER_RE,
-    C_NUMBER_RE: C_NUMBER_RE,
-    BINARY_NUMBER_RE: BINARY_NUMBER_RE,
-    RE_STARTERS_RE: RE_STARTERS_RE,
-    SHEBANG: SHEBANG,
-    BACKSLASH_ESCAPE: BACKSLASH_ESCAPE,
-    APOS_STRING_MODE: APOS_STRING_MODE,
-    QUOTE_STRING_MODE: QUOTE_STRING_MODE,
-    PHRASAL_WORDS_MODE: PHRASAL_WORDS_MODE,
-    COMMENT: COMMENT,
-    C_LINE_COMMENT_MODE: C_LINE_COMMENT_MODE,
-    C_BLOCK_COMMENT_MODE: C_BLOCK_COMMENT_MODE,
-    HASH_COMMENT_MODE: HASH_COMMENT_MODE,
-    NUMBER_MODE: NUMBER_MODE,
-    C_NUMBER_MODE: C_NUMBER_MODE,
-    BINARY_NUMBER_MODE: BINARY_NUMBER_MODE,
-    CSS_NUMBER_MODE: CSS_NUMBER_MODE,
-    REGEXP_MODE: REGEXP_MODE,
-    TITLE_MODE: TITLE_MODE,
-    UNDERSCORE_TITLE_MODE: UNDERSCORE_TITLE_MODE,
-    METHOD_GUARD: METHOD_GUARD,
-    END_SAME_AS_BEGIN: END_SAME_AS_BEGIN
-});
-
-// keywords that should have no default relevance value
-const COMMON_KEYWORDS = [
-  'of',
-  'and',
-  'for',
-  'in',
-  'not',
-  'or',
-  'if',
-  'then',
-  'parent', // common variable name
-  'list', // common variable name
-  'value' // common variable name
-];
-
-// compilation
-
-/**
- * Compiles a language definition result
- *
- * Given the raw result of a language definition (Language), compiles this so
- * that it is ready for highlighting code.
- * @param {Language} language
- * @returns {CompiledLanguage}
- */
-function compileLanguage(language) {
-  /**
-   * Builds a regex with the case sensativility of the current language
-   *
-   * @param {RegExp | string} value
-   * @param {boolean} [global]
-   */
-  function langRe(value, global) {
-    return new RegExp(
-      source(value),
-      'm' + (language.case_insensitive ? 'i' : '') + (global ? 'g' : '')
-    );
-  }
-
-  /**
-    Stores multiple regular expressions and allows you to quickly search for
-    them all in a string simultaneously - returning the first match.  It does
-    this by creating a huge (a|b|c) regex - each individual item wrapped with ()
-    and joined by `|` - using match groups to track position.  When a match is
-    found checking which position in the array has content allows us to figure
-    out which of the original regexes / match groups triggered the match.
-
-    The match object itself (the result of `Regex.exec`) is returned but also
-    enhanced by merging in any meta-data that was registered with the regex.
-    This is how we keep track of which mode matched, and what type of rule
-    (`illegal`, `begin`, end, etc).
-  */
-  class MultiRegex {
-    constructor() {
-      this.matchIndexes = {};
-      // @ts-ignore
-      this.regexes = [];
-      this.matchAt = 1;
-      this.position = 0;
-    }
-
-    // @ts-ignore
-    addRule(re, opts) {
-      opts.position = this.position++;
-      // @ts-ignore
-      this.matchIndexes[this.matchAt] = opts;
-      this.regexes.push([opts, re]);
-      this.matchAt += countMatchGroups(re) + 1;
-    }
-
-    compile() {
-      if (this.regexes.length === 0) {
-        // avoids the need to check length every time exec is called
-        // @ts-ignore
-        this.exec = () => null;
-      }
-      const terminators = this.regexes.map(el => el[1]);
-      this.matcherRe = langRe(join(terminators), true);
-      this.lastIndex = 0;
-    }
-
-    /** @param {string} s */
-    exec(s) {
-      this.matcherRe.lastIndex = this.lastIndex;
-      const match = this.matcherRe.exec(s);
-      if (!match) { return null; }
-
-      // eslint-disable-next-line no-undefined
-      const i = match.findIndex((el, i) => i > 0 && el !== undefined);
-      // @ts-ignore
-      const matchData = this.matchIndexes[i];
-      // trim off any earlier non-relevant match groups (ie, the other regex
-      // match groups that make up the multi-matcher)
-      match.splice(0, i);
-
-      return Object.assign(match, matchData);
-    }
-  }
-
-  /*
-    Created to solve the key deficiently with MultiRegex - there is no way to
-    test for multiple matches at a single location.  Why would we need to do
-    that?  In the future a more dynamic engine will allow certain matches to be
-    ignored.  An example: if we matched say the 3rd regex in a large group but
-    decided to ignore it - we'd need to started testing again at the 4th
-    regex... but MultiRegex itself gives us no real way to do that.
-
-    So what this class creates MultiRegexs on the fly for whatever search
-    position they are needed.
-
-    NOTE: These additional MultiRegex objects are created dynamically.  For most
-    grammars most of the time we will never actually need anything more than the
-    first MultiRegex - so this shouldn't have too much overhead.
-
-    Say this is our search group, and we match regex3, but wish to ignore it.
-
-      regex1 | regex2 | regex3 | regex4 | regex5    ' ie, startAt = 0
-
-    What we need is a new MultiRegex that only includes the remaining
-    possibilities:
-
-      regex4 | regex5                               ' ie, startAt = 3
-
-    This class wraps all that complexity up in a simple API... `startAt` decides
-    where in the array of expressions to start doing the matching. It
-    auto-increments, so if a match is found at position 2, then startAt will be
-    set to 3.  If the end is reached startAt will return to 0.
-
-    MOST of the time the parser will be setting startAt manually to 0.
-  */
-  class ResumableMultiRegex {
-    constructor() {
-      // @ts-ignore
-      this.rules = [];
-      // @ts-ignore
-      this.multiRegexes = [];
-      this.count = 0;
-
-      this.lastIndex = 0;
-      this.regexIndex = 0;
-    }
-
-    // @ts-ignore
-    getMatcher(index) {
-      if (this.multiRegexes[index]) return this.multiRegexes[index];
-
-      const matcher = new MultiRegex();
-      this.rules.slice(index).forEach(([re, opts]) => matcher.addRule(re, opts));
-      matcher.compile();
-      this.multiRegexes[index] = matcher;
-      return matcher;
-    }
-
-    resumingScanAtSamePosition() {
-      return this.regexIndex !== 0;
-    }
-
-    considerAll() {
-      this.regexIndex = 0;
-    }
-
-    // @ts-ignore
-    addRule(re, opts) {
-      this.rules.push([re, opts]);
-      if (opts.type === "begin") this.count++;
-    }
-
-    /** @param {string} s */
-    exec(s) {
-      const m = this.getMatcher(this.regexIndex);
-      m.lastIndex = this.lastIndex;
-      let result = m.exec(s);
-
-      // The following is because we have no easy way to say "resume scanning at the
-      // existing position but also skip the current rule ONLY". What happens is
-      // all prior rules are also skipped which can result in matching the wrong
-      // thing. Example of matching "booger":
-
-      // our matcher is [string, "booger", number]
-      //
-      // ....booger....
-
-      // if "booger" is ignored then we'd really need a regex to scan from the
-      // SAME position for only: [string, number] but ignoring "booger" (if it
-      // was the first match), a simple resume would scan ahead who knows how
-      // far looking only for "number", ignoring potential string matches (or
-      // future "booger" matches that might be valid.)
-
-      // So what we do: We execute two matchers, one resuming at the same
-      // position, but the second full matcher starting at the position after:
-
-      //     /--- resume first regex match here (for [number])
-      //     |/---- full match here for [string, "booger", number]
-      //     vv
-      // ....booger....
-
-      // Which ever results in a match first is then used. So this 3-4 step
-      // process essentially allows us to say "match at this position, excluding
-      // a prior rule that was ignored".
-      //
-      // 1. Match "booger" first, ignore. Also proves that [string] does non match.
-      // 2. Resume matching for [number]
-      // 3. Match at index + 1 for [string, "booger", number]
-      // 4. If #2 and #3 result in matches, which came first?
-      if (this.resumingScanAtSamePosition()) {
-        if (result && result.index === this.lastIndex) ; else { // use the second matcher result
-          const m2 = this.getMatcher(0);
-          m2.lastIndex = this.lastIndex + 1;
-          result = m2.exec(s);
-        }
-      }
-
-      if (result) {
-        this.regexIndex += result.position + 1;
-        if (this.regexIndex === this.count) {
-          // wrap-around to considering all matches again
-          this.considerAll();
-        }
-      }
-
-      return result;
-    }
-  }
-
-  /**
-   * Given a mode, builds a huge ResumableMultiRegex that can be used to walk
-   * the content and find matches.
-   *
-   * @param {CompiledMode} mode
-   * @returns {ResumableMultiRegex}
-   */
-  function buildModeRegex(mode) {
-    const mm = new ResumableMultiRegex();
-
-    mode.contains.forEach(term => mm.addRule(term.begin, { rule: term, type: "begin" }));
-
-    if (mode.terminator_end) {
-      mm.addRule(mode.terminator_end, { type: "end" });
-    }
-    if (mode.illegal) {
-      mm.addRule(mode.illegal, { type: "illegal" });
-    }
-
-    return mm;
-  }
-
-  // TODO: We need negative look-behind support to do this properly
-  /**
-   * Skip a match if it has a preceding dot
-   *
-   * This is used for `beginKeywords` to prevent matching expressions such as
-   * `bob.keyword.do()`. The mode compiler automatically wires this up as a
-   * special _internal_ 'on:begin' callback for modes with `beginKeywords`
-   * @param {RegExpMatchArray} match
-   * @param {CallbackResponse} response
-   */
-  function skipIfhasPrecedingDot(match, response) {
-    const before = match.input[match.index - 1];
-    if (before === ".") {
-      response.ignoreMatch();
-    }
-  }
-
-  /** skip vs abort vs ignore
-   *
-   * @skip   - The mode is still entered and exited normally (and contains rules apply),
-   *           but all content is held and added to the parent buffer rather than being
-   *           output when the mode ends.  Mostly used with `sublanguage` to build up
-   *           a single large buffer than can be parsed by sublanguage.
-   *
-   *             - The mode begin ands ends normally.
-   *             - Content matched is added to the parent mode buffer.
-   *             - The parser cursor is moved forward normally.
-   *
-   * @abort  - A hack placeholder until we have ignore.  Aborts the mode (as if it
-   *           never matched) but DOES NOT continue to match subsequent `contains`
-   *           modes.  Abort is bad/suboptimal because it can result in modes
-   *           farther down not getting applied because an earlier rule eats the
-   *           content but then aborts.
-   *
-   *             - The mode does not begin.
-   *             - Content matched by `begin` is added to the mode buffer.
-   *             - The parser cursor is moved forward accordingly.
-   *
-   * @ignore - Ignores the mode (as if it never matched) and continues to match any
-   *           subsequent `contains` modes.  Ignore isn't technically possible with
-   *           the current parser implementation.
-   *
-   *             - The mode does not begin.
-   *             - Content matched by `begin` is ignored.
-   *             - The parser cursor is not moved forward.
-   */
-
-  /**
-   * Compiles an individual mode
-   *
-   * This can raise an error if the mode contains certain detectable known logic
-   * issues.
-   * @param {Mode} mode
-   * @param {CompiledMode | null} [parent]
-   * @returns {CompiledMode | never}
-   */
-  function compileMode(mode, parent) {
-    const cmode = /** @type CompiledMode */ (mode);
-    if (mode.compiled) return cmode;
-    mode.compiled = true;
-
-    // __beforeBegin is considered private API, internal use only
-    mode.__beforeBegin = null;
-
-    mode.keywords = mode.keywords || mode.beginKeywords;
-
-    let keywordPattern = null;
-    if (typeof mode.keywords === "object") {
-      keywordPattern = mode.keywords.$pattern;
-      delete mode.keywords.$pattern;
-    }
-
-    if (mode.keywords) {
-      mode.keywords = compileKeywords(mode.keywords, language.case_insensitive);
-    }
-
-    // both are not allowed
-    if (mode.lexemes && keywordPattern) {
-      throw new Error("ERR: Prefer `keywords.$pattern` to `mode.lexemes`, BOTH are not allowed. (see mode reference) ");
-    }
-
-    // `mode.lexemes` was the old standard before we added and now recommend
-    // using `keywords.$pattern` to pass the keyword pattern
-    cmode.keywordPatternRe = langRe(mode.lexemes || keywordPattern || /\w+/, true);
-
-    if (parent) {
-      if (mode.beginKeywords) {
-        // for languages with keywords that include non-word characters checking for
-        // a word boundary is not sufficient, so instead we check for a word boundary
-        // or whitespace - this does no harm in any case since our keyword engine
-        // doesn't allow spaces in keywords anyways and we still check for the boundary
-        // first
-        mode.begin = '\\b(' + mode.beginKeywords.split(' ').join('|') + ')(?!\\.)(?=\\b|\\s)';
-        mode.__beforeBegin = skipIfhasPrecedingDot;
-      }
-      if (!mode.begin) mode.begin = /\B|\b/;
-      cmode.beginRe = langRe(mode.begin);
-      if (mode.endSameAsBegin) mode.end = mode.begin;
-      if (!mode.end && !mode.endsWithParent) mode.end = /\B|\b/;
-      if (mode.end) cmode.endRe = langRe(mode.end);
-      cmode.terminator_end = source(mode.end) || '';
-      if (mode.endsWithParent && parent.terminator_end) {
-        cmode.terminator_end += (mode.end ? '|' : '') + parent.terminator_end;
-      }
-    }
-    if (mode.illegal) cmode.illegalRe = langRe(mode.illegal);
-    // eslint-disable-next-line no-undefined
-    if (mode.relevance === undefined) mode.relevance = 1;
-    if (!mode.contains) mode.contains = [];
-
-    mode.contains = [].concat(...mode.contains.map(function(c) {
-      return expandOrCloneMode(c === 'self' ? mode : c);
-    }));
-    mode.contains.forEach(function(c) { compileMode(/** @type Mode */ (c), cmode); });
-
-    if (mode.starts) {
-      compileMode(mode.starts, parent);
-    }
-
-    cmode.matcher = buildModeRegex(cmode);
-    return cmode;
-  }
-
-  // self is not valid at the top-level
-  if (language.contains && language.contains.includes('self')) {
-    throw new Error("ERR: contains `self` is not supported at the top-level of a language.  See documentation.");
-  }
-
-  // we need a null object, which inherit will guarantee
-  language.classNameAliases = inherit(language.classNameAliases || {});
-
-  return compileMode(/** @type Mode */ (language));
-}
-
-/**
- * Determines if a mode has a dependency on it's parent or not
- *
- * If a mode does have a parent dependency then often we need to clone it if
- * it's used in multiple places so that each copy points to the correct parent,
- * where-as modes without a parent can often safely be re-used at the bottom of
- * a mode chain.
- *
- * @param {Mode | null} mode
- * @returns {boolean} - is there a dependency on the parent?
- * */
-function dependencyOnParent(mode) {
-  if (!mode) return false;
-
-  return mode.endsWithParent || dependencyOnParent(mode.starts);
-}
-
-/**
- * Expands a mode or clones it if necessary
- *
- * This is necessary for modes with parental dependenceis (see notes on
- * `dependencyOnParent`) and for nodes that have `variants` - which must then be
- * exploded into their own individual modes at compile time.
- *
- * @param {Mode} mode
- * @returns {Mode | Mode[]}
- * */
-function expandOrCloneMode(mode) {
-  if (mode.variants && !mode.cached_variants) {
-    mode.cached_variants = mode.variants.map(function(variant) {
-      return inherit(mode, { variants: null }, variant);
-    });
-  }
-
-  // EXPAND
-  // if we have variants then essentially "replace" the mode with the variants
-  // this happens in compileMode, where this function is called from
-  if (mode.cached_variants) {
-    return mode.cached_variants;
-  }
-
-  // CLONE
-  // if we have dependencies on parents then we need a unique
-  // instance of ourselves, so we can be reused with many
-  // different parents without issue
-  if (dependencyOnParent(mode)) {
-    return inherit(mode, { starts: mode.starts ? inherit(mode.starts) : null });
-  }
-
-  if (Object.isFrozen(mode)) {
-    return inherit(mode);
-  }
-
-  // no special dependency issues, just return ourselves
-  return mode;
-}
-
-/***********************************************
-  Keywords
-***********************************************/
-
-/**
- * Given raw keywords from a language definition, compile them.
- *
- * @param {string | Record<string,string>} rawKeywords
- * @param {boolean} caseInsensitive
- */
-function compileKeywords(rawKeywords, caseInsensitive) {
-  /** @type KeywordDict */
-  const compiledKeywords = {};
-
-  if (typeof rawKeywords === 'string') { // string
-    splitAndCompile('keyword', rawKeywords);
-  } else {
-    Object.keys(rawKeywords).forEach(function(className) {
-      splitAndCompile(className, rawKeywords[className]);
-    });
-  }
-  return compiledKeywords;
-
-  // ---
-
-  /**
-   * Compiles an individual list of keywords
-   *
-   * Ex: "for if when while|5"
-   *
-   * @param {string} className
-   * @param {string} keywordList
-   */
-  function splitAndCompile(className, keywordList) {
-    if (caseInsensitive) {
-      keywordList = keywordList.toLowerCase();
-    }
-    keywordList.split(' ').forEach(function(keyword) {
-      const pair = keyword.split('|');
-      compiledKeywords[pair[0]] = [className, scoreForKeyword(pair[0], pair[1])];
-    });
-  }
-}
-
-/**
- * Returns the proper score for a given keyword
- *
- * Also takes into account comment keywords, which will be scored 0 UNLESS
- * another score has been manually assigned.
- * @param {string} keyword
- * @param {string} [providedScore]
- */
-function scoreForKeyword(keyword, providedScore) {
-  // manual scores always win over common keywords
-  // so you can force a score of 1 if you really insist
-  if (providedScore) {
-    return Number(providedScore);
-  }
-
-  return commonKeyword(keyword) ? 0 : 1;
-}
-
-/**
- * Determines if a given keyword is common or not
- *
- * @param {string} keyword */
-function commonKeyword(keyword) {
-  return COMMON_KEYWORDS.includes(keyword.toLowerCase());
-}
-
-var version = "10.4.1";
-
-// @ts-nocheck
-
-function hasValueOrEmptyAttribute(value) {
-  return Boolean(value || value === "");
-}
-
-function BuildVuePlugin(hljs) {
-  const Component = {
-    props: ["language", "code", "autodetect"],
-    data: function() {
-      return {
-        detectedLanguage: "",
-        unknownLanguage: false
-      };
-    },
-    computed: {
-      className() {
-        if (this.unknownLanguage) return "";
-  
-        return "hljs " + this.detectedLanguage;
-      },
-      highlighted() {
-        // no idea what language to use, return raw code
-        if (!this.autoDetect && !hljs.getLanguage(this.language)) {
-          console.warn(`The language "${this.language}" you specified could not be found.`);
-          this.unknownLanguage = true;
-          return escapeHTML(this.code);
-        }
-  
-        let result;
-        if (this.autoDetect) {
-          result = hljs.highlightAuto(this.code);
-          this.detectedLanguage = result.language;
-        } else {
-          result = hljs.highlight(this.language, this.code, this.ignoreIllegals);
-          this.detectedLanguage = this.language;
-        }
-        return result.value;
-      },
-      autoDetect() {
-        return !this.language || hasValueOrEmptyAttribute(this.autodetect);
-      },
-      ignoreIllegals() {
-        return true;
-      }
-    },
-    // this avoids needing to use a whole Vue compilation pipeline just
-    // to build Highlight.js
-    render(createElement) {
-      return createElement("pre", {}, [
-        createElement("code", {
-          class: this.className,
-          domProps: { innerHTML: this.highlighted }})
-      ]);
-    }
-    // template: `<pre><code :class="className" v-html="highlighted"></code></pre>`
-  };
-  
-  const VuePlugin = {
-    install(Vue) {
-      Vue.component('highlightjs', Component);
-    }
-  };
-
-  return { Component, VuePlugin };
-}
-
-/*
-Syntax highlighting with language autodetection.
-https://highlightjs.org/
-*/
-
-const escape$1 = escapeHTML;
-const inherit$1 = inherit;
-
-const { nodeStream: nodeStream$1, mergeStreams: mergeStreams$1 } = utils;
-const NO_MATCH = Symbol("nomatch");
-
-/**
- * @param {any} hljs - object that is extended (legacy)
- * @returns {HLJSApi}
- */
-const HLJS = function(hljs) {
-  // Convenience variables for build-in objects
-  /** @type {unknown[]} */
-  const ArrayProto = [];
-
-  // Global internal variables used within the highlight.js library.
-  /** @type {Record<string, Language>} */
-  const languages = Object.create(null);
-  /** @type {Record<string, string>} */
-  const aliases = Object.create(null);
-  /** @type {HLJSPlugin[]} */
-  const plugins = [];
-
-  // safe/production mode - swallows more errors, tries to keep running
-  // even if a single syntax or parse hits a fatal error
-  let SAFE_MODE = true;
-  const fixMarkupRe = /(^(<[^>]+>|\t|)+|\n)/gm;
-  const LANGUAGE_NOT_FOUND = "Could not find the language '{}', did you forget to load/include a language module?";
-  /** @type {Language} */
-  const PLAINTEXT_LANGUAGE = { disableAutodetect: true, name: 'Plain text', contains: [] };
-
-  // Global options used when within external APIs. This is modified when
-  // calling the `hljs.configure` function.
-  /** @type HLJSOptions */
-  let options = {
-    noHighlightRe: /^(no-?highlight)$/i,
-    languageDetectRe: /\blang(?:uage)?-([\w-]+)\b/i,
-    classPrefix: 'hljs-',
-    tabReplace: null,
-    useBR: false,
-    languages: null,
-    // beta configuration options, subject to change, welcome to discuss
-    // https://github.com/highlightjs/highlight.js/issues/1086
-    __emitter: TokenTreeEmitter
-  };
-
-  /* Utility functions */
-
-  /**
-   * Tests a language name to see if highlighting should be skipped
-   * @param {string} languageName
-   */
-  function shouldNotHighlight(languageName) {
-    return options.noHighlightRe.test(languageName);
-  }
-
-  /**
-   * @param {HighlightedHTMLElement} block - the HTML element to determine language for
-   */
-  function blockLanguage(block) {
-    let classes = block.className + ' ';
-
-    classes += block.parentNode ? block.parentNode.className : '';
-
-    // language-* takes precedence over non-prefixed class names.
-    const match = options.languageDetectRe.exec(classes);
-    if (match) {
-      const language = getLanguage(match[1]);
-      if (!language) {
-        console.warn(LANGUAGE_NOT_FOUND.replace("{}", match[1]));
-        console.warn("Falling back to no-highlight mode for this block.", block);
-      }
-      return language ? match[1] : 'no-highlight';
-    }
-
-    return classes
-      .split(/\s+/)
-      .find((_class) => shouldNotHighlight(_class) || getLanguage(_class));
-  }
-
-  /**
-   * Core highlighting function.
-   *
-   * @param {string} languageName - the language to use for highlighting
-   * @param {string} code - the code to highlight
-   * @param {boolean} [ignoreIllegals] - whether to ignore illegal matches, default is to bail
-   * @param {CompiledMode} [continuation] - current continuation mode, if any
-   *
-   * @returns {HighlightResult} Result - an object that represents the result
-   * @property {string} language - the language name
-   * @property {number} relevance - the relevance score
-   * @property {string} value - the highlighted HTML code
-   * @property {string} code - the original raw code
-   * @property {CompiledMode} top - top of the current mode stack
-   * @property {boolean} illegal - indicates whether any illegal matches were found
-  */
-  function highlight(languageName, code, ignoreIllegals, continuation) {
-    /** @type {{ code: string, language: string, result?: any }} */
-    const context = {
-      code,
-      language: languageName
-    };
-    // the plugin can change the desired language or the code to be highlighted
-    // just be changing the object it was passed
-    fire("before:highlight", context);
-
-    // a before plugin can usurp the result completely by providing it's own
-    // in which case we don't even need to call highlight
-    const result = context.result ?
-      context.result :
-      _highlight(context.language, context.code, ignoreIllegals, continuation);
-
-    result.code = context.code;
-    // the plugin can change anything in result to suite it
-    fire("after:highlight", result);
-
-    return result;
-  }
-
-  /**
-   * private highlight that's used internally and does not fire callbacks
-   *
-   * @param {string} languageName - the language to use for highlighting
-   * @param {string} code - the code to highlight
-   * @param {boolean} [ignoreIllegals] - whether to ignore illegal matches, default is to bail
-   * @param {CompiledMode} [continuation] - current continuation mode, if any
-   * @returns {HighlightResult} - result of the highlight operation
-  */
-  function _highlight(languageName, code, ignoreIllegals, continuation) {
-    const codeToHighlight = code;
-
-    /**
-     * Return keyword data if a match is a keyword
-     * @param {CompiledMode} mode - current mode
-     * @param {RegExpMatchArray} match - regexp match data
-     * @returns {KeywordData | false}
-     */
-    function keywordData(mode, match) {
-      const matchText = language.case_insensitive ? match[0].toLowerCase() : match[0];
-      return Object.prototype.hasOwnProperty.call(mode.keywords, matchText) && mode.keywords[matchText];
-    }
-
-    function processKeywords() {
-      if (!top.keywords) {
-        emitter.addText(modeBuffer);
-        return;
-      }
-
-      let lastIndex = 0;
-      top.keywordPatternRe.lastIndex = 0;
-      let match = top.keywordPatternRe.exec(modeBuffer);
-      let buf = "";
-
-      while (match) {
-        buf += modeBuffer.substring(lastIndex, match.index);
-        const data = keywordData(top, match);
-        if (data) {
-          const [kind, keywordRelevance] = data;
-          emitter.addText(buf);
-          buf = "";
-
-          relevance += keywordRelevance;
-          const cssClass = language.classNameAliases[kind] || kind;
-          emitter.addKeyword(match[0], cssClass);
-        } else {
-          buf += match[0];
-        }
-        lastIndex = top.keywordPatternRe.lastIndex;
-        match = top.keywordPatternRe.exec(modeBuffer);
-      }
-      buf += modeBuffer.substr(lastIndex);
-      emitter.addText(buf);
-    }
-
-    function processSubLanguage() {
-      if (modeBuffer === "") return;
-      /** @type HighlightResult */
-      let result = null;
-
-      if (typeof top.subLanguage === 'string') {
-        if (!languages[top.subLanguage]) {
-          emitter.addText(modeBuffer);
-          return;
-        }
-        result = _highlight(top.subLanguage, modeBuffer, true, continuations[top.subLanguage]);
-        continuations[top.subLanguage] = /** @type {CompiledMode} */ (result.top);
-      } else {
-        result = highlightAuto(modeBuffer, top.subLanguage.length ? top.subLanguage : null);
-      }
-
-      // Counting embedded language score towards the host language may be disabled
-      // with zeroing the containing mode relevance. Use case in point is Markdown that
-      // allows XML everywhere and makes every XML snippet to have a much larger Markdown
-      // score.
-      if (top.relevance > 0) {
-        relevance += result.relevance;
-      }
-      emitter.addSublanguage(result.emitter, result.language);
-    }
-
-    function processBuffer() {
-      if (top.subLanguage != null) {
-        processSubLanguage();
-      } else {
-        processKeywords();
-      }
-      modeBuffer = '';
-    }
-
-    /**
-     * @param {Mode} mode - new mode to start
-     */
-    function startNewMode(mode) {
-      if (mode.className) {
-        emitter.openNode(language.classNameAliases[mode.className] || mode.className);
-      }
-      top = Object.create(mode, { parent: { value: top } });
-      return top;
-    }
-
-    /**
-     * @param {CompiledMode } mode - the mode to potentially end
-     * @param {RegExpMatchArray} match - the latest match
-     * @param {string} matchPlusRemainder - match plus remainder of content
-     * @returns {CompiledMode | void} - the next mode, or if void continue on in current mode
-     */
-    function endOfMode(mode, match, matchPlusRemainder) {
-      let matched = startsWith(mode.endRe, matchPlusRemainder);
-
-      if (matched) {
-        if (mode["on:end"]) {
-          const resp = new Response(mode);
-          mode["on:end"](match, resp);
-          if (resp.ignore) matched = false;
-        }
-
-        if (matched) {
-          while (mode.endsParent && mode.parent) {
-            mode = mode.parent;
-          }
-          return mode;
-        }
-      }
-      // even if on:end fires an `ignore` it's still possible
-      // that we might trigger the end node because of a parent mode
-      if (mode.endsWithParent) {
-        return endOfMode(mode.parent, match, matchPlusRemainder);
-      }
-    }
-
-    /**
-     * Handle matching but then ignoring a sequence of text
-     *
-     * @param {string} lexeme - string containing full match text
-     */
-    function doIgnore(lexeme) {
-      if (top.matcher.regexIndex === 0) {
-        // no more regexs to potentially match here, so we move the cursor forward one
-        // space
-        modeBuffer += lexeme[0];
-        return 1;
-      } else {
-        // no need to move the cursor, we still have additional regexes to try and
-        // match at this very spot
-        resumeScanAtSamePosition = true;
-        return 0;
-      }
-    }
-
-    /**
-     * Handle the start of a new potential mode match
-     *
-     * @param {EnhancedMatch} match - the current match
-     * @returns {number} how far to advance the parse cursor
-     */
-    function doBeginMatch(match) {
-      const lexeme = match[0];
-      const newMode = match.rule;
-
-      const resp = new Response(newMode);
-      // first internal before callbacks, then the public ones
-      const beforeCallbacks = [newMode.__beforeBegin, newMode["on:begin"]];
-      for (const cb of beforeCallbacks) {
-        if (!cb) continue;
-        cb(match, resp);
-        if (resp.ignore) return doIgnore(lexeme);
-      }
-
-      if (newMode && newMode.endSameAsBegin) {
-        newMode.endRe = escape(lexeme);
-      }
-
-      if (newMode.skip) {
-        modeBuffer += lexeme;
-      } else {
-        if (newMode.excludeBegin) {
-          modeBuffer += lexeme;
-        }
-        processBuffer();
-        if (!newMode.returnBegin && !newMode.excludeBegin) {
-          modeBuffer = lexeme;
-        }
-      }
-      startNewMode(newMode);
-      // if (mode["after:begin"]) {
-      //   let resp = new Response(mode);
-      //   mode["after:begin"](match, resp);
-      // }
-      return newMode.returnBegin ? 0 : lexeme.length;
-    }
-
-    /**
-     * Handle the potential end of mode
-     *
-     * @param {RegExpMatchArray} match - the current match
-     */
-    function doEndMatch(match) {
-      const lexeme = match[0];
-      const matchPlusRemainder = codeToHighlight.substr(match.index);
-
-      const endMode = endOfMode(top, match, matchPlusRemainder);
-      if (!endMode) { return NO_MATCH; }
-
-      const origin = top;
-      if (origin.skip) {
-        modeBuffer += lexeme;
-      } else {
-        if (!(origin.returnEnd || origin.excludeEnd)) {
-          modeBuffer += lexeme;
-        }
-        processBuffer();
-        if (origin.excludeEnd) {
-          modeBuffer = lexeme;
-        }
-      }
-      do {
-        if (top.className) {
-          emitter.closeNode();
-        }
-        if (!top.skip && !top.subLanguage) {
-          relevance += top.relevance;
-        }
-        top = top.parent;
-      } while (top !== endMode.parent);
-      if (endMode.starts) {
-        if (endMode.endSameAsBegin) {
-          endMode.starts.endRe = endMode.endRe;
-        }
-        startNewMode(endMode.starts);
-      }
-      return origin.returnEnd ? 0 : lexeme.length;
-    }
-
-    function processContinuations() {
-      const list = [];
-      for (let current = top; current !== language; current = current.parent) {
-        if (current.className) {
-          list.unshift(current.className);
-        }
-      }
-      list.forEach(item => emitter.openNode(item));
-    }
-
-    /** @type {{type?: MatchType, index?: number, rule?: Mode}}} */
-    let lastMatch = {};
-
-    /**
-     *  Process an individual match
-     *
-     * @param {string} textBeforeMatch - text preceeding the match (since the last match)
-     * @param {EnhancedMatch} [match] - the match itself
-     */
-    function processLexeme(textBeforeMatch, match) {
-      const lexeme = match && match[0];
-
-      // add non-matched text to the current mode buffer
-      modeBuffer += textBeforeMatch;
-
-      if (lexeme == null) {
-        processBuffer();
-        return 0;
-      }
-
-      // we've found a 0 width match and we're stuck, so we need to advance
-      // this happens when we have badly behaved rules that have optional matchers to the degree that
-      // sometimes they can end up matching nothing at all
-      // Ref: https://github.com/highlightjs/highlight.js/issues/2140
-      if (lastMatch.type === "begin" && match.type === "end" && lastMatch.index === match.index && lexeme === "") {
-        // spit the "skipped" character that our regex choked on back into the output sequence
-        modeBuffer += codeToHighlight.slice(match.index, match.index + 1);
-        if (!SAFE_MODE) {
-          /** @type {AnnotatedError} */
-          const err = new Error('0 width match regex');
-          err.languageName = languageName;
-          err.badRule = lastMatch.rule;
-          throw err;
-        }
-        return 1;
-      }
-      lastMatch = match;
-
-      if (match.type === "begin") {
-        return doBeginMatch(match);
-      } else if (match.type === "illegal" && !ignoreIllegals) {
-        // illegal match, we do not continue processing
-        /** @type {AnnotatedError} */
-        const err = new Error('Illegal lexeme "' + lexeme + '" for mode "' + (top.className || '<unnamed>') + '"');
-        err.mode = top;
-        throw err;
-      } else if (match.type === "end") {
-        const processed = doEndMatch(match);
-        if (processed !== NO_MATCH) {
-          return processed;
-        }
-      }
-
-      // edge case for when illegal matches $ (end of line) which is technically
-      // a 0 width match but not a begin/end match so it's not caught by the
-      // first handler (when ignoreIllegals is true)
-      if (match.type === "illegal" && lexeme === "") {
-        // advance so we aren't stuck in an infinite loop
-        return 1;
-      }
-
-      // infinite loops are BAD, this is a last ditch catch all. if we have a
-      // decent number of iterations yet our index (cursor position in our
-      // parsing) still 3x behind our index then something is very wrong
-      // so we bail
-      if (iterations > 100000 && iterations > match.index * 3) {
-        const err = new Error('potential infinite loop, way more iterations than matches');
-        throw err;
-      }
-
-      /*
-      Why might be find ourselves here?  Only one occasion now.  An end match that was
-      triggered but could not be completed.  When might this happen?  When an `endSameasBegin`
-      rule sets the end rule to a specific match.  Since the overall mode termination rule that's
-      being used to scan the text isn't recompiled that means that any match that LOOKS like
-      the end (but is not, because it is not an exact match to the beginning) will
-      end up here.  A definite end match, but when `doEndMatch` tries to "reapply"
-      the end rule and fails to match, we wind up here, and just silently ignore the end.
-
-      This causes no real harm other than stopping a few times too many.
-      */
-
-      modeBuffer += lexeme;
-      return lexeme.length;
-    }
-
-    const language = getLanguage(languageName);
-    if (!language) {
-      console.error(LANGUAGE_NOT_FOUND.replace("{}", languageName));
-      throw new Error('Unknown language: "' + languageName + '"');
-    }
-
-    const md = compileLanguage(language);
-    let result = '';
-    /** @type {CompiledMode} */
-    let top = continuation || md;
-    /** @type Record<string,CompiledMode> */
-    const continuations = {}; // keep continuations for sub-languages
-    const emitter = new options.__emitter(options);
-    processContinuations();
-    let modeBuffer = '';
-    let relevance = 0;
-    let index = 0;
-    let iterations = 0;
-    let resumeScanAtSamePosition = false;
-
-    try {
-      top.matcher.considerAll();
-
-      for (;;) {
-        iterations++;
-        if (resumeScanAtSamePosition) {
-          // only regexes not matched previously will now be
-          // considered for a potential match
-          resumeScanAtSamePosition = false;
-        } else {
-          top.matcher.considerAll();
-        }
-        top.matcher.lastIndex = index;
-
-        const match = top.matcher.exec(codeToHighlight);
-        // console.log("match", match[0], match.rule && match.rule.begin)
-
-        if (!match) break;
-
-        const beforeMatch = codeToHighlight.substring(index, match.index);
-        const processedCount = processLexeme(beforeMatch, match);
-        index = match.index + processedCount;
-      }
-      processLexeme(codeToHighlight.substr(index));
-      emitter.closeAllNodes();
-      emitter.finalize();
-      result = emitter.toHTML();
-
-      return {
-        relevance: relevance,
-        value: result,
-        language: languageName,
-        illegal: false,
-        emitter: emitter,
-        top: top
-      };
-    } catch (err) {
-      if (err.message && err.message.includes('Illegal')) {
-        return {
-          illegal: true,
-          illegalBy: {
-            msg: err.message,
-            context: codeToHighlight.slice(index - 100, index + 100),
-            mode: err.mode
-          },
-          sofar: result,
-          relevance: 0,
-          value: escape$1(codeToHighlight),
-          emitter: emitter
-        };
-      } else if (SAFE_MODE) {
-        return {
-          illegal: false,
-          relevance: 0,
-          value: escape$1(codeToHighlight),
-          emitter: emitter,
-          language: languageName,
-          top: top,
-          errorRaised: err
-        };
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  /**
-   * returns a valid highlight result, without actually doing any actual work,
-   * auto highlight starts with this and it's possible for small snippets that
-   * auto-detection may not find a better match
-   * @param {string} code
-   * @returns {HighlightResult}
-   */
-  function justTextHighlightResult(code) {
-    const result = {
-      relevance: 0,
-      emitter: new options.__emitter(options),
-      value: escape$1(code),
-      illegal: false,
-      top: PLAINTEXT_LANGUAGE
-    };
-    result.emitter.addText(code);
-    return result;
-  }
-
-  /**
-  Highlighting with language detection. Accepts a string with the code to
-  highlight. Returns an object with the following properties:
-
-  - language (detected language)
-  - relevance (int)
-  - value (an HTML string with highlighting markup)
-  - second_best (object with the same structure for second-best heuristically
-    detected language, may be absent)
-
-    @param {string} code
-    @param {Array<string>} [languageSubset]
-    @returns {AutoHighlightResult}
-  */
-  function highlightAuto(code, languageSubset) {
-    languageSubset = languageSubset || options.languages || Object.keys(languages);
-    const plaintext = justTextHighlightResult(code);
-
-    const results = languageSubset.filter(getLanguage).filter(autoDetection).map(name =>
-      _highlight(name, code, false)
-    );
-    results.unshift(plaintext); // plaintext is always an option
-
-    const sorted = results.sort((a, b) => {
-      // sort base on relevance
-      if (a.relevance !== b.relevance) return b.relevance - a.relevance;
-
-      // always award the tie to the base language
-      // ie if C++ and Arduino are tied, it's more likely to be C++
-      if (a.language && b.language) {
-        if (getLanguage(a.language).supersetOf === b.language) {
-          return 1;
-        } else if (getLanguage(b.language).supersetOf === a.language) {
-          return -1;
-        }
-      }
-
-      // otherwise say they are equal, which has the effect of sorting on
-      // relevance while preserving the original ordering - which is how ties
-      // have historically been settled, ie the language that comes first always
-      // wins in the case of a tie
-      return 0;
-    });
-
-    const [best, secondBest] = sorted;
-
-    /** @type {AutoHighlightResult} */
-    const result = best;
-    result.second_best = secondBest;
-
-    return result;
-  }
-
-  /**
-  Post-processing of the highlighted markup:
-
-  - replace TABs with something more useful
-  - replace real line-breaks with '<br>' for non-pre containers
-
-    @param {string} html
-    @returns {string}
-  */
-  function fixMarkup(html) {
-    if (!(options.tabReplace || options.useBR)) {
-      return html;
-    }
-
-    return html.replace(fixMarkupRe, match => {
-      if (match === '\n') {
-        return options.useBR ? '<br>' : match;
-      } else if (options.tabReplace) {
-        return match.replace(/\t/g, options.tabReplace);
-      }
-      return match;
-    });
-  }
-
-  /**
-   * Builds new class name for block given the language name
-   *
-   * @param {string} prevClassName
-   * @param {string} [currentLang]
-   * @param {string} [resultLang]
-   */
-  function buildClassName(prevClassName, currentLang, resultLang) {
-    const language = currentLang ? aliases[currentLang] : resultLang;
-    const result = [prevClassName.trim()];
-
-    if (!prevClassName.match(/\bhljs\b/)) {
-      result.push('hljs');
-    }
-
-    if (!prevClassName.includes(language)) {
-      result.push(language);
-    }
-
-    return result.join(' ').trim();
-  }
-
-  /**
-   * Applies highlighting to a DOM node containing code. Accepts a DOM node and
-   * two optional parameters for fixMarkup.
-   *
-   * @param {HighlightedHTMLElement} element - the HTML element to highlight
-  */
-  function highlightBlock(element) {
-    /** @type HTMLElement */
-    let node = null;
-    const language = blockLanguage(element);
-
-    if (shouldNotHighlight(language)) return;
-
-    fire("before:highlightBlock",
-      { block: element, language: language });
-
-    if (options.useBR) {
-      node = document.createElement('div');
-      node.innerHTML = element.innerHTML.replace(/\n/g, '').replace(/<br[ /]*>/g, '\n');
-    } else {
-      node = element;
-    }
-    const text = node.textContent;
-    const result = language ? highlight(language, text, true) : highlightAuto(text);
-
-    const originalStream = nodeStream$1(node);
-    if (originalStream.length) {
-      const resultNode = document.createElement('div');
-      resultNode.innerHTML = result.value;
-      result.value = mergeStreams$1(originalStream, nodeStream$1(resultNode), text);
-    }
-    result.value = fixMarkup(result.value);
-
-    fire("after:highlightBlock", { block: element, result: result });
-
-    element.innerHTML = result.value;
-    element.className = buildClassName(element.className, language, result.language);
-    element.result = {
-      language: result.language,
-      // TODO: remove with version 11.0
-      re: result.relevance,
-      relavance: result.relevance
-    };
-    if (result.second_best) {
-      element.second_best = {
-        language: result.second_best.language,
-        // TODO: remove with version 11.0
-        re: result.second_best.relevance,
-        relavance: result.second_best.relevance
-      };
-    }
-  }
-
-  /**
-   * Updates highlight.js global options with the passed options
-   *
-   * @param {Partial<HLJSOptions>} userOptions
-   */
-  function configure(userOptions) {
-    if (userOptions.useBR) {
-      console.warn("'useBR' option is deprecated and will be removed entirely in v11.0");
-      console.warn("Please see https://github.com/highlightjs/highlight.js/issues/2559");
-    }
-    options = inherit$1(options, userOptions);
-  }
-
-  /**
-   * Highlights to all <pre><code> blocks on a page
-   *
-   * @type {Function & {called?: boolean}}
-   */
-  const initHighlighting = () => {
-    if (initHighlighting.called) return;
-    initHighlighting.called = true;
-
-    const blocks = document.querySelectorAll('pre code');
-    ArrayProto.forEach.call(blocks, highlightBlock);
-  };
-
-  // Higlights all when DOMContentLoaded fires
-  function initHighlightingOnLoad() {
-    // @ts-ignore
-    window.addEventListener('DOMContentLoaded', initHighlighting, false);
-  }
-
-  /**
-   * Register a language grammar module
-   *
-   * @param {string} languageName
-   * @param {LanguageFn} languageDefinition
-   */
-  function registerLanguage(languageName, languageDefinition) {
-    let lang = null;
-    try {
-      lang = languageDefinition(hljs);
-    } catch (error) {
-      console.error("Language definition for '{}' could not be registered.".replace("{}", languageName));
-      // hard or soft error
-      if (!SAFE_MODE) { throw error; } else { console.error(error); }
-      // languages that have serious errors are replaced with essentially a
-      // "plaintext" stand-in so that the code blocks will still get normal
-      // css classes applied to them - and one bad language won't break the
-      // entire highlighter
-      lang = PLAINTEXT_LANGUAGE;
-    }
-    // give it a temporary name if it doesn't have one in the meta-data
-    if (!lang.name) lang.name = languageName;
-    languages[languageName] = lang;
-    lang.rawDefinition = languageDefinition.bind(null, hljs);
-
-    if (lang.aliases) {
-      registerAliases(lang.aliases, { languageName });
-    }
-  }
-
-  /**
-   * @returns {string[]} List of language internal names
-   */
-  function listLanguages() {
-    return Object.keys(languages);
-  }
-
-  /**
-    intended usage: When one language truly requires another
-
-    Unlike `getLanguage`, this will throw when the requested language
-    is not available.
-
-    @param {string} name - name of the language to fetch/require
-    @returns {Language | never}
-  */
-  function requireLanguage(name) {
-    console.warn("requireLanguage is deprecated and will be removed entirely in the future.");
-    console.warn("Please see https://github.com/highlightjs/highlight.js/pull/2844");
-
-    const lang = getLanguage(name);
-    if (lang) { return lang; }
-
-    const err = new Error('The \'{}\' language is required, but not loaded.'.replace('{}', name));
-    throw err;
-  }
-
-  /**
-   * @param {string} name - name of the language to retrieve
-   * @returns {Language | undefined}
-   */
-  function getLanguage(name) {
-    name = (name || '').toLowerCase();
-    return languages[name] || languages[aliases[name]];
-  }
-
-  /**
-   *
-   * @param {string|string[]} aliasList - single alias or list of aliases
-   * @param {{languageName: string}} opts
-   */
-  function registerAliases(aliasList, { languageName }) {
-    if (typeof aliasList === 'string') {
-      aliasList = [aliasList];
-    }
-    aliasList.forEach(alias => { aliases[alias] = languageName; });
-  }
-
-  /**
-   * Determines if a given language has auto-detection enabled
-   * @param {string} name - name of the language
-   */
-  function autoDetection(name) {
-    const lang = getLanguage(name);
-    return lang && !lang.disableAutodetect;
-  }
-
-  /**
-   * @param {HLJSPlugin} plugin
-   */
-  function addPlugin(plugin) {
-    plugins.push(plugin);
-  }
-
-  /**
-   *
-   * @param {PluginEvent} event
-   * @param {any} args
-   */
-  function fire(event, args) {
-    const cb = event;
-    plugins.forEach(function(plugin) {
-      if (plugin[cb]) {
-        plugin[cb](args);
-      }
-    });
-  }
-
-  /**
-  Note: fixMarkup is deprecated and will be removed entirely in v11
-
-  @param {string} arg
-  @returns {string}
-  */
-  function deprecateFixMarkup(arg) {
-    console.warn("fixMarkup is deprecated and will be removed entirely in v11.0");
-    console.warn("Please see https://github.com/highlightjs/highlight.js/issues/2534");
-
-    return fixMarkup(arg);
-  }
-
-  /* Interface definition */
-  Object.assign(hljs, {
-    highlight,
-    highlightAuto,
-    fixMarkup: deprecateFixMarkup,
-    highlightBlock,
-    configure,
-    initHighlighting,
-    initHighlightingOnLoad,
-    registerLanguage,
-    listLanguages,
-    getLanguage,
-    registerAliases,
-    requireLanguage,
-    autoDetection,
-    inherit: inherit$1,
-    addPlugin,
-    // plugins for frameworks
-    vuePlugin: BuildVuePlugin(hljs).VuePlugin
-  });
-
-  hljs.debugMode = function() { SAFE_MODE = false; };
-  hljs.safeMode = function() { SAFE_MODE = true; };
-  hljs.versionString = version;
-
-  for (const key in MODES) {
-    // @ts-ignore
-    if (typeof MODES[key] === "object") {
-      // @ts-ignore
-      deepFreezeEs6(MODES[key]);
-    }
-  }
-
-  // merge all the modes/regexs into our main object
-  Object.assign(hljs, MODES);
-
-  return hljs;
-};
-
-// export an "instance" of the highlighter
-var highlight = HLJS({});
-
-module.exports = highlight;
 
 
 /***/ }),
@@ -49602,160 +49812,165 @@ var vclosepopover = {
   }
 };
 
-//
+function getDefault(key) {
+  var value = directive.options.popover[key];
 
-function getDefault (key) {
-  const value = directive.options.popover[key];
   if (typeof value === 'undefined') {
-    return directive.options[key]
+    return directive.options[key];
   }
-  return value
+
+  return value;
 }
 
-let isIOS = false;
+var isIOS = false;
+
 if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
   isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
-const openPopovers = [];
+var openPopovers = [];
 
-let Element = function () {};
+var Element = function Element() {};
+
 if (typeof window !== 'undefined') {
   Element = window.Element;
 }
 
 var script = {
   name: 'VPopover',
-
   components: {
-    ResizeObserver: vue_resize__WEBPACK_IMPORTED_MODULE_2__[/* ResizeObserver */ "a"],
+    ResizeObserver: vue_resize__WEBPACK_IMPORTED_MODULE_2__[/* ResizeObserver */ "a"]
   },
-
   props: {
     open: {
       type: Boolean,
-      default: false,
+      default: false
     },
-
     disabled: {
       type: Boolean,
-      default: false,
+      default: false
     },
-
     placement: {
       type: String,
-      default: () => getDefault('defaultPlacement'),
-    },
-
-    delay: {
-      type: [String, Number, Object],
-      default: () => getDefault('defaultDelay'),
-    },
-
-    offset: {
-      type: [String, Number],
-      default: () => getDefault('defaultOffset'),
-    },
-
-    trigger: {
-      type: String,
-      default: () => getDefault('defaultTrigger'),
-    },
-
-    container: {
-      type: [String, Object, Element, Boolean],
-      default: () => getDefault('defaultContainer'),
-    },
-
-    boundariesElement: {
-      type: [String, Element],
-      default: () => getDefault('defaultBoundariesElement'),
-    },
-
-    popperOptions: {
-      type: Object,
-      default: () => getDefault('defaultPopperOptions'),
-    },
-
-    popoverClass: {
-      type: [String, Array],
-      default: () => getDefault('defaultClass'),
-    },
-
-    popoverBaseClass: {
-      type: [String, Array],
-      default: () => directive.options.popover.defaultBaseClass,
-    },
-
-    popoverInnerClass: {
-      type: [String, Array],
-      default: () => directive.options.popover.defaultInnerClass,
-    },
-
-    popoverWrapperClass: {
-      type: [String, Array],
-      default: () => directive.options.popover.defaultWrapperClass,
-    },
-
-    popoverArrowClass: {
-      type: [String, Array],
-      default: () => directive.options.popover.defaultArrowClass,
-    },
-
-    autoHide: {
-      type: Boolean,
-      default: () => directive.options.popover.defaultAutoHide,
-    },
-
-    handleResize: {
-      type: Boolean,
-      default: () => directive.options.popover.defaultHandleResize,
-    },
-
-    openGroup: {
-      type: String,
-      default: null,
-    },
-
-    openClass: {
-      type: [String, Array],
-      default: () => directive.options.popover.defaultOpenClass,
-    },
-
-    ariaId: {
-      default: null,
-    },
-  },
-
-  data () {
-    return {
-      isOpen: false,
-      id: Math.random().toString(36).substr(2, 10),
-    }
-  },
-
-  computed: {
-    cssClass () {
-      return {
-        [this.openClass]: this.isOpen,
+      default: function _default() {
+        return getDefault('defaultPlacement');
       }
     },
-
-    popoverId () {
-      return `popover_${this.ariaId != null ? this.ariaId : this.id}`
+    delay: {
+      type: [String, Number, Object],
+      default: function _default() {
+        return getDefault('defaultDelay');
+      }
     },
+    offset: {
+      type: [String, Number],
+      default: function _default() {
+        return getDefault('defaultOffset');
+      }
+    },
+    trigger: {
+      type: String,
+      default: function _default() {
+        return getDefault('defaultTrigger');
+      }
+    },
+    container: {
+      type: [String, Object, Element, Boolean],
+      default: function _default() {
+        return getDefault('defaultContainer');
+      }
+    },
+    boundariesElement: {
+      type: [String, Element],
+      default: function _default() {
+        return getDefault('defaultBoundariesElement');
+      }
+    },
+    popperOptions: {
+      type: Object,
+      default: function _default() {
+        return getDefault('defaultPopperOptions');
+      }
+    },
+    popoverClass: {
+      type: [String, Array],
+      default: function _default() {
+        return getDefault('defaultClass');
+      }
+    },
+    popoverBaseClass: {
+      type: [String, Array],
+      default: function _default() {
+        return directive.options.popover.defaultBaseClass;
+      }
+    },
+    popoverInnerClass: {
+      type: [String, Array],
+      default: function _default() {
+        return directive.options.popover.defaultInnerClass;
+      }
+    },
+    popoverWrapperClass: {
+      type: [String, Array],
+      default: function _default() {
+        return directive.options.popover.defaultWrapperClass;
+      }
+    },
+    popoverArrowClass: {
+      type: [String, Array],
+      default: function _default() {
+        return directive.options.popover.defaultArrowClass;
+      }
+    },
+    autoHide: {
+      type: Boolean,
+      default: function _default() {
+        return directive.options.popover.defaultAutoHide;
+      }
+    },
+    handleResize: {
+      type: Boolean,
+      default: function _default() {
+        return directive.options.popover.defaultHandleResize;
+      }
+    },
+    openGroup: {
+      type: String,
+      default: null
+    },
+    openClass: {
+      type: [String, Array],
+      default: function _default() {
+        return directive.options.popover.defaultOpenClass;
+      }
+    },
+    ariaId: {
+      default: null
+    }
   },
-
+  data: function data() {
+    return {
+      isOpen: false,
+      id: Math.random().toString(36).substr(2, 10)
+    };
+  },
+  computed: {
+    cssClass: function cssClass() {
+      return _defineProperty({}, this.openClass, this.isOpen);
+    },
+    popoverId: function popoverId() {
+      return "popover_".concat(this.ariaId != null ? this.ariaId : this.id);
+    }
+  },
   watch: {
-    open (val) {
+    open: function open(val) {
       if (val) {
         this.show();
       } else {
         this.hide();
       }
     },
-
-    disabled (val, oldVal) {
+    disabled: function disabled(val, oldVal) {
       if (val !== oldVal) {
         if (val) {
           this.hide();
@@ -49764,128 +49979,128 @@ var script = {
         }
       }
     },
-
-    container (val) {
+    container: function container(val) {
       if (this.isOpen && this.popperInstance) {
-        const popoverNode = this.$refs.popover;
-        const reference = this.$refs.trigger;
+        var popoverNode = this.$refs.popover;
+        var reference = this.$refs.trigger;
+        var container = this.$_findContainer(this.container, reference);
 
-        const container = this.$_findContainer(this.container, reference);
         if (!container) {
           console.warn('No container for popover', this);
-          return
+          return;
         }
 
         container.appendChild(popoverNode);
         this.popperInstance.scheduleUpdate();
       }
     },
-
-    trigger (val) {
+    trigger: function trigger(val) {
       this.$_removeEventListeners();
       this.$_addEventListeners();
     },
+    placement: function placement(val) {
+      var _this = this;
 
-    placement (val) {
-      this.$_updatePopper(() => {
-        this.popperInstance.options.placement = val;
+      this.$_updatePopper(function () {
+        _this.popperInstance.options.placement = val;
       });
     },
-
     offset: '$_restartPopper',
-
     boundariesElement: '$_restartPopper',
-
     popperOptions: {
       handler: '$_restartPopper',
-      deep: true,
-    },
+      deep: true
+    }
   },
-
-  created () {
+  created: function created() {
     this.$_isDisposed = false;
     this.$_mounted = false;
     this.$_events = [];
     this.$_preventOpen = false;
   },
-
-  mounted () {
-    const popoverNode = this.$refs.popover;
+  mounted: function mounted() {
+    var popoverNode = this.$refs.popover;
     popoverNode.parentNode && popoverNode.parentNode.removeChild(popoverNode);
-
     this.$_init();
 
     if (this.open) {
       this.show();
     }
   },
-
-  deactivated () {
+  deactivated: function deactivated() {
     this.hide();
   },
-
-  beforeDestroy () {
+  beforeDestroy: function beforeDestroy() {
     this.dispose();
   },
-
   methods: {
-    show ({ event, skipDelay = false, force = false } = {}) {
+    show: function show() {
+      var _this2 = this;
+
+      var _ref2 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+          event = _ref2.event,
+          _ref2$skipDelay = _ref2.skipDelay,
+          _ref2$force = _ref2.force,
+          force = _ref2$force === void 0 ? false : _ref2$force;
+
       if (force || !this.disabled) {
         this.$_scheduleShow(event);
         this.$emit('show');
       }
+
       this.$emit('update:open', true);
       this.$_beingShowed = true;
-      requestAnimationFrame(() => {
-        this.$_beingShowed = false;
+      requestAnimationFrame(function () {
+        _this2.$_beingShowed = false;
       });
     },
+    hide: function hide() {
+      var _ref3 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+          event = _ref3.event,
+          _ref3$skipDelay = _ref3.skipDelay;
 
-    hide ({ event, skipDelay = false } = {}) {
       this.$_scheduleHide(event);
-
       this.$emit('hide');
       this.$emit('update:open', false);
     },
-
-    dispose () {
+    dispose: function dispose() {
       this.$_isDisposed = true;
       this.$_removeEventListeners();
-      this.hide({ skipDelay: true });
-      if (this.popperInstance) {
-        this.popperInstance.destroy();
+      this.hide({
+        skipDelay: true
+      });
 
-        // destroy tooltipNode if removeOnDestroy is not set, as popperInstance.destroy() already removes the element
+      if (this.popperInstance) {
+        this.popperInstance.destroy(); // destroy tooltipNode if removeOnDestroy is not set, as popperInstance.destroy() already removes the element
+
         if (!this.popperInstance.options.removeOnDestroy) {
-          const popoverNode = this.$refs.popover;
+          var popoverNode = this.$refs.popover;
           popoverNode.parentNode && popoverNode.parentNode.removeChild(popoverNode);
         }
       }
+
       this.$_mounted = false;
       this.popperInstance = null;
       this.isOpen = false;
-
       this.$emit('dispose');
     },
-
-    $_init () {
+    $_init: function $_init() {
       if (this.trigger.indexOf('manual') === -1) {
         this.$_addEventListeners();
       }
     },
+    $_show: function $_show() {
+      var _this3 = this;
 
-    $_show () {
-      const reference = this.$refs.trigger;
-      const popoverNode = this.$refs.popover;
+      var reference = this.$refs.trigger;
+      var popoverNode = this.$refs.popover;
+      clearTimeout(this.$_disposeTimer); // Already open
 
-      clearTimeout(this.$_disposeTimer);
-
-      // Already open
       if (this.isOpen) {
-        return
-      }
+        return;
+      } // Popper is already initialized
 
-      // Popper is already initialized
+
       if (this.popperInstance) {
         this.isOpen = true;
         this.popperInstance.enableEventListeners();
@@ -49893,91 +50108,94 @@ var script = {
       }
 
       if (!this.$_mounted) {
-        const container = this.$_findContainer(this.container, reference);
+        var container = this.$_findContainer(this.container, reference);
+
         if (!container) {
           console.warn('No container for popover', this);
-          return
+          return;
         }
+
         container.appendChild(popoverNode);
         this.$_mounted = true;
         this.isOpen = false;
+
         if (this.popperInstance) {
-          requestAnimationFrame(() => {
-            if (!this.hidden) {
-              this.isOpen = true;
+          requestAnimationFrame(function () {
+            if (!_this3.hidden) {
+              _this3.isOpen = true;
             }
           });
         }
       }
 
       if (!this.popperInstance) {
-        const popperOptions = {
-          ...this.popperOptions,
-          placement: this.placement,
-        };
+        var popperOptions = _objectSpread2(_objectSpread2({}, this.popperOptions), {}, {
+          placement: this.placement
+        });
 
-        popperOptions.modifiers = {
-          ...popperOptions.modifiers,
-          arrow: {
-            ...popperOptions.modifiers && popperOptions.modifiers.arrow,
-            element: this.$refs.arrow,
-          },
-        };
+        popperOptions.modifiers = _objectSpread2(_objectSpread2({}, popperOptions.modifiers), {}, {
+          arrow: _objectSpread2(_objectSpread2({}, popperOptions.modifiers && popperOptions.modifiers.arrow), {}, {
+            element: this.$refs.arrow
+          })
+        });
 
         if (this.offset) {
-          const offset = this.$_getOffset();
-
-          popperOptions.modifiers.offset = {
-            ...popperOptions.modifiers && popperOptions.modifiers.offset,
-            offset,
-          };
+          var offset = this.$_getOffset();
+          popperOptions.modifiers.offset = _objectSpread2(_objectSpread2({}, popperOptions.modifiers && popperOptions.modifiers.offset), {}, {
+            offset: offset
+          });
         }
 
         if (this.boundariesElement) {
-          popperOptions.modifiers.preventOverflow = {
-            ...popperOptions.modifiers && popperOptions.modifiers.preventOverflow,
-            boundariesElement: this.boundariesElement,
-          };
+          popperOptions.modifiers.preventOverflow = _objectSpread2(_objectSpread2({}, popperOptions.modifiers && popperOptions.modifiers.preventOverflow), {}, {
+            boundariesElement: this.boundariesElement
+          });
         }
 
-        this.popperInstance = new popper_js__WEBPACK_IMPORTED_MODULE_0__[/* default */ "a"](reference, popoverNode, popperOptions);
+        this.popperInstance = new popper_js__WEBPACK_IMPORTED_MODULE_0__[/* default */ "a"](reference, popoverNode, popperOptions); // Fix position
 
-        // Fix position
-        requestAnimationFrame(() => {
-          if (this.hidden) {
-            this.hidden = false;
-            this.$_hide();
-            return
+        requestAnimationFrame(function () {
+          if (_this3.hidden) {
+            _this3.hidden = false;
+
+            _this3.$_hide();
+
+            return;
           }
 
-          if (!this.$_isDisposed && this.popperInstance) {
-            this.popperInstance.scheduleUpdate();
+          if (!_this3.$_isDisposed && _this3.popperInstance) {
+            _this3.popperInstance.scheduleUpdate(); // Show the tooltip
 
-            // Show the tooltip
-            requestAnimationFrame(() => {
-              if (this.hidden) {
-                this.hidden = false;
-                this.$_hide();
-                return
+
+            requestAnimationFrame(function () {
+              if (_this3.hidden) {
+                _this3.hidden = false;
+
+                _this3.$_hide();
+
+                return;
               }
 
-              if (!this.$_isDisposed) {
-                this.isOpen = true;
+              if (!_this3.$_isDisposed) {
+                _this3.isOpen = true;
               } else {
-                this.dispose();
+                _this3.dispose();
               }
             });
           } else {
-            this.dispose();
+            _this3.dispose();
           }
         });
       }
 
-      const openGroup = this.openGroup;
+      var openGroup = this.openGroup;
+
       if (openGroup) {
-        let popover;
-        for (let i = 0; i < openPopovers.length; i++) {
+        var popover;
+
+        for (var i = 0; i < openPopovers.length; i++) {
           popover = openPopovers[i];
+
           if (popover.openGroup !== openGroup) {
             popover.hide();
             popover.$emit('close-group');
@@ -49986,43 +50204,46 @@ var script = {
       }
 
       openPopovers.push(this);
-
       this.$emit('apply-show');
     },
+    $_hide: function $_hide() {
+      var _this4 = this;
 
-    $_hide () {
       // Already hidden
       if (!this.isOpen) {
-        return
+        return;
       }
 
-      const index = openPopovers.indexOf(this);
+      var index = openPopovers.indexOf(this);
+
       if (index !== -1) {
         openPopovers.splice(index, 1);
       }
 
       this.isOpen = false;
+
       if (this.popperInstance) {
         this.popperInstance.disableEventListeners();
       }
 
       clearTimeout(this.$_disposeTimer);
-      const disposeTime = directive.options.popover.disposeTimeout || directive.options.disposeTimeout;
+      var disposeTime = directive.options.popover.disposeTimeout || directive.options.disposeTimeout;
+
       if (disposeTime !== null) {
-        this.$_disposeTimer = setTimeout(() => {
-          const popoverNode = this.$refs.popover;
+        this.$_disposeTimer = setTimeout(function () {
+          var popoverNode = _this4.$refs.popover;
+
           if (popoverNode) {
             // Don't remove popper instance, just the HTML element
             popoverNode.parentNode && popoverNode.parentNode.removeChild(popoverNode);
-            this.$_mounted = false;
+            _this4.$_mounted = false;
           }
         }, disposeTime);
       }
 
       this.$emit('apply-hide');
     },
-
-    $_findContainer (container, reference) {
+    $_findContainer: function $_findContainer(container, reference) {
       // if container is a query, get the relative element
       if (typeof container === 'string') {
         container = window.document.querySelector(container);
@@ -50030,178 +50251,201 @@ var script = {
         // if container is `false`, set it to reference parent
         container = reference.parentNode;
       }
-      return container
+
+      return container;
     },
+    $_getOffset: function $_getOffset() {
+      var typeofOffset = _typeof(this.offset);
 
-    $_getOffset () {
-      const typeofOffset = typeof this.offset;
-      let offset = this.offset;
+      var offset = this.offset; // One value -> switch
 
-      // One value -> switch
-      if (typeofOffset === 'number' || (typeofOffset === 'string' && offset.indexOf(',') === -1)) {
-        offset = `0, ${offset}`;
+      if (typeofOffset === 'number' || typeofOffset === 'string' && offset.indexOf(',') === -1) {
+        offset = "0, ".concat(offset);
       }
 
-      return offset
+      return offset;
     },
+    $_addEventListeners: function $_addEventListeners() {
+      var _this5 = this;
 
-    $_addEventListeners () {
-      const reference = this.$refs.trigger;
-      const directEvents = [];
-      const oppositeEvents = [];
-
-      const events = typeof this.trigger === 'string'
-        ? this.trigger
-          .split(' ')
-          .filter(
-            trigger => ['click', 'hover', 'focus'].indexOf(trigger) !== -1
-          )
-        : [];
-
-      events.forEach(event => {
+      var reference = this.$refs.trigger;
+      var directEvents = [];
+      var oppositeEvents = [];
+      var events = typeof this.trigger === 'string' ? this.trigger.split(' ').filter(function (trigger) {
+        return ['click', 'hover', 'focus'].indexOf(trigger) !== -1;
+      }) : [];
+      events.forEach(function (event) {
         switch (event) {
           case 'hover':
             directEvents.push('mouseenter');
             oppositeEvents.push('mouseleave');
-            break
+            break;
+
           case 'focus':
             directEvents.push('focus');
             oppositeEvents.push('blur');
-            break
+            break;
+
           case 'click':
             directEvents.push('click');
             oppositeEvents.push('click');
-            break
+            break;
         }
-      });
+      }); // schedule show tooltip
 
-      // schedule show tooltip
-      directEvents.forEach(event => {
-        const func = event => {
-          if (this.isOpen) {
-            return
+      directEvents.forEach(function (event) {
+        var func = function func(event) {
+          if (_this5.isOpen) {
+            return;
           }
+
           event.usedByTooltip = true;
-          !this.$_preventOpen && this.show({ event: event });
-          this.hidden = false;
+          !_this5.$_preventOpen && _this5.show({
+            event: event
+          });
+          _this5.hidden = false;
         };
-        this.$_events.push({ event, func });
-        reference.addEventListener(event, func);
-      });
 
-      // schedule hide tooltip
-      oppositeEvents.forEach(event => {
-        const func = event => {
+        _this5.$_events.push({
+          event: event,
+          func: func
+        });
+
+        reference.addEventListener(event, func);
+      }); // schedule hide tooltip
+
+      oppositeEvents.forEach(function (event) {
+        var func = function func(event) {
           if (event.usedByTooltip) {
-            return
+            return;
           }
-          this.hide({ event: event });
-          this.hidden = true;
+
+          _this5.hide({
+            event: event
+          });
+
+          _this5.hidden = true;
         };
-        this.$_events.push({ event, func });
+
+        _this5.$_events.push({
+          event: event,
+          func: func
+        });
+
         reference.addEventListener(event, func);
       });
     },
-
-    $_scheduleShow (event = null, skipDelay = false) {
+    $_scheduleShow: function $_scheduleShow() {
+      var skipDelay = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
       clearTimeout(this.$_scheduleTimer);
+
       if (skipDelay) {
         this.$_show();
       } else {
         // defaults to 0
-        const computedDelay = parseInt((this.delay && this.delay.show) || this.delay || 0);
+        var computedDelay = parseInt(this.delay && this.delay.show || this.delay || 0);
         this.$_scheduleTimer = setTimeout(this.$_show.bind(this), computedDelay);
       }
     },
+    $_scheduleHide: function $_scheduleHide() {
+      var _this6 = this;
 
-    $_scheduleHide (event = null, skipDelay = false) {
+      var event = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+      var skipDelay = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
       clearTimeout(this.$_scheduleTimer);
+
       if (skipDelay) {
         this.$_hide();
       } else {
         // defaults to 0
-        const computedDelay = parseInt((this.delay && this.delay.hide) || this.delay || 0);
-        this.$_scheduleTimer = setTimeout(() => {
-          if (!this.isOpen) {
-            return
-          }
-
-          // if we are hiding because of a mouseleave, we must check that the new
+        var computedDelay = parseInt(this.delay && this.delay.hide || this.delay || 0);
+        this.$_scheduleTimer = setTimeout(function () {
+          if (!_this6.isOpen) {
+            return;
+          } // if we are hiding because of a mouseleave, we must check that the new
           // reference isn't the tooltip, because in this case we don't want to hide it
-          if (event && event.type === 'mouseleave') {
-            const isSet = this.$_setTooltipNodeEvent(event);
 
-            // if we set the new event, don't hide the tooltip yet
+
+          if (event && event.type === 'mouseleave') {
+            var isSet = _this6.$_setTooltipNodeEvent(event); // if we set the new event, don't hide the tooltip yet
             // the new event will take care to hide it if necessary
+
+
             if (isSet) {
-              return
+              return;
             }
           }
 
-          this.$_hide();
+          _this6.$_hide();
         }, computedDelay);
       }
     },
+    $_setTooltipNodeEvent: function $_setTooltipNodeEvent(event) {
+      var _this7 = this;
 
-    $_setTooltipNodeEvent (event) {
-      const reference = this.$refs.trigger;
-      const popoverNode = this.$refs.popover;
+      var reference = this.$refs.trigger;
+      var popoverNode = this.$refs.popover;
+      var relatedreference = event.relatedreference || event.toElement || event.relatedTarget;
 
-      const relatedreference = event.relatedreference || event.toElement || event.relatedTarget;
+      var callback = function callback(event2) {
+        var relatedreference2 = event2.relatedreference || event2.toElement || event2.relatedTarget; // Remove event listener after call
 
-      const callback = event2 => {
-        const relatedreference2 = event2.relatedreference || event2.toElement || event2.relatedTarget;
+        popoverNode.removeEventListener(event.type, callback); // If the new reference is not the reference element
 
-        // Remove event listener after call
-        popoverNode.removeEventListener(event.type, callback);
-
-        // If the new reference is not the reference element
         if (!reference.contains(relatedreference2)) {
           // Schedule to hide tooltip
-          this.hide({ event: event2 });
+          _this7.hide({
+            event: event2
+          });
         }
       };
 
       if (popoverNode.contains(relatedreference)) {
         // listen to mouseleave on the tooltip element to be able to hide the tooltip
         popoverNode.addEventListener(event.type, callback);
-        return true
+        return true;
       }
 
-      return false
+      return false;
     },
-
-    $_removeEventListeners () {
-      const reference = this.$refs.trigger;
-      this.$_events.forEach(({ func, event }) => {
+    $_removeEventListeners: function $_removeEventListeners() {
+      var reference = this.$refs.trigger;
+      this.$_events.forEach(function (_ref4) {
+        var func = _ref4.func,
+            event = _ref4.event;
         reference.removeEventListener(event, func);
       });
       this.$_events = [];
     },
-
-    $_updatePopper (cb) {
+    $_updatePopper: function $_updatePopper(cb) {
       if (this.popperInstance) {
         cb();
         if (this.isOpen) this.popperInstance.scheduleUpdate();
       }
     },
-
-    $_restartPopper () {
+    $_restartPopper: function $_restartPopper() {
       if (this.popperInstance) {
-        const isOpen = this.isOpen;
+        var isOpen = this.isOpen;
         this.dispose();
         this.$_isDisposed = false;
         this.$_init();
+
         if (isOpen) {
-          this.show({ skipDelay: true, force: true });
+          this.show({
+            skipDelay: true,
+            force: true
+          });
         }
       }
     },
+    $_handleGlobalClose: function $_handleGlobalClose(event) {
+      var _this8 = this;
 
-    $_handleGlobalClose (event, touch = false) {
-      if (this.$_beingShowed) return
-
-      this.hide({ event: event });
+      var touch = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+      if (this.$_beingShowed) return;
+      this.hide({
+        event: event
+      });
 
       if (event.closePopover) {
         this.$emit('close-directive');
@@ -50211,52 +50455,58 @@ var script = {
 
       if (touch) {
         this.$_preventOpen = true;
-        setTimeout(() => {
-          this.$_preventOpen = false;
+        setTimeout(function () {
+          _this8.$_preventOpen = false;
         }, 300);
       }
     },
-
-    $_handleResize () {
+    $_handleResize: function $_handleResize() {
       if (this.isOpen && this.popperInstance) {
         this.popperInstance.scheduleUpdate();
         this.$emit('resize');
       }
-    },
-  },
+    }
+  }
 };
 
 if (typeof document !== 'undefined' && typeof window !== 'undefined') {
   if (isIOS) {
     document.addEventListener('touchend', handleGlobalTouchend, supportsPassive ? {
       passive: true,
-      capture: true,
+      capture: true
     } : true);
   } else {
     window.addEventListener('click', handleGlobalClick, true);
   }
 }
 
-function handleGlobalClick (event) {
+function handleGlobalClick(event) {
   handleGlobalClose(event);
 }
 
-function handleGlobalTouchend (event) {
+function handleGlobalTouchend(event) {
   handleGlobalClose(event, true);
 }
 
-function handleGlobalClose (event, touch = false) {
-  // Delay so that close directive has time to set values
-  for (let i = 0; i < openPopovers.length; i++) {
-    let popover = openPopovers[i];
+function handleGlobalClose(event) {
+  var touch = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+  var _loop = function _loop(i) {
+    var popover = openPopovers[i];
+
     if (popover.$refs.popover) {
-      const contains = popover.$refs.popover.contains(event.target);
-      requestAnimationFrame(() => {
-        if (event.closeAllPopover || (event.closePopover && contains) || (popover.autoHide && !contains)) {
+      var contains = popover.$refs.popover.contains(event.target);
+      requestAnimationFrame(function () {
+        if (event.closeAllPopover || event.closePopover && contains || popover.autoHide && !contains) {
           popover.$_handleGlobalClose(event, touch);
         }
       });
     }
+  };
+
+  // Delay so that close directive has time to set values
+  for (var i = 0; i < openPopovers.length; i++) {
+    _loop(i);
   }
 }
 
@@ -50336,110 +50586,93 @@ function normalizeComponent(template, style, script, scopeId, isFunctionalTempla
 }
 
 /* script */
-const __vue_script__ = script;
-
+var __vue_script__ = script;
 /* template */
-var __vue_render__ = function() {
+
+var __vue_render__ = function __vue_render__() {
   var _vm = this;
+
   var _h = _vm.$createElement;
+
   var _c = _vm._self._c || _h;
-  return _c("div", { staticClass: "v-popover", class: _vm.cssClass }, [
-    _c(
-      "div",
-      {
-        ref: "trigger",
-        staticClass: "trigger",
-        staticStyle: { display: "inline-block" },
-        attrs: {
-          "aria-describedby": _vm.isOpen ? _vm.popoverId : undefined,
-          tabindex: _vm.trigger.indexOf("focus") !== -1 ? 0 : undefined
+
+  return _c("div", {
+    staticClass: "v-popover",
+    class: _vm.cssClass
+  }, [_c("div", {
+    ref: "trigger",
+    staticClass: "trigger",
+    staticStyle: {
+      display: "inline-block"
+    },
+    attrs: {
+      "aria-describedby": _vm.isOpen ? _vm.popoverId : undefined,
+      tabindex: _vm.trigger.indexOf("focus") !== -1 ? 0 : undefined
+    }
+  }, [_vm._t("default")], 2), _vm._v(" "), _c("div", {
+    ref: "popover",
+    class: [_vm.popoverBaseClass, _vm.popoverClass, _vm.cssClass],
+    style: {
+      visibility: _vm.isOpen ? "visible" : "hidden"
+    },
+    attrs: {
+      id: _vm.popoverId,
+      "aria-hidden": _vm.isOpen ? "false" : "true",
+      tabindex: _vm.autoHide ? 0 : undefined
+    },
+    on: {
+      keyup: function keyup($event) {
+        if (!$event.type.indexOf("key") && _vm._k($event.keyCode, "esc", 27, $event.key, ["Esc", "Escape"])) {
+          return null;
         }
-      },
-      [_vm._t("default")],
-      2
-    ),
-    _vm._v(" "),
-    _c(
-      "div",
-      {
-        ref: "popover",
-        class: [_vm.popoverBaseClass, _vm.popoverClass, _vm.cssClass],
-        style: {
-          visibility: _vm.isOpen ? "visible" : "hidden"
-        },
-        attrs: {
-          id: _vm.popoverId,
-          "aria-hidden": _vm.isOpen ? "false" : "true",
-          tabindex: _vm.autoHide ? 0 : undefined
-        },
-        on: {
-          keyup: function($event) {
-            if (
-              !$event.type.indexOf("key") &&
-              _vm._k($event.keyCode, "esc", 27, $event.key, ["Esc", "Escape"])
-            ) {
-              return null
-            }
-            _vm.autoHide && _vm.hide();
-          }
-        }
-      },
-      [
-        _c("div", { class: _vm.popoverWrapperClass }, [
-          _c(
-            "div",
-            {
-              ref: "inner",
-              class: _vm.popoverInnerClass,
-              staticStyle: { position: "relative" }
-            },
-            [
-              _c("div", [_vm._t("popover", null, { isOpen: _vm.isOpen })], 2),
-              _vm._v(" "),
-              _vm.handleResize
-                ? _c("ResizeObserver", { on: { notify: _vm.$_handleResize } })
-                : _vm._e()
-            ],
-            1
-          ),
-          _vm._v(" "),
-          _c("div", { ref: "arrow", class: _vm.popoverArrowClass })
-        ])
-      ]
-    )
-  ])
+
+        _vm.autoHide && _vm.hide();
+      }
+    }
+  }, [_c("div", {
+    class: _vm.popoverWrapperClass
+  }, [_c("div", {
+    ref: "inner",
+    class: _vm.popoverInnerClass,
+    staticStyle: {
+      position: "relative"
+    }
+  }, [_c("div", [_vm._t("popover", null, {
+    isOpen: _vm.isOpen
+  })], 2), _vm._v(" "), _vm.handleResize ? _c("ResizeObserver", {
+    on: {
+      notify: _vm.$_handleResize
+    }
+  }) : _vm._e()], 1), _vm._v(" "), _c("div", {
+    ref: "arrow",
+    class: _vm.popoverArrowClass
+  })])])]);
 };
+
 var __vue_staticRenderFns__ = [];
 __vue_render__._withStripped = true;
+/* style */
 
-  /* style */
-  const __vue_inject_styles__ = undefined;
-  /* scoped */
-  const __vue_scope_id__ = undefined;
-  /* module identifier */
-  const __vue_module_identifier__ = undefined;
-  /* functional template */
-  const __vue_is_functional_template__ = false;
-  /* style inject */
-  
-  /* style inject SSR */
-  
-  /* style inject shadow dom */
-  
+var __vue_inject_styles__ = undefined;
+/* scoped */
 
-  
-  const __vue_component__ = /*#__PURE__*/normalizeComponent(
-    { render: __vue_render__, staticRenderFns: __vue_staticRenderFns__ },
-    __vue_inject_styles__,
-    __vue_script__,
-    __vue_scope_id__,
-    __vue_is_functional_template__,
-    __vue_module_identifier__,
-    false,
-    undefined,
-    undefined,
-    undefined
-  );
+var __vue_scope_id__ = undefined;
+/* module identifier */
+
+var __vue_module_identifier__ = undefined;
+/* functional template */
+
+var __vue_is_functional_template__ = false;
+/* style inject */
+
+/* style inject SSR */
+
+/* style inject shadow dom */
+
+var __vue_component__ = /*#__PURE__*/normalizeComponent({
+  render: __vue_render__,
+  staticRenderFns: __vue_staticRenderFns__
+}, __vue_inject_styles__, __vue_script__, __vue_scope_id__, __vue_is_functional_template__, __vue_module_identifier__, false, undefined, undefined, undefined);
 
 function styleInject(css, ref) {
   if ( ref === void 0 ) ref = {};
@@ -50481,7 +50714,7 @@ function install(Vue) {
   directive.options = finalOptions;
   Vue.directive('tooltip', directive);
   Vue.directive('close-popover', vclosepopover);
-  Vue.component('v-popover', __vue_component__);
+  Vue.component('VPopover', __vue_component__);
 }
 var VTooltip = directive;
 var VClosePopover = vclosepopover;
@@ -50531,7 +50764,7 @@ var FAILS_ON_PRIMITIVES = fails(function () { nativeGetOwnPropertyDescriptor(1);
 var FORCED = !DESCRIPTORS || FAILS_ON_PRIMITIVES;
 
 // `Object.getOwnPropertyDescriptor` method
-// https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptor
+// https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
 $({ target: 'Object', stat: true, forced: FORCED, sham: !DESCRIPTORS }, {
   getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
     return nativeGetOwnPropertyDescriptor(toIndexedObject(it), key);
@@ -50866,7 +51099,7 @@ if (FORCED) {
   };
   Internal.prototype = redefineAll(PromiseConstructor.prototype, {
     // `Promise.prototype.then` method
-    // https://tc39.github.io/ecma262/#sec-promise.prototype.then
+    // https://tc39.es/ecma262/#sec-promise.prototype.then
     then: function then(onFulfilled, onRejected) {
       var state = getInternalPromiseState(this);
       var reaction = newPromiseCapability(speciesConstructor(this, PromiseConstructor));
@@ -50879,7 +51112,7 @@ if (FORCED) {
       return reaction.promise;
     },
     // `Promise.prototype.catch` method
-    // https://tc39.github.io/ecma262/#sec-promise.prototype.catch
+    // https://tc39.es/ecma262/#sec-promise.prototype.catch
     'catch': function (onRejected) {
       return this.then(undefined, onRejected);
     }
@@ -50931,7 +51164,7 @@ PromiseWrapper = getBuiltIn(PROMISE);
 // statics
 $({ target: PROMISE, stat: true, forced: FORCED }, {
   // `Promise.reject` method
-  // https://tc39.github.io/ecma262/#sec-promise.reject
+  // https://tc39.es/ecma262/#sec-promise.reject
   reject: function reject(r) {
     var capability = newPromiseCapability(this);
     capability.reject.call(undefined, r);
@@ -50941,7 +51174,7 @@ $({ target: PROMISE, stat: true, forced: FORCED }, {
 
 $({ target: PROMISE, stat: true, forced: IS_PURE || FORCED }, {
   // `Promise.resolve` method
-  // https://tc39.github.io/ecma262/#sec-promise.resolve
+  // https://tc39.es/ecma262/#sec-promise.resolve
   resolve: function resolve(x) {
     return promiseResolve(IS_PURE && this === PromiseWrapper ? PromiseConstructor : this, x);
   }
@@ -50949,7 +51182,7 @@ $({ target: PROMISE, stat: true, forced: IS_PURE || FORCED }, {
 
 $({ target: PROMISE, stat: true, forced: INCORRECT_ITERATION }, {
   // `Promise.all` method
-  // https://tc39.github.io/ecma262/#sec-promise.all
+  // https://tc39.es/ecma262/#sec-promise.all
   all: function all(iterable) {
     var C = this;
     var capability = newPromiseCapability(C);
@@ -50978,7 +51211,7 @@ $({ target: PROMISE, stat: true, forced: INCORRECT_ITERATION }, {
     return capability.promise;
   },
   // `Promise.race` method
-  // https://tc39.github.io/ecma262/#sec-promise.race
+  // https://tc39.es/ecma262/#sec-promise.race
   race: function race(iterable) {
     var C = this;
     var capability = newPromiseCapability(C);
@@ -51142,7 +51375,7 @@ module.exports = function (target, source) {
 var classof = __webpack_require__("c6b6");
 
 // `IsArray` abstract operation
-// https://tc39.github.io/ecma262/#sec-isarray
+// https://tc39.es/ecma262/#sec-isarray
 module.exports = Array.isArray || function isArray(arg) {
   return classof(arg) == 'Array';
 };
@@ -55788,7 +56021,7 @@ var findByKey = function findByKey(variant, variants) {
 };
 
 
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwAvatar.vue?vue&type=template&id=5d1b3110&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwAvatar.vue?vue&type=template&id=5d1b3110&
 var render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return (_vm.enableCropper)?_c('div',[(!_vm.hasTrigger)?_c('div',{class:_vm.avatarStyle.avatarContainer,attrs:{"id":"pick-avatar"}},[(_vm.selectedImage)?_c('img',{class:_vm.avatarStyle.image,staticStyle:{"animation":"fadeIn 2s ease"},attrs:{"src":_vm.selectedImage}}):_vm._e(),(!_vm.selectedImage)?_c('div',{class:_vm.avatarStyle.previewAvatarClass},[(_vm.hasIconSlot)?_c('div',{class:_vm.avatarStyle.defaultIcon},[_vm._t("icon")],2):_vm._e(),_c('p',{class:_vm.avatarStyle.defaultLabel},[_vm._t("default",[_vm._v(_vm._s(_vm.label))])],2)]):_vm._e()]):_vm._e(),_c('avatar-cropper',{attrs:{"labels":_vm.labels,"cropper-options":_vm.cropperOptions,"output-options":_vm.cropperOutputOptions,"output-quality":_vm.outputQuality,"upload-handler":function (e) { return _vm.$emit('uploadHandler', e); },"trigger":_vm.trigger},on:{"changed":function (e) { return _vm.$emit('changed', e); },"error":function (e) { return _vm.$emit('handleUploadError', e); }}})],1):_c('div',[(!_vm.hasTrigger)?_c('div',{class:_vm.avatarStyle.avatarContainer,on:{"click":function($event){return _vm.$refs.file.click()}}},[(_vm.selectedImage)?_c('img',{class:_vm.avatarStyle.image,staticStyle:{"animation":"fadeIn 2s ease"},attrs:{"src":_vm.selectedImage}}):_vm._e(),(!_vm.selectedImage)?_c('div',{class:_vm.avatarStyle.previewAvatarClass},[(_vm.hasIconSlot)?_c('div',{class:_vm.avatarStyle.defaultIcon},[_vm._t("icon")],2):_vm._e(),_c('p',{class:_vm.avatarStyle.defaultLabel},[_vm._t("default",[_vm._v(_vm._s(_vm.label))])],2)]):_vm._e()]):_vm._e(),_c('input',{ref:"file",staticClass:"hidden",attrs:{"type":"file"},on:{"change":_vm.onFileChange}})])}
 var staticRenderFns = []
 
@@ -56126,7 +56359,7 @@ var SwAvatar_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwAvatar = (SwAvatar_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwBadge.vue?vue&type=template&id=1c46f4f0&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwBadge.vue?vue&type=template&id=1c46f4f0&
 var SwBadgevue_type_template_id_1c46f4f0_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('span',{class:_vm.currentClass,style:({ backgroundColor: _vm.bgColor, color: _vm.color })},[_vm._t("default")],2)}
 var SwBadgevue_type_template_id_1c46f4f0_staticRenderFns = []
 
@@ -56203,7 +56436,7 @@ var SwBadge_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwBadge = (SwBadge_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-breadcrumb/SwBreadcrumb.vue?vue&type=template&id=06924152&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-breadcrumb/SwBreadcrumb.vue?vue&type=template&id=06924152&
 var SwBreadcrumbvue_type_template_id_06924152_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('nav',[_c('ol',{class:_vm.classes.listContainer},[_vm._t("default")],2)])}
 var SwBreadcrumbvue_type_template_id_06924152_staticRenderFns = []
 
@@ -56278,7 +56511,7 @@ var SwBreadcrumb_component = normalizeComponent(
 )
 
 /* harmony default export */ var sw_breadcrumb_SwBreadcrumb = (SwBreadcrumb_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-breadcrumb/SwBreadcrumbItem.vue?vue&type=template&id=1f90413a&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-breadcrumb/SwBreadcrumbItem.vue?vue&type=template&id=1f90413a&
 var SwBreadcrumbItemvue_type_template_id_1f90413a_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('li',{class:_vm.classes.itemContainer},[(_vm.hasRouteLink)?_c('router-link',{class:_vm.classes.base,attrs:{"to":_vm.to}},[_vm._v(" "+_vm._s(_vm.title)+" ")]):_c('a',{class:_vm.classes.base,attrs:{"href":_vm.to}},[_vm._v(_vm._s(_vm.title))]),(!_vm.active)?_c('span',{class:_vm.classes.separator},[_vm._v("/")]):_vm._e()],1)}
 var SwBreadcrumbItemvue_type_template_id_1f90413a_staticRenderFns = []
 
@@ -56354,7 +56587,7 @@ var SwBreadcrumbItem_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwBreadcrumbItem = (SwBreadcrumbItem_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwButton.vue?vue&type=template&id=0ad10219&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwButton.vue?vue&type=template&id=0ad10219&
 var SwButtonvue_type_template_id_0ad10219_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('sw-custom-tag',_vm._g(_vm._b({class:_vm.buttonStyle,attrs:{"tag":_vm.getRenderElement,"disabled":_vm.disabled}},'sw-custom-tag',_vm.$attrs,false),_vm.$listeners),[(_vm.isLoading)?_c('div',{class:_vm.iconStyle.loadingIconContainer},[(_vm.hasLoaderSlot)?_vm._t("loader"):_c('svg',{class:_vm.loadingIconStyle,attrs:{"xmlns":"http://www.w3.org/2000/svg","fill":"none","viewBox":"0 0 24 24"}},[_c('circle',{staticClass:"opacity-25",attrs:{"cx":"12","cy":"12","r":"10","stroke":"currentColor","stroke-width":"4"}}),_c('path',{staticClass:"opacity-75",attrs:{"fill":"currentColor","d":"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}})])],2):_vm._e(),_vm._t("default")],2)}
 var SwButtonvue_type_template_id_0ad10219_staticRenderFns = []
 
@@ -56579,7 +56812,7 @@ var SwButton_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwButton = (SwButton_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwCard.vue?vue&type=template&id=5f4875da&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwCard.vue?vue&type=template&id=5f4875da&
 var SwCardvue_type_template_id_5f4875da_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.cardStyle.container},[(_vm.hasHeaderSlot)?_c('div',{class:_vm.cardStyle.header},[_vm._t("header")],2):_vm._e(),_c('div',{class:_vm.cardStyle.body},[_vm._t("default")],2),(_vm.hasFooterSlot)?_c('div',{class:_vm.cardStyle.footer},[_vm._t("footer")],2):_vm._e()])}
 var SwCardvue_type_template_id_5f4875da_staticRenderFns = []
 
@@ -56669,7 +56902,7 @@ var SwCard_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwCard = (SwCard_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwCheckbox.vue?vue&type=template&id=0a3fb3b2&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwCheckbox.vue?vue&type=template&id=0a3fb3b2&
 var SwCheckboxvue_type_template_id_0a3fb3b2_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.checkBoxStyle.container},[_c('input',_vm._b({class:_vm.inputStyle,attrs:{"id":_vm.id,"type":"checkbox"},domProps:{"checked":_vm.shouldBeChecked,"value":_vm.value},on:{"change":_vm.updateInput,"keyup":function (e) { return _vm.$emit('keyup', e); },"blur":function (e) { return _vm.$emit('blur', e); }}},'input',_vm.$attrs,false)),(_vm.label)?_c('label',{class:_vm.lebelStyle,attrs:{"for":_vm.id}},[_vm._v(_vm._s(_vm.label))]):_vm._e()])}
 var SwCheckboxvue_type_template_id_0a3fb3b2_staticRenderFns = []
 
@@ -56927,7 +57160,7 @@ var SwCheckbox_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwCheckbox = (SwCheckbox_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwDivider.vue?vue&type=template&id=f1af8570&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwDivider.vue?vue&type=template&id=f1af8570&
 var SwDividervue_type_template_id_f1af8570_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('hr',{class:_vm.dividerStyle})}
 var SwDividervue_type_template_id_f1af8570_staticRenderFns = []
 
@@ -57000,7 +57233,7 @@ var SwDivider_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwDivider = (SwDivider_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdown.vue?vue&type=template&id=7353ce39&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdown.vue?vue&type=template&id=7353ce39&
 var SwDropdownvue_type_template_id_7353ce39_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{directives:[{name:"click-outside",rawName:"v-click-outside",value:(_vm.destroyPopperInstance),expression:"destroyPopperInstance"}],class:_vm.dropdownStyle.container},[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.toggle),expression:"toggle"}],class:_vm.dropdownStyle.itemContainer,attrs:{"id":_vm.itemsId,"aria-describedby":"tooltip"}},[_vm._t("default")],2),_c('div',{attrs:{"id":_vm.activatorID,"role":"tooltip"},on:{"click":_vm.showDropdown}},[_vm._t("activator")],2)])}
 var SwDropdownvue_type_template_id_7353ce39_staticRenderFns = []
 
@@ -59047,7 +59280,7 @@ var SwDropdown_component = normalizeComponent(
 )
 
 /* harmony default export */ var sw_dropdown_SwDropdown = (SwDropdown_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=template&id=57f134d8&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownItem.vue?vue&type=template&id=57f134d8&
 var SwDropdownItemvue_type_template_id_57f134d8_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('sw-custom-tag',_vm._g(_vm._b({class:_vm.getDropdownItemStyle.item,attrs:{"tag":_vm.tagName}},'sw-custom-tag',_vm.$attrs,false),_vm.$listeners),[_vm._t("default")],2)}
 var SwDropdownItemvue_type_template_id_57f134d8_staticRenderFns = []
 
@@ -59120,7 +59353,7 @@ var SwDropdownItem_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwDropdownItem = (SwDropdownItem_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=template&id=5f2098a6&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-dropdown/SwDropdownDivider.vue?vue&type=template&id=5f2098a6&
 var SwDropdownDividervue_type_template_id_5f2098a6_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.getDropdownDividerStyle.divider})}
 var SwDropdownDividervue_type_template_id_5f2098a6_staticRenderFns = []
 
@@ -59179,7 +59412,7 @@ var SwDropdownDivider_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwDropdownDivider = (SwDropdownDivider_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwEmptyTablePlaceholder.vue?vue&type=template&id=1081e3bd&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwEmptyTablePlaceholder.vue?vue&type=template&id=1081e3bd&
 var SwEmptyTablePlaceholdervue_type_template_id_1081e3bd_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.classes.container},[_c('div',{class:_vm.classes.slotContainer},[_vm._t("default")],2),_c('div',{class:_vm.classes.titleContainer},[_c('label',{class:_vm.classes.title},[_vm._v(_vm._s(_vm.title))])]),_c('div',{class:_vm.classes.descriptionContainer},[_c('label',{class:_vm.classes.description},[_vm._v(" "+_vm._s(_vm.description)+" ")])]),_c('div',{class:_vm.classes.actionsContainer},[_vm._t("actions")],2)])}
 var SwEmptyTablePlaceholdervue_type_template_id_1081e3bd_staticRenderFns = []
 
@@ -59258,7 +59491,7 @@ var SwEmptyTablePlaceholder_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwEmptyTablePlaceholder = (SwEmptyTablePlaceholder_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwFilterWrapper.vue?vue&type=template&id=6c617b88&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwFilterWrapper.vue?vue&type=template&id=6c617b88&
 var SwFilterWrappervue_type_template_id_6c617b88_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('transition',{attrs:{"name":"fade"}},[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.isShow),expression:"isShow"}],class:_vm.filterWrapperStyle.container},[_vm._t("filter-header"),_c('div',{class:_vm.filterWrapperStyle.body},[_vm._t("default")],2)],2)])}
 var SwFilterWrappervue_type_template_id_6c617b88_staticRenderFns = []
 
@@ -59338,7 +59571,7 @@ var SwFilterWrapper_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwFilterWrapper = (SwFilterWrapper_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwInput.vue?vue&type=template&id=4a1a7dde&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwInput.vue?vue&type=template&id=4a1a7dde&
 var SwInputvue_type_template_id_4a1a7dde_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.containerStyle},[(_vm.hasLeftIconSlot)?_c('div',{class:_vm.inputStyle.leftIconContainer},[_vm._t("leftIcon")],2):_vm._e(),(_vm.prefix)?_c('p',{class:_vm.inputStyle.prefixContainer},[_c('span',{class:_vm.inputStyle.prefix},[_vm._v(_vm._s(_vm.prefix))])]):_vm._e(),(((_vm.$attrs).type)==='checkbox')?_c('input',_vm._b({directives:[{name:"model",rawName:"v-model",value:(_vm.inputValue),expression:"inputValue"}],ref:"baseInput",class:_vm.getBaseInputStyle,attrs:{"disabled":_vm.disabled,"type":"checkbox"},domProps:{"value":_vm.value,"checked":Array.isArray(_vm.inputValue)?_vm._i(_vm.inputValue,_vm.value)>-1:(_vm.inputValue)},on:{"input":_vm.handleInput,"change":[function($event){var $$a=_vm.inputValue,$$el=$event.target,$$c=$$el.checked?(true):(false);if(Array.isArray($$a)){var $$v=_vm.value,$$i=_vm._i($$a,$$v);if($$el.checked){$$i<0&&(_vm.inputValue=$$a.concat([$$v]))}else{$$i>-1&&(_vm.inputValue=$$a.slice(0,$$i).concat($$a.slice($$i+1)))}}else{_vm.inputValue=$$c}},_vm.handleChange],"keyup":[_vm.handleKeyupEnter,function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"enter",13,$event.key,"Enter")){ return null; }return _vm.handleEnter($event)}],"keydown":_vm.handleKeyDownEnter,"blur":_vm.handleFocusOut,"focus":_vm.handleFocus}},'input',_vm.$attrs,false)):(((_vm.$attrs).type)==='radio')?_c('input',_vm._b({directives:[{name:"model",rawName:"v-model",value:(_vm.inputValue),expression:"inputValue"}],ref:"baseInput",class:_vm.getBaseInputStyle,attrs:{"disabled":_vm.disabled,"type":"radio"},domProps:{"value":_vm.value,"checked":_vm._q(_vm.inputValue,_vm.value)},on:{"input":_vm.handleInput,"change":[function($event){_vm.inputValue=_vm.value},_vm.handleChange],"keyup":[_vm.handleKeyupEnter,function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"enter",13,$event.key,"Enter")){ return null; }return _vm.handleEnter($event)}],"keydown":_vm.handleKeyDownEnter,"blur":_vm.handleFocusOut,"focus":_vm.handleFocus}},'input',_vm.$attrs,false)):_c('input',_vm._b({directives:[{name:"model",rawName:"v-model",value:(_vm.inputValue),expression:"inputValue"}],ref:"baseInput",class:_vm.getBaseInputStyle,attrs:{"disabled":_vm.disabled,"type":(_vm.$attrs).type},domProps:{"value":_vm.value,"value":(_vm.inputValue)},on:{"input":[function($event){if($event.target.composing){ return; }_vm.inputValue=$event.target.value},_vm.handleInput],"change":_vm.handleChange,"keyup":[_vm.handleKeyupEnter,function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"enter",13,$event.key,"Enter")){ return null; }return _vm.handleEnter($event)}],"keydown":_vm.handleKeyDownEnter,"blur":_vm.handleFocusOut,"focus":_vm.handleFocus}},'input',_vm.$attrs,false)),(_vm.hasRightIconSlot)?_c('div',{class:_vm.inputStyle.rightIconContainer},[_vm._t("rightIcon")],2):_vm._e()])}
 var SwInputvue_type_template_id_4a1a7dde_staticRenderFns = []
 
@@ -59545,14 +59778,14 @@ var SwInput_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwInput = (SwInput_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwInputGroup.vue?vue&type=template&id=4b132323&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwInputGroup.vue?vue&type=template&id=4b132323&
 var SwInputGroupvue_type_template_id_4b132323_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.inputGroupStyle.container},[(_vm.label)?_c('sw-label',{class:_vm.inputGroupStyle.label,attrs:{"variant":_vm.labelVariant}},[_vm._v(" "+_vm._s(_vm.label)+" "),_c('span',{directives:[{name:"show",rawName:"v-show",value:(_vm.required),expression:"required"}],class:_vm.inputGroupStyle.requiredSign},[_vm._v(" *")]),(_vm.tooltip)?_c('v-popover',{class:_vm.inputGroupStyle.tooltipContainer,attrs:{"trigger":_vm.tooltipTrigger,"show":_vm.tooltipShow,"placement":_vm.tooltipPlacement,"popover-class":_vm.inputGroupStyle.popoverClass,"popover-base-class":_vm.inputGroupStyle.popoverBaseClass,"popover-wrapper-class":_vm.inputGroupStyle.popoverWrapperClass,"popover-arrow-class":_vm.inputGroupStyle.popoverArrowClass,"popover-inner-class":_vm.inputGroupStyle.popoverInnerClass,"open-class":_vm.inputGroupStyle.openClass}},[_c('div',{class:_vm.inputGroupStyle.tooltipIconContainer},[(_vm.hasTooltipIconSlot)?_vm._t("tooltipIcon"):_c('svg',{class:_vm.inputGroupStyle.tooltipIcon,attrs:{"fill":"currentColor","viewBox":"0 0 20 20","xmlns":"http://www.w3.org/2000/svg"}},[_c('path',{attrs:{"fill-rule":"evenodd","d":"M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z","clip-rule":"evenodd"}})])],2),_c('template',{slot:"popover"},[_c('span',{class:_vm.inputGroupStyle.tooltip},[_vm._v(" "+_vm._s(_vm.tooltip)+" ")])])],2):_vm._e()],1):_vm._e(),(_vm.variant === 'horizontal' && !_vm.label)?_c('sw-label',{class:_vm.inputGroupStyle.label}):_vm._e(),_c('div',{class:_vm.inputGroupStyle.inputContainer},[_vm._t("default"),(_vm.error)?_c('span',{class:_vm.inputGroupStyle.errorText},[_vm._v(" "+_vm._s(_vm.error)+" ")]):_vm._e()],2)],1)}
 var SwInputGroupvue_type_template_id_4b132323_staticRenderFns = []
 
 
 // CONCATENATED MODULE: ./src/components/SwInputGroup.vue?vue&type=template&id=4b132323&
 
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwLabel.vue?vue&type=template&id=22d87d1e&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwLabel.vue?vue&type=template&id=22d87d1e&
 var SwLabelvue_type_template_id_22d87d1e_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('label',{class:_vm.labelStyle},[_vm._t("default")],2)}
 var SwLabelvue_type_template_id_22d87d1e_staticRenderFns = []
 
@@ -59784,7 +60017,7 @@ var SwInputGroup_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwInputGroup = (SwInputGroup_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-list/SwList.vue?vue&type=template&id=41f78902&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-list/SwList.vue?vue&type=template&id=41f78902&
 var SwListvue_type_template_id_41f78902_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.listStyle.container},[_vm._t("default")],2)}
 var SwListvue_type_template_id_41f78902_staticRenderFns = []
 
@@ -59879,7 +60112,7 @@ var SwList_component = normalizeComponent(
 )
 
 /* harmony default export */ var sw_list_SwList = (SwList_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-list/SwListItem.vue?vue&type=template&id=78b1d0b2&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-list/SwListItem.vue?vue&type=template&id=78b1d0b2&
 var SwListItemvue_type_template_id_78b1d0b2_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('sw-custom-tag',_vm._g(_vm._b({class:_vm.itemContainerStyle,attrs:{"tag":_vm.tagName}},'sw-custom-tag',_vm.$attrs,false),_vm.$listeners),[(_vm.hasIconSlot)?_c('span',{class:_vm.listItemStyle.iconContainer},[_vm._t("icon")],2):_vm._e(),_c('span',{class:_vm.listItemStyle.title},[_vm._v(_vm._s(_vm.title))])])}
 var SwListItemvue_type_template_id_78b1d0b2_staticRenderFns = []
 
@@ -59993,7 +60226,7 @@ var SwListItem_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwListItem = (SwListItem_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-list/SwListGroup.vue?vue&type=template&id=8561a826&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-list/SwListGroup.vue?vue&type=template&id=8561a826&
 var SwListGroupvue_type_template_id_8561a826_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.listGroupStyle.listGroup.container},[_c('div',{class:_vm.listGroupStyle.listGroup.titleContainer,on:{"click":_vm.handleClick}},[_c('div',{staticClass:"flex flex-row items-center w-full h-full"},[_vm._t("titleIcon"),_c('span',{class:_vm.listGroupStyle.listGroup.title},[_vm._v(" "+_vm._s(_vm.title)+" ")])],2),_c('svg',{class:_vm.listGroupStyle.listGroup.icon,attrs:{"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24","xmlns":"http://www.w3.org/2000/svg"}},[_c('path',{attrs:{"stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","d":"M19 9l-7 7-7-7"}})])]),_c('transition',[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.isShow),expression:"isShow"}],class:_vm.listGroupStyle.listGroup.itemsContainer},[_vm._t("default")],2)])],1)}
 var SwListGroupvue_type_template_id_8561a826_staticRenderFns = []
 
@@ -60144,7 +60377,7 @@ var SwListGroup_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwListGroup = (SwListGroup_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwModal.vue?vue&type=template&id=7b9030cd&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwModal.vue?vue&type=template&id=7b9030cd&
 var SwModalvue_type_template_id_7b9030cd_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('transition',{attrs:{"enter-class":"duration-300 ease-out","enter-active-class":"duration-700 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95","enter-to-class":"duration-700 translate-y-0 opacity-100 sm:scale-100","leave-active-class":"duration-300 ease-in","leave-class":"duration-300 translate-y-0 opacity-100 sm:scale-100","leave-to-class":"duration-300 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-90"}},[(_vm.isShow)?_c('div',{class:_vm.modalStyle.overlayContainer},[_c('div',{class:_vm.modalStyle.base},[_c('div',{class:_vm.modalStyle.header},[_vm._t("header")],2),_c('div',{class:_vm.modalStyle.body},[_vm._t("default")],2),_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.hasFooter),expression:"hasFooter"}],class:_vm.modalStyle.footer},[_vm._t("footer")],2)])]):_vm._e()])}
 var SwModalvue_type_template_id_7b9030cd_staticRenderFns = []
 
@@ -60268,7 +60501,7 @@ var SwModal_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwModal = (SwModal_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwMoney.vue?vue&type=template&id=40f5401f&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwMoney.vue?vue&type=template&id=40f5401f&
 var SwMoneyvue_type_template_id_40f5401f_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('money',_vm._b({class:_vm.baseStyle,attrs:{"disabled":_vm.disabled},on:{"input":function($event){return _vm.$emit('input', _vm.inputValue)}},model:{value:(_vm.inputValue),callback:function ($$v) {_vm.inputValue=$$v},expression:"inputValue"}},'money',_vm.currency,false))}
 var SwMoneyvue_type_template_id_40f5401f_staticRenderFns = []
 
@@ -60389,7 +60622,7 @@ var SwMoney_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwMoney = (SwMoney_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwPageHeader.vue?vue&type=template&id=b1ab0e74&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwPageHeader.vue?vue&type=template&id=b1ab0e74&
 var SwPageHeadervue_type_template_id_b1ab0e74_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.classes.container},[_c('div',[_c('h3',{class:_vm.classes.pageTitle},[_vm._v(" "+_vm._s(_vm.title)+" ")]),_vm._t("breadcrumbs")],2),_c('div',{class:_vm.classes.actionsContainer},[_vm._t("actions")],2)])}
 var SwPageHeadervue_type_template_id_b1ab0e74_staticRenderFns = []
 
@@ -60455,7 +60688,7 @@ var SwPageHeader_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwPageHeader = (SwPageHeader_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwPopup.vue?vue&type=template&id=2d577d0b&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwPopup.vue?vue&type=template&id=2d577d0b&
 var SwPopupvue_type_template_id_2d577d0b_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{directives:[{name:"click-outside",rawName:"v-click-outside",value:(_vm.clickOutsideMenu),expression:"clickOutsideMenu"}],class:_vm.classes.container},[_c('div',{class:_vm.classes.activator,on:{"click":_vm.toggleSearchMenu}},[_vm._t("activator")],2),_c('transition',{attrs:{"enter-class":"duration-200 ease-out","enter-active-class":"duration-300 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95","enter-to-class":"duration-300 translate-y-0 opacity-100 sm:scale-100","leave-active-class":"duration-200 ease-in","leave-class":"duration-200 translate-y-0 opacity-100 sm:scale-100","leave-to-class":"duration-200 translate-y-4 opacity-0 sm:translate-y-0 sm:scale-90"}},[(_vm.showMenu)?_c('div',{class:_vm.baseStyle},[_vm._t("default")],2):_vm._e()])],1)}
 var SwPopupvue_type_template_id_2d577d0b_staticRenderFns = []
 
@@ -60599,7 +60832,7 @@ var SwPopup_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwPopup = (SwPopup_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwFileUpload.vue?vue&type=template&id=797912df&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwFileUpload.vue?vue&type=template&id=797912df&
 var SwFileUploadvue_type_template_id_797912df_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('vue-dropzone',_vm._g(_vm._b({ref:"myVueDropzone",staticClass:"p-10 border-2 border-dashed",attrs:{"options":_vm.getOptions,"accepted-files":"application/pdf","use-custom-slot":true},on:{"vdropzone-thumbnail":_vm.thumbnail}},'vue-dropzone',_vm.$attrs,false),_vm.$listeners))}
 var SwFileUploadvue_type_template_id_797912df_staticRenderFns = []
 
@@ -60715,7 +60948,7 @@ var SwFileUpload_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwFileUpload = (SwFileUpload_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwRadio.vue?vue&type=template&id=363a9fc8&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwRadio.vue?vue&type=template&id=363a9fc8&
 var SwRadiovue_type_template_id_363a9fc8_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.radioButtonStyle.container},[_c('input',_vm._b({class:_vm.inputStyle,attrs:{"id":_vm.id,"type":"radio"},domProps:{"checked":_vm.shouldBeChecked,"value":_vm.value},on:{"change":_vm.updateInput,"keyup":function (e) { return _vm.$emit('keyup', e); },"blur":function (e) { return _vm.$emit('blur', e); }}},'input',_vm.$attrs,false)),(_vm.label)?_c('label',{class:_vm.lebelStyle,attrs:{"for":_vm.id}},[_vm._v(_vm._s(_vm.label))]):_vm._e()])}
 var SwRadiovue_type_template_id_363a9fc8_staticRenderFns = []
 
@@ -60852,7 +61085,7 @@ var SwRadio_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwRadio = (SwRadio_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwSwitch.vue?vue&type=template&id=58ec34ab&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwSwitch.vue?vue&type=template&id=58ec34ab&
 var SwSwitchvue_type_template_id_58ec34ab_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.classes.container},[_c('input',{directives:[{name:"model",rawName:"v-model",value:(_vm.checkValue),expression:"checkValue"}],class:_vm.classes.switch,attrs:{"id":_vm.uniqueId,"type":"checkbox","disabled":_vm.disabled},domProps:{"checked":Array.isArray(_vm.checkValue)?_vm._i(_vm.checkValue,null)>-1:(_vm.checkValue)},on:{"input":_vm.handleInput,"change":[function($event){var $$a=_vm.checkValue,$$el=$event.target,$$c=$$el.checked?(true):(false);if(Array.isArray($$a)){var $$v=null,$$i=_vm._i($$a,$$v);if($$el.checked){$$i<0&&(_vm.checkValue=$$a.concat([$$v]))}else{$$i>-1&&(_vm.checkValue=$$a.slice(0,$$i).concat($$a.slice($$i+1)))}}else{_vm.checkValue=$$c}},_vm.handleChange],"keyup":_vm.handleKeyupEnter,"blur":_vm.handleFocusOut}}),_c('label',{class:_vm.classes.label,attrs:{"for":_vm.uniqueId}},[_c('span',{staticClass:"switch-circle"})])])}
 var SwSwitchvue_type_template_id_58ec34ab_staticRenderFns = []
 
@@ -60961,7 +61194,7 @@ var SwSwitch_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwSwitch = (SwSwitch_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-select/SwSelect.vue?vue&type=template&id=6d59efbe&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-select/SwSelect.vue?vue&type=template&id=6d59efbe&
 var SwSelectvue_type_template_id_6d59efbe_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.multiSelectStyle,attrs:{"tabindex":_vm.searchable ? -1 : _vm.tabindex,"aria-owns":'listbox-' + _vm.id,"role":"combobox"},on:{"focus":function($event){return _vm.activate()},"blur":function($event){_vm.searchable ? false : _vm.deactivate()},"keydown":[function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"down",40,$event.key,["Down","ArrowDown"])){ return null; }if($event.target !== $event.currentTarget){ return null; }$event.preventDefault();return _vm.pointerForward()},function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"up",38,$event.key,["Up","ArrowUp"])){ return null; }if($event.target !== $event.currentTarget){ return null; }$event.preventDefault();return _vm.pointerBackward()}],"keypress":function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"enter",13,$event.key,"Enter")&&_vm._k($event.keyCode,"tab",9,$event.key,"Tab")){ return null; }$event.stopPropagation();if($event.target !== $event.currentTarget){ return null; }return _vm.addPointerElement($event)},"keyup":function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"esc",27,$event.key,["Esc","Escape"])){ return null; }return _vm.deactivate()}}},[_vm._t("caret",[_c('div',{class:_vm.multiselectSelectStyle,on:{"mousedown":function($event){$event.preventDefault();$event.stopPropagation();return _vm.toggle()}}},[_c('span',{staticClass:"relative right-0 top-1/2",staticStyle:{"color":"'#a5acc1'","margin-top":"4px","border-color":"#a5acc1 transparent transparent","border-style":"solid","border-width":"5px 5px 0","content":"''"}})])],{"toggle":_vm.toggle}),_c('div',{ref:"tags",class:_vm.multiSelectTagsStyle},[_vm._t("selection",[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.visibleValues.length > 0),expression:"visibleValues.length > 0"}],class:_vm.multiselectTagsWrapStyle},[_vm._l((_vm.visibleValues),function(option,index){return [_vm._t("tag",[_c('span',{key:index,class:_vm.multiselectTagStyle},[_c('span',{domProps:{"textContent":_vm._s(_vm.getOptionLabel(option))}}),_c('span',{class:_vm.multiselectTagIconStyle,attrs:{"tabindex":"1"},on:{"keypress":function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"enter",13,$event.key,"Enter")){ return null; }$event.preventDefault();return _vm.removeElement(option)},"mousedown":function($event){$event.preventDefault();return _vm.removeElement(option)}}},[_c('span',{staticClass:"multiselect__tag-icon-after"},[_vm._v("×")])])])],{"option":option,"search":_vm.search,"remove":_vm.removeElement})]})],2),(_vm.internalValue && _vm.internalValue.length > _vm.limit)?[_vm._t("limit",[_c('strong',{class:_vm.multiselectStrongStyle,domProps:{"textContent":_vm._s(_vm.limitText(_vm.internalValue.length - _vm.limit))}})])]:_vm._e()],{"search":_vm.search,"remove":_vm.removeElement,"values":_vm.visibleValues,"isOpen":_vm.isOpen}),_c('transition',{attrs:{"name":"multiselect__loading"}},[_vm._t("loading",[_c('div',[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.loading),expression:"loading"}],class:_vm.multiselectSpinnerStyle},[_c('span',{staticClass:"multiselect__spinner-before"}),_c('span',{staticClass:"multiselect__spinner-after"})])])])],2),_c('input',{ref:"search",class:_vm.multiselectInputStyle,style:(_vm.inputStyle),attrs:{"id":_vm.id,"name":_vm.name,"placeholder":_vm.placeholder,"disabled":_vm.disabled,"tabindex":_vm.tabindex,"aria-controls":'listbox-' + _vm.id,"type":"text","autocomplete":_vm.autoComplete,"spellcheck":"false"},domProps:{"value":_vm.search},on:{"input":function($event){return _vm.updateSearch($event.target.value)},"focus":function($event){$event.preventDefault();return _vm.activate()},"blur":function($event){$event.preventDefault();return _vm.deactivate()},"keyup":function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"esc",27,$event.key,["Esc","Escape"])){ return null; }return _vm.deactivate()},"keydown":[function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"down",40,$event.key,["Down","ArrowDown"])){ return null; }$event.preventDefault();return _vm.pointerForward()},function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"up",38,$event.key,["Up","ArrowUp"])){ return null; }$event.preventDefault();return _vm.pointerBackward()},function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"delete",[8,46],$event.key,["Backspace","Delete","Del"])){ return null; }$event.stopPropagation();return _vm.removeLastElement()}],"keypress":function($event){if(!$event.type.indexOf('key')&&_vm._k($event.keyCode,"enter",13,$event.key,"Enter")){ return null; }$event.preventDefault();$event.stopPropagation();if($event.target !== $event.currentTarget){ return null; }return _vm.addPointerElement($event)}}}),(_vm.isSingleLabelVisible)?_c('span',{class:_vm.multiselectSingleStyle,on:{"mousedown":function($event){$event.preventDefault();return _vm.toggle($event)}}},[_vm._t("singleLabel",[[_vm._v(_vm._s(_vm.currentOptionLabel))]],{"option":_vm.singleValue})],2):_vm._e()],2),_c('transition',{attrs:{"name":"multiselect"}},[_c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.isOpen),expression:"isOpen"}],ref:"list",class:_vm.multiselectContentWrapperStyle,style:({ maxHeight: _vm.optimizedHeight + 'px' }),attrs:{"tabindex":"-1"},on:{"focus":_vm.activate,"mousedown":function($event){$event.preventDefault();}}},[_c('ul',{class:_vm.multiselectContentStyle,style:(_vm.contentStyle),attrs:{"id":'listbox-' + _vm.id,"role":"listbox"}},[_vm._t("beforeList"),(_vm.multiple && _vm.max === _vm.internalValue.length)?_c('li',[_c('span',{class:_vm.multiselectOptionStyle},[_vm._t("maxElements",[_vm._v(" "+_vm._s(_vm.maximumOptionsError)+" ")])],2)]):_vm._e(),(!_vm.max || _vm.internalValue.length < _vm.max)?_vm._l((_vm.filteredOptions),function(option,index){return _c('li',{key:index,class:_vm.multiselectElementStyle,attrs:{"id":_vm.id + '-' + index,"role":!(option && (option.$isLabel || option.$isDisabled))
                 ? 'option'
                 : null}},[(!(option && (option.$isLabel || option.$isDisabled)))?_c('span',{class:_vm.optionHighlight(index, option),attrs:{"data-select":option && option.isTag ? _vm.tagPlaceholder : _vm.selectLabelText,"data-selected":_vm.selectedLabelText,"data-deselect":_vm.deselectLabelText},on:{"click":function($event){$event.stopPropagation();return _vm.select(option)},"mouseenter":function($event){if($event.target !== $event.currentTarget){ return null; }return _vm.pointerSet(index)}}},[_vm._t("option",[_c('span',[_vm._v(_vm._s(_vm.getOptionLabel(option)))])],{"option":option,"search":_vm.search})],2):_vm._e(),(option && (option.$isLabel || option.$isDisabled))?_c('span',{class:_vm.groupHighlight(index, option),attrs:{"data-select":_vm.groupSelect && _vm.selectGroupLabelText,"data-deselect":_vm.groupSelect && _vm.deselectGroupLabelText},on:{"mouseenter":function($event){if($event.target !== $event.currentTarget){ return null; }_vm.groupSelect && _vm.pointerSet(index)},"mousedown":function($event){$event.preventDefault();return _vm.selectGroup(option)}}},[_vm._t("option",[_c('span',[_vm._v(_vm._s(_vm.getOptionLabel(option)))])],{"option":option,"search":_vm.search})],2):_vm._e()])}):_vm._e(),(_vm.showNoOptions && _vm.options.length === 0 && !_vm.search && !_vm.loading)?_c('li',[_c('span',{class:_vm.multiselectOptionStyle},[_vm._t("noOptions",[_vm._v(_vm._s(_vm.listIsEmpty))])],2)]):_vm._e()],2),_vm._t("afterList")],2)])],2)}
@@ -62528,7 +62761,7 @@ var SwSelect_component = normalizeComponent(
 
 /* harmony default export */ var sw_select = (sw_select_SwSelect);
 
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-tabs/SwTabItem.vue?vue&type=template&id=513cd452&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-tabs/SwTabItem.vue?vue&type=template&id=513cd452&
 var SwTabItemvue_type_template_id_513cd452_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{directives:[{name:"show",rawName:"v-show",value:(_vm.isActive),expression:"isActive"}]},[_vm._t("default")],2)}
 var SwTabItemvue_type_template_id_513cd452_staticRenderFns = []
 
@@ -62587,7 +62820,7 @@ var SwTabItem_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwTabItem = (SwTabItem_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-tabs/SwTabs.vue?vue&type=template&id=74f541ce&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-tabs/SwTabs.vue?vue&type=template&id=74f541ce&
 var SwTabsvue_type_template_id_74f541ce_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',[_c('ul',{class:_vm.getTabStyle.tabNavContainer},[_vm._t("nav",_vm._l((_vm.getAllTabs),function(tab,index){return _c('li',{key:index,class:tab.isActive ? _vm.getTabStyle.tabNavItemActive : _vm.getTabStyle.tabNavItem,attrs:{"aria-selected":tab.isActive},on:{"click":function($event){return _vm.setTab(tab)}}},[_vm._v(" "+_vm._s(tab.title)+" ")])}))],2),_vm._t("default")],2)}
 var SwTabsvue_type_template_id_74f541ce_staticRenderFns = []
 
@@ -62731,7 +62964,7 @@ var SwTabs_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwTabs = (SwTabs_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwTextarea.vue?vue&type=template&id=1729d956&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwTextarea.vue?vue&type=template&id=1729d956&
 var SwTextareavue_type_template_id_1729d956_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('textarea',_vm._b({class:_vm.textAreaStyle,attrs:{"disabled":_vm.disabled},on:{"input":function (e) { return _vm.$emit('input', e.target.value); }}},'textarea',_vm.$attrs,false))}
 var SwTextareavue_type_template_id_1729d956_staticRenderFns = []
 
@@ -62832,7 +63065,7 @@ var SwTextarea_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwTextarea = (SwTextarea_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwTransition.vue?vue&type=template&id=9f5e333e&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwTransition.vue?vue&type=template&id=9f5e333e&
 var SwTransitionvue_type_template_id_9f5e333e_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('transition',{attrs:{"enter-active-class":_vm.transitionStyle.enterActive,"leave-active-class":_vm.transitionStyle.leave,"enter-class":_vm.transitionStyle.enter,"enter-to-class":_vm.transitionStyle.enterTo,"leave-class":_vm.transitionStyle.leave,"leave-to-class":_vm.transitionStyle.leaveTo}},[_vm._t("default")],2)}
 var SwTransitionvue_type_template_id_9f5e333e_staticRenderFns = []
 
@@ -62910,7 +63143,7 @@ var SwTransition_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwTransition = (SwTransition_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/Index.vue?vue&type=template&id=76190b14&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/Index.vue?vue&type=template&id=76190b14&
 var Indexvue_type_template_id_76190b14_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.getEditorStyle.editorContainer},[_c('div',{class:_vm.getEditorStyle.menuDropdown.container},[_c('sw-dropdown',{attrs:{"classes":_vm.dropdownClasses}},[_c('div',{attrs:{"slot":"activator"},slot:"activator"},[_c('svg',{class:_vm.getEditorStyle.menuDropdown.activator,attrs:{"fill":"currentColor","viewBox":"0 0 20 20","xmlns":"http://www.w3.org/2000/svg"}},[_c('path',{attrs:{"d":"M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"}})])]),_c('editor-menu-bar',{attrs:{"editor":_vm.editor},scopedSlots:_vm._u([{key:"default",fn:function(ref){
 var commands = ref.commands;
 var isActive = ref.isActive;
@@ -62926,5160 +63159,14 @@ var Indexvue_type_template_id_76190b14_staticRenderFns = []
 // EXTERNAL MODULE: ./node_modules/prosemirror-state/dist/index.es.js
 var index_es = __webpack_require__("5313");
 
+// EXTERNAL MODULE: ./node_modules/prosemirror-view/dist/index.es.js
+var dist_index_es = __webpack_require__("576a");
+
 // EXTERNAL MODULE: ./node_modules/prosemirror-model/dist/index.es.js + 1 modules
-var dist_index_es = __webpack_require__("304a");
+var prosemirror_model_dist_index_es = __webpack_require__("304a");
 
 // EXTERNAL MODULE: ./node_modules/prosemirror-transform/dist/index.es.js
 var prosemirror_transform_dist_index_es = __webpack_require__("0ac0");
-
-// CONCATENATED MODULE: ./node_modules/tiptap/node_modules/prosemirror-view/dist/index.es.js
-
-
-
-
-var index_es_result = {};
-
-if (typeof navigator != "undefined" && typeof document != "undefined") {
-  var ie_edge = /Edge\/(\d+)/.exec(navigator.userAgent);
-  var ie_upto10 = /MSIE \d/.test(navigator.userAgent);
-  var ie_11up = /Trident\/(?:[7-9]|\d{2,})\..*rv:(\d+)/.exec(navigator.userAgent);
-
-  index_es_result.mac = /Mac/.test(navigator.platform);
-  var ie = index_es_result.ie = !!(ie_upto10 || ie_11up || ie_edge);
-  index_es_result.ie_version = ie_upto10 ? document.documentMode || 6 : ie_11up ? +ie_11up[1] : ie_edge ? +ie_edge[1] : null;
-  index_es_result.gecko = !ie && /gecko\/(\d+)/i.test(navigator.userAgent);
-  index_es_result.gecko_version = index_es_result.gecko && +(/Firefox\/(\d+)/.exec(navigator.userAgent) || [0, 0])[1];
-  var chrome = !ie && /Chrome\/(\d+)/.exec(navigator.userAgent);
-  index_es_result.chrome = !!chrome;
-  index_es_result.chrome_version = chrome && +chrome[1];
-  index_es_result.ios = !ie && /AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent);
-  index_es_result.android = /Android \d/.test(navigator.userAgent);
-  index_es_result.webkit = "webkitFontSmoothing" in document.documentElement.style;
-  index_es_result.safari = /Apple Computer/.test(navigator.vendor);
-  index_es_result.webkit_version = index_es_result.webkit && +(/\bAppleWebKit\/(\d+)/.exec(navigator.userAgent) || [0, 0])[1];
-}
-
-var domIndex = function(node) {
-  for (var index = 0;; index++) {
-    node = node.previousSibling;
-    if (!node) { return index }
-  }
-};
-
-var parentNode = function(node) {
-  var parent = node.parentNode;
-  return parent && parent.nodeType == 11 ? parent.host : parent
-};
-
-var textRange = function(node, from, to) {
-  var range = document.createRange();
-  range.setEnd(node, to == null ? node.nodeValue.length : to);
-  range.setStart(node, from || 0);
-  return range
-};
-
-// Scans forward and backward through DOM positions equivalent to the
-// given one to see if the two are in the same place (i.e. after a
-// text node vs at the end of that text node)
-var isEquivalentPosition = function(node, off, targetNode, targetOff) {
-  return targetNode && (scanFor(node, off, targetNode, targetOff, -1) ||
-                        scanFor(node, off, targetNode, targetOff, 1))
-};
-
-var atomElements = /^(img|br|input|textarea|hr)$/i;
-
-function scanFor(node, off, targetNode, targetOff, dir) {
-  for (;;) {
-    if (node == targetNode && off == targetOff) { return true }
-    if (off == (dir < 0 ? 0 : nodeSize(node))) {
-      var parent = node.parentNode;
-      if (parent.nodeType != 1 || hasBlockDesc(node) || atomElements.test(node.nodeName) || node.contentEditable == "false")
-        { return false }
-      off = domIndex(node) + (dir < 0 ? 0 : 1);
-      node = parent;
-    } else if (node.nodeType == 1) {
-      node = node.childNodes[off + (dir < 0 ? -1 : 0)];
-      if (node.contentEditable == "false") { return false }
-      off = dir < 0 ? nodeSize(node) : 0;
-    } else {
-      return false
-    }
-  }
-}
-
-function nodeSize(node) {
-  return node.nodeType == 3 ? node.nodeValue.length : node.childNodes.length
-}
-
-function isOnEdge(node, offset, parent) {
-  for (var atStart = offset == 0, atEnd = offset == nodeSize(node); atStart || atEnd;) {
-    if (node == parent) { return true }
-    var index = domIndex(node);
-    node = node.parentNode;
-    if (!node) { return false }
-    atStart = atStart && index == 0;
-    atEnd = atEnd && index == nodeSize(node);
-  }
-}
-
-function hasBlockDesc(dom) {
-  var desc;
-  for (var cur = dom; cur; cur = cur.parentNode) { if (desc = cur.pmViewDesc) { break } }
-  return desc && desc.node && desc.node.isBlock && (desc.dom == dom || desc.contentDOM == dom)
-}
-
-// Work around Chrome issue https://bugs.chromium.org/p/chromium/issues/detail?id=447523
-// (isCollapsed inappropriately returns true in shadow dom)
-var selectionCollapsed = function(domSel) {
-  var collapsed = domSel.isCollapsed;
-  if (collapsed && index_es_result.chrome && domSel.rangeCount && !domSel.getRangeAt(0).collapsed)
-    { collapsed = false; }
-  return collapsed
-};
-
-function keyEvent(keyCode, key) {
-  var event = document.createEvent("Event");
-  event.initEvent("keydown", true, true);
-  event.keyCode = keyCode;
-  event.key = event.code = key;
-  return event
-}
-
-function windowRect(doc) {
-  return {left: 0, right: doc.documentElement.clientWidth,
-          top: 0, bottom: doc.documentElement.clientHeight}
-}
-
-function getSide(value, side) {
-  return typeof value == "number" ? value : value[side]
-}
-
-function clientRect(node) {
-  var rect = node.getBoundingClientRect();
-  // Make sure scrollbar width isn't included in the rectangle
-  return {left: rect.left, right: rect.left + node.clientWidth,
-          top: rect.top, bottom: rect.top + node.clientHeight}
-}
-
-function scrollRectIntoView(view, rect, startDOM) {
-  var scrollThreshold = view.someProp("scrollThreshold") || 0, scrollMargin = view.someProp("scrollMargin") || 5;
-  var doc = view.dom.ownerDocument;
-  for (var parent = startDOM || view.dom;; parent = parentNode(parent)) {
-    if (!parent) { break }
-    if (parent.nodeType != 1) { continue }
-    var atTop = parent == doc.body || parent.nodeType != 1;
-    var bounding = atTop ? windowRect(doc) : clientRect(parent);
-    var moveX = 0, moveY = 0;
-    if (rect.top < bounding.top + getSide(scrollThreshold, "top"))
-      { moveY = -(bounding.top - rect.top + getSide(scrollMargin, "top")); }
-    else if (rect.bottom > bounding.bottom - getSide(scrollThreshold, "bottom"))
-      { moveY = rect.bottom - bounding.bottom + getSide(scrollMargin, "bottom"); }
-    if (rect.left < bounding.left + getSide(scrollThreshold, "left"))
-      { moveX = -(bounding.left - rect.left + getSide(scrollMargin, "left")); }
-    else if (rect.right > bounding.right - getSide(scrollThreshold, "right"))
-      { moveX = rect.right - bounding.right + getSide(scrollMargin, "right"); }
-    if (moveX || moveY) {
-      if (atTop) {
-        doc.defaultView.scrollBy(moveX, moveY);
-      } else {
-        var startX = parent.scrollLeft, startY = parent.scrollTop;
-        if (moveY) { parent.scrollTop += moveY; }
-        if (moveX) { parent.scrollLeft += moveX; }
-        var dX = parent.scrollLeft - startX, dY = parent.scrollTop - startY;
-        rect = {left: rect.left - dX, top: rect.top - dY, right: rect.right - dX, bottom: rect.bottom - dY};
-      }
-    }
-    if (atTop) { break }
-  }
-}
-
-// Store the scroll position of the editor's parent nodes, along with
-// the top position of an element near the top of the editor, which
-// will be used to make sure the visible viewport remains stable even
-// when the size of the content above changes.
-function storeScrollPos(view) {
-  var rect = view.dom.getBoundingClientRect(), startY = Math.max(0, rect.top);
-  var refDOM, refTop;
-  for (var x = (rect.left + rect.right) / 2, y = startY + 1;
-       y < Math.min(innerHeight, rect.bottom); y += 5) {
-    var dom = view.root.elementFromPoint(x, y);
-    if (dom == view.dom || !view.dom.contains(dom)) { continue }
-    var localRect = dom.getBoundingClientRect();
-    if (localRect.top >= startY - 20) {
-      refDOM = dom;
-      refTop = localRect.top;
-      break
-    }
-  }
-  return {refDOM: refDOM, refTop: refTop, stack: scrollStack(view.dom)}
-}
-
-function scrollStack(dom) {
-  var stack = [], doc = dom.ownerDocument;
-  for (; dom; dom = parentNode(dom)) {
-    stack.push({dom: dom, top: dom.scrollTop, left: dom.scrollLeft});
-    if (dom == doc) { break }
-  }
-  return stack
-}
-
-// Reset the scroll position of the editor's parent nodes to that what
-// it was before, when storeScrollPos was called.
-function resetScrollPos(ref) {
-  var refDOM = ref.refDOM;
-  var refTop = ref.refTop;
-  var stack = ref.stack;
-
-  var newRefTop = refDOM ? refDOM.getBoundingClientRect().top : 0;
-  restoreScrollStack(stack, newRefTop == 0 ? 0 : newRefTop - refTop);
-}
-
-function restoreScrollStack(stack, dTop) {
-  for (var i = 0; i < stack.length; i++) {
-    var ref = stack[i];
-    var dom = ref.dom;
-    var top = ref.top;
-    var left = ref.left;
-    if (dom.scrollTop != top + dTop) { dom.scrollTop = top + dTop; }
-    if (dom.scrollLeft != left) { dom.scrollLeft = left; }
-  }
-}
-
-var preventScrollSupported = null;
-// Feature-detects support for .focus({preventScroll: true}), and uses
-// a fallback kludge when not supported.
-function focusPreventScroll(dom) {
-  if (dom.setActive) { return dom.setActive() } // in IE
-  if (preventScrollSupported) { return dom.focus(preventScrollSupported) }
-
-  var stored = scrollStack(dom);
-  dom.focus(preventScrollSupported == null ? {
-    get preventScroll() {
-      preventScrollSupported = {preventScroll: true};
-      return true
-    }
-  } : undefined);
-  if (!preventScrollSupported) {
-    preventScrollSupported = false;
-    restoreScrollStack(stored, 0);
-  }
-}
-
-function findOffsetInNode(node, coords) {
-  var closest, dxClosest = 2e8, coordsClosest, offset = 0;
-  var rowBot = coords.top, rowTop = coords.top;
-  for (var child = node.firstChild, childIndex = 0; child; child = child.nextSibling, childIndex++) {
-    var rects = (void 0);
-    if (child.nodeType == 1) { rects = child.getClientRects(); }
-    else if (child.nodeType == 3) { rects = textRange(child).getClientRects(); }
-    else { continue }
-
-    for (var i = 0; i < rects.length; i++) {
-      var rect = rects[i];
-      if (rect.top <= rowBot && rect.bottom >= rowTop) {
-        rowBot = Math.max(rect.bottom, rowBot);
-        rowTop = Math.min(rect.top, rowTop);
-        var dx = rect.left > coords.left ? rect.left - coords.left
-            : rect.right < coords.left ? coords.left - rect.right : 0;
-        if (dx < dxClosest) {
-          closest = child;
-          dxClosest = dx;
-          coordsClosest = dx && closest.nodeType == 3 ? {left: rect.right < coords.left ? rect.right : rect.left, top: coords.top} : coords;
-          if (child.nodeType == 1 && dx)
-            { offset = childIndex + (coords.left >= (rect.left + rect.right) / 2 ? 1 : 0); }
-          continue
-        }
-      }
-      if (!closest && (coords.left >= rect.right && coords.top >= rect.top ||
-                       coords.left >= rect.left && coords.top >= rect.bottom))
-        { offset = childIndex + 1; }
-    }
-  }
-  if (closest && closest.nodeType == 3) { return findOffsetInText(closest, coordsClosest) }
-  if (!closest || (dxClosest && closest.nodeType == 1)) { return {node: node, offset: offset} }
-  return findOffsetInNode(closest, coordsClosest)
-}
-
-function findOffsetInText(node, coords) {
-  var len = node.nodeValue.length;
-  var range = document.createRange();
-  for (var i = 0; i < len; i++) {
-    range.setEnd(node, i + 1);
-    range.setStart(node, i);
-    var rect = singleRect(range, 1);
-    if (rect.top == rect.bottom) { continue }
-    if (inRect(coords, rect))
-      { return {node: node, offset: i + (coords.left >= (rect.left + rect.right) / 2 ? 1 : 0)} }
-  }
-  return {node: node, offset: 0}
-}
-
-function inRect(coords, rect) {
-  return coords.left >= rect.left - 1 && coords.left <= rect.right + 1&&
-    coords.top >= rect.top - 1 && coords.top <= rect.bottom + 1
-}
-
-function targetKludge(dom, coords) {
-  var parent = dom.parentNode;
-  if (parent && /^li$/i.test(parent.nodeName) && coords.left < dom.getBoundingClientRect().left)
-    { return parent }
-  return dom
-}
-
-function posFromElement(view, elt, coords) {
-  var ref = findOffsetInNode(elt, coords);
-  var node = ref.node;
-  var offset = ref.offset;
-  var bias = -1;
-  if (node.nodeType == 1 && !node.firstChild) {
-    var rect = node.getBoundingClientRect();
-    bias = rect.left != rect.right && coords.left > (rect.left + rect.right) / 2 ? 1 : -1;
-  }
-  return view.docView.posFromDOM(node, offset, bias)
-}
-
-function posFromCaret(view, node, offset, coords) {
-  // Browser (in caretPosition/RangeFromPoint) will agressively
-  // normalize towards nearby inline nodes. Since we are interested in
-  // positions between block nodes too, we first walk up the hierarchy
-  // of nodes to see if there are block nodes that the coordinates
-  // fall outside of. If so, we take the position before/after that
-  // block. If not, we call `posFromDOM` on the raw node/offset.
-  var outside = -1;
-  for (var cur = node;;) {
-    if (cur == view.dom) { break }
-    var desc = view.docView.nearestDesc(cur, true);
-    if (!desc) { return null }
-    if (desc.node.isBlock && desc.parent) {
-      var rect = desc.dom.getBoundingClientRect();
-      if (rect.left > coords.left || rect.top > coords.top) { outside = desc.posBefore; }
-      else if (rect.right < coords.left || rect.bottom < coords.top) { outside = desc.posAfter; }
-      else { break }
-    }
-    cur = desc.dom.parentNode;
-  }
-  return outside > -1 ? outside : view.docView.posFromDOM(node, offset)
-}
-
-function elementFromPoint(element, coords, box) {
-  var len = element.childNodes.length;
-  if (len && box.top < box.bottom) {
-    for (var startI = Math.max(0, Math.min(len - 1, Math.floor(len * (coords.top - box.top) / (box.bottom - box.top)) - 2)), i = startI;;) {
-      var child = element.childNodes[i];
-      if (child.nodeType == 1) {
-        var rects = child.getClientRects();
-        for (var j = 0; j < rects.length; j++) {
-          var rect = rects[j];
-          if (inRect(coords, rect)) { return elementFromPoint(child, coords, rect) }
-        }
-      }
-      if ((i = (i + 1) % len) == startI) { break }
-    }
-  }
-  return element
-}
-
-// Given an x,y position on the editor, get the position in the document.
-function posAtCoords(view, coords) {
-  var assign, assign$1;
-
-  var root = view.root, node, offset;
-  if (root.caretPositionFromPoint) {
-    try { // Firefox throws for this call in hard-to-predict circumstances (#994)
-      var pos$1 = root.caretPositionFromPoint(coords.left, coords.top);
-      if (pos$1) { ((assign = pos$1, node = assign.offsetNode, offset = assign.offset)); }
-    } catch (_) {}
-  }
-  if (!node && root.caretRangeFromPoint) {
-    var range = root.caretRangeFromPoint(coords.left, coords.top);
-    if (range) { ((assign$1 = range, node = assign$1.startContainer, offset = assign$1.startOffset)); }
-  }
-
-  var elt = root.elementFromPoint(coords.left, coords.top + 1), pos;
-  if (!elt || !view.dom.contains(elt.nodeType != 1 ? elt.parentNode : elt)) {
-    var box = view.dom.getBoundingClientRect();
-    if (!inRect(coords, box)) { return null }
-    elt = elementFromPoint(view.dom, coords, box);
-    if (!elt) { return null }
-  }
-  // Safari's caretRangeFromPoint returns nonsense when on a draggable element
-  if (index_es_result.safari && elt.draggable) { node = offset = null; }
-  elt = targetKludge(elt, coords);
-  if (node) {
-    if (index_es_result.gecko && node.nodeType == 1) {
-      // Firefox will sometimes return offsets into <input> nodes, which
-      // have no actual children, from caretPositionFromPoint (#953)
-      offset = Math.min(offset, node.childNodes.length);
-      // It'll also move the returned position before image nodes,
-      // even if those are behind it.
-      if (offset < node.childNodes.length) {
-        var next = node.childNodes[offset], box$1;
-        if (next.nodeName == "IMG" && (box$1 = next.getBoundingClientRect()).right <= coords.left &&
-            box$1.bottom > coords.top)
-          { offset++; }
-      }
-    }
-    // Suspiciously specific kludge to work around caret*FromPoint
-    // never returning a position at the end of the document
-    if (node == view.dom && offset == node.childNodes.length - 1 && node.lastChild.nodeType == 1 &&
-        coords.top > node.lastChild.getBoundingClientRect().bottom)
-      { pos = view.state.doc.content.size; }
-    // Ignore positions directly after a BR, since caret*FromPoint
-    // 'round up' positions that would be more accurately placed
-    // before the BR node.
-    else if (offset == 0 || node.nodeType != 1 || node.childNodes[offset - 1].nodeName != "BR")
-      { pos = posFromCaret(view, node, offset, coords); }
-  }
-  if (pos == null) { pos = posFromElement(view, elt, coords); }
-
-  var desc = view.docView.nearestDesc(elt, true);
-  return {pos: pos, inside: desc ? desc.posAtStart - desc.border : -1}
-}
-
-function singleRect(object, bias) {
-  var rects = object.getClientRects();
-  return !rects.length ? object.getBoundingClientRect() : rects[bias < 0 ? 0 : rects.length - 1]
-}
-
-// : (EditorView, number) → {left: number, top: number, right: number, bottom: number}
-// Given a position in the document model, get a bounding box of the
-// character at that position, relative to the window.
-function coordsAtPos(view, pos) {
-  var ref = view.docView.domFromPos(pos);
-  var node = ref.node;
-  var offset = ref.offset;
-
-  // These browsers support querying empty text ranges
-  if (node.nodeType == 3 && (index_es_result.webkit || index_es_result.gecko)) {
-    var rect = singleRect(textRange(node, offset, offset), 0);
-    // Firefox returns bad results (the position before the space)
-    // when querying a position directly after line-broken
-    // whitespace. Detect this situation and and kludge around it
-    if (index_es_result.gecko && offset && /\s/.test(node.nodeValue[offset - 1]) && offset < node.nodeValue.length) {
-      var rectBefore = singleRect(textRange(node, offset - 1, offset - 1), -1);
-      if (rectBefore.top == rect.top) {
-        var rectAfter = singleRect(textRange(node, offset, offset + 1), -1);
-        if (rectAfter.top != rect.top)
-          { return flattenV(rectAfter, rectAfter.left < rectBefore.left) }
-      }
-    }
-    return rect
-  }
-
-  if (node.nodeType == 1 && !view.state.doc.resolve(pos).parent.inlineContent) {
-    // Return a horizontal line in block context
-    var top = true, rect$1;
-    if (offset < node.childNodes.length) {
-      var after = node.childNodes[offset];
-      if (after.nodeType == 1) { rect$1 = after.getBoundingClientRect(); }
-    }
-    if (!rect$1 && offset) {
-      var before = node.childNodes[offset - 1];
-      if (before.nodeType == 1) { rect$1 = before.getBoundingClientRect(); top = false; }
-    }
-    return flattenH(rect$1 || node.getBoundingClientRect(), top)
-  }
-
-  // Not Firefox/Chrome, or not in a text node, so we have to use
-  // actual element/character rectangles to get a solution (this part
-  // is not very bidi-safe)
-  //
-  // Try the left side first, fall back to the right one if that
-  // doesn't work.
-  for (var dir = -1; dir < 2; dir += 2) {
-    if (dir < 0 && offset) {
-      var prev = (void 0), target = node.nodeType == 3 ? textRange(node, offset - 1, offset)
-          : (prev = node.childNodes[offset - 1]).nodeType == 3 ? textRange(prev)
-          : prev.nodeType == 1 && prev.nodeName != "BR" ? prev : null; // BR nodes tend to only return the rectangle before them
-      if (target) {
-        var rect$2 = singleRect(target, 1);
-        if (rect$2.top < rect$2.bottom) { return flattenV(rect$2, false) }
-      }
-    } else if (dir > 0 && offset < nodeSize(node)) {
-      var next = (void 0), target$1 = node.nodeType == 3 ? textRange(node, offset, offset + 1)
-          : (next = node.childNodes[offset]).nodeType == 3 ? textRange(next)
-          : next.nodeType == 1 ? next : null;
-      if (target$1) {
-        var rect$3 = singleRect(target$1, -1);
-        if (rect$3.top < rect$3.bottom) { return flattenV(rect$3, true) }
-      }
-    }
-  }
-  // All else failed, just try to get a rectangle for the target node
-  return flattenV(singleRect(node.nodeType == 3 ? textRange(node) : node, 0), false)
-}
-
-function flattenV(rect, left) {
-  if (rect.width == 0) { return rect }
-  var x = left ? rect.left : rect.right;
-  return {top: rect.top, bottom: rect.bottom, left: x, right: x}
-}
-
-function flattenH(rect, top) {
-  if (rect.height == 0) { return rect }
-  var y = top ? rect.top : rect.bottom;
-  return {top: y, bottom: y, left: rect.left, right: rect.right}
-}
-
-function withFlushedState(view, state, f) {
-  var viewState = view.state, active = view.root.activeElement;
-  if (viewState != state) { view.updateState(state); }
-  if (active != view.dom) { view.focus(); }
-  try {
-    return f()
-  } finally {
-    if (viewState != state) { view.updateState(viewState); }
-    if (active != view.dom && active) { active.focus(); }
-  }
-}
-
-// : (EditorView, number, number)
-// Whether vertical position motion in a given direction
-// from a position would leave a text block.
-function endOfTextblockVertical(view, state, dir) {
-  var sel = state.selection;
-  var $pos = dir == "up" ? sel.$anchor.min(sel.$head) : sel.$anchor.max(sel.$head);
-  return withFlushedState(view, state, function () {
-    var ref = view.docView.domFromPos($pos.pos);
-    var dom = ref.node;
-    for (;;) {
-      var nearest = view.docView.nearestDesc(dom, true);
-      if (!nearest) { break }
-      if (nearest.node.isBlock) { dom = nearest.dom; break }
-      dom = nearest.dom.parentNode;
-    }
-    var coords = coordsAtPos(view, $pos.pos);
-    for (var child = dom.firstChild; child; child = child.nextSibling) {
-      var boxes = (void 0);
-      if (child.nodeType == 1) { boxes = child.getClientRects(); }
-      else if (child.nodeType == 3) { boxes = textRange(child, 0, child.nodeValue.length).getClientRects(); }
-      else { continue }
-      for (var i = 0; i < boxes.length; i++) {
-        var box = boxes[i];
-        if (box.bottom > box.top && (dir == "up" ? box.bottom < coords.top + 1 : box.top > coords.bottom - 1))
-          { return false }
-      }
-    }
-    return true
-  })
-}
-
-var maybeRTL = /[\u0590-\u08ac]/;
-
-function endOfTextblockHorizontal(view, state, dir) {
-  var ref = state.selection;
-  var $head = ref.$head;
-  if (!$head.parent.isTextblock) { return false }
-  var offset = $head.parentOffset, atStart = !offset, atEnd = offset == $head.parent.content.size;
-  var sel = getSelection();
-  // If the textblock is all LTR, or the browser doesn't support
-  // Selection.modify (Edge), fall back to a primitive approach
-  if (!maybeRTL.test($head.parent.textContent) || !sel.modify)
-    { return dir == "left" || dir == "backward" ? atStart : atEnd }
-
-  return withFlushedState(view, state, function () {
-    // This is a huge hack, but appears to be the best we can
-    // currently do: use `Selection.modify` to move the selection by
-    // one character, and see if that moves the cursor out of the
-    // textblock (or doesn't move it at all, when at the start/end of
-    // the document).
-    var oldRange = sel.getRangeAt(0), oldNode = sel.focusNode, oldOff = sel.focusOffset;
-    var oldBidiLevel = sel.caretBidiLevel; // Only for Firefox
-    sel.modify("move", dir, "character");
-    var parentDOM = $head.depth ? view.docView.domAfterPos($head.before()) : view.dom;
-    var result = !parentDOM.contains(sel.focusNode.nodeType == 1 ? sel.focusNode : sel.focusNode.parentNode) ||
-        (oldNode == sel.focusNode && oldOff == sel.focusOffset);
-    // Restore the previous selection
-    sel.removeAllRanges();
-    sel.addRange(oldRange);
-    if (oldBidiLevel != null) { sel.caretBidiLevel = oldBidiLevel; }
-    return result
-  })
-}
-
-var cachedState = null, cachedDir = null, cachedResult = false;
-function endOfTextblock(view, state, dir) {
-  if (cachedState == state && cachedDir == dir) { return cachedResult }
-  cachedState = state; cachedDir = dir;
-  return cachedResult = dir == "up" || dir == "down"
-    ? endOfTextblockVertical(view, state, dir)
-    : endOfTextblockHorizontal(view, state, dir)
-}
-
-// NodeView:: interface
-//
-// By default, document nodes are rendered using the result of the
-// [`toDOM`](#model.NodeSpec.toDOM) method of their spec, and managed
-// entirely by the editor. For some use cases, such as embedded
-// node-specific editing interfaces, you want more control over
-// the behavior of a node's in-editor representation, and need to
-// [define](#view.EditorProps.nodeViews) a custom node view.
-//
-// Mark views only support `dom` and `contentDOM`, and don't support
-// any of the node view methods.
-//
-// Objects returned as node views must conform to this interface.
-//
-//   dom:: ?dom.Node
-//   The outer DOM node that represents the document node. When not
-//   given, the default strategy is used to create a DOM node.
-//
-//   contentDOM:: ?dom.Node
-//   The DOM node that should hold the node's content. Only meaningful
-//   if the node view also defines a `dom` property and if its node
-//   type is not a leaf node type. When this is present, ProseMirror
-//   will take care of rendering the node's children into it. When it
-//   is not present, the node view itself is responsible for rendering
-//   (or deciding not to render) its child nodes.
-//
-//   update:: ?(node: Node, decorations: [Decoration]) → bool
-//   When given, this will be called when the view is updating itself.
-//   It will be given a node (possibly of a different type), and an
-//   array of active decorations (which are automatically drawn, and
-//   the node view may ignore if it isn't interested in them), and
-//   should return true if it was able to update to that node, and
-//   false otherwise. If the node view has a `contentDOM` property (or
-//   no `dom` property), updating its child nodes will be handled by
-//   ProseMirror.
-//
-//   selectNode:: ?()
-//   Can be used to override the way the node's selected status (as a
-//   node selection) is displayed.
-//
-//   deselectNode:: ?()
-//   When defining a `selectNode` method, you should also provide a
-//   `deselectNode` method to remove the effect again.
-//
-//   setSelection:: ?(anchor: number, head: number, root: dom.Document)
-//   This will be called to handle setting the selection inside the
-//   node. The `anchor` and `head` positions are relative to the start
-//   of the node. By default, a DOM selection will be created between
-//   the DOM positions corresponding to those positions, but if you
-//   override it you can do something else.
-//
-//   stopEvent:: ?(event: dom.Event) → bool
-//   Can be used to prevent the editor view from trying to handle some
-//   or all DOM events that bubble up from the node view. Events for
-//   which this returns true are not handled by the editor.
-//
-//   ignoreMutation:: ?(dom.MutationRecord) → bool
-//   Called when a DOM
-//   [mutation](https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver)
-//   or a selection change happens within the view. When the change is
-//   a selection change, the record will have a `type` property of
-//   `"selection"` (which doesn't occur for native mutation records).
-//   Return false if the editor should re-read the selection or
-//   re-parse the range around the mutation, true if it can safely be
-//   ignored.
-//
-//   destroy:: ?()
-//   Called when the node view is removed from the editor or the whole
-//   editor is destroyed.
-
-// View descriptions are data structures that describe the DOM that is
-// used to represent the editor's content. They are used for:
-//
-// - Incremental redrawing when the document changes
-//
-// - Figuring out what part of the document a given DOM position
-//   corresponds to
-//
-// - Wiring in custom implementations of the editing interface for a
-//   given node
-//
-// They form a doubly-linked mutable tree, starting at `view.docView`.
-
-var NOT_DIRTY = 0, CHILD_DIRTY = 1, CONTENT_DIRTY = 2, NODE_DIRTY = 3;
-
-// Superclass for the various kinds of descriptions. Defines their
-// basic structure and shared methods.
-var index_es_ViewDesc = function ViewDesc(parent, children, dom, contentDOM) {
-  this.parent = parent;
-  this.children = children;
-  this.dom = dom;
-  // An expando property on the DOM node provides a link back to its
-  // description.
-  dom.pmViewDesc = this;
-  // This is the node that holds the child views. It may be null for
-  // descs that don't have children.
-  this.contentDOM = contentDOM;
-  this.dirty = NOT_DIRTY;
-};
-
-var prototypeAccessors = { beforePosition: { configurable: true },size: { configurable: true },border: { configurable: true },posBefore: { configurable: true },posAtStart: { configurable: true },posAfter: { configurable: true },posAtEnd: { configurable: true },contentLost: { configurable: true } };
-
-// Used to check whether a given description corresponds to a
-// widget/mark/node.
-index_es_ViewDesc.prototype.matchesWidget = function matchesWidget () { return false };
-index_es_ViewDesc.prototype.matchesMark = function matchesMark () { return false };
-index_es_ViewDesc.prototype.matchesNode = function matchesNode () { return false };
-index_es_ViewDesc.prototype.matchesHack = function matchesHack () { return false };
-
-prototypeAccessors.beforePosition.get = function () { return false };
-
-// : () → ?ParseRule
-// When parsing in-editor content (in domchange.js), we allow
-// descriptions to determine the parse rules that should be used to
-// parse them.
-index_es_ViewDesc.prototype.parseRule = function parseRule () { return null };
-
-// : (dom.Event) → bool
-// Used by the editor's event handler to ignore events that come
-// from certain descs.
-index_es_ViewDesc.prototype.stopEvent = function stopEvent () { return false };
-
-// The size of the content represented by this desc.
-prototypeAccessors.size.get = function () {
-  var size = 0;
-  for (var i = 0; i < this.children.length; i++) { size += this.children[i].size; }
-  return size
-};
-
-// For block nodes, this represents the space taken up by their
-// start/end tokens.
-prototypeAccessors.border.get = function () { return 0 };
-
-index_es_ViewDesc.prototype.destroy = function destroy () {
-  this.parent = null;
-  if (this.dom.pmViewDesc == this) { this.dom.pmViewDesc = null; }
-  for (var i = 0; i < this.children.length; i++)
-    { this.children[i].destroy(); }
-};
-
-index_es_ViewDesc.prototype.posBeforeChild = function posBeforeChild (child) {
-  for (var i = 0, pos = this.posAtStart; i < this.children.length; i++) {
-    var cur = this.children[i];
-    if (cur == child) { return pos }
-    pos += cur.size;
-  }
-};
-
-prototypeAccessors.posBefore.get = function () {
-  return this.parent.posBeforeChild(this)
-};
-
-prototypeAccessors.posAtStart.get = function () {
-  return this.parent ? this.parent.posBeforeChild(this) + this.border : 0
-};
-
-prototypeAccessors.posAfter.get = function () {
-  return this.posBefore + this.size
-};
-
-prototypeAccessors.posAtEnd.get = function () {
-  return this.posAtStart + this.size - 2 * this.border
-};
-
-// : (dom.Node, number, ?number) → number
-index_es_ViewDesc.prototype.localPosFromDOM = function localPosFromDOM (dom, offset, bias) {
-  // If the DOM position is in the content, use the child desc after
-  // it to figure out a position.
-  if (this.contentDOM && this.contentDOM.contains(dom.nodeType == 1 ? dom : dom.parentNode)) {
-    if (bias < 0) {
-      var domBefore, desc;
-      if (dom == this.contentDOM) {
-        domBefore = dom.childNodes[offset - 1];
-      } else {
-        while (dom.parentNode != this.contentDOM) { dom = dom.parentNode; }
-        domBefore = dom.previousSibling;
-      }
-      while (domBefore && !((desc = domBefore.pmViewDesc) && desc.parent == this)) { domBefore = domBefore.previousSibling; }
-      return domBefore ? this.posBeforeChild(desc) + desc.size : this.posAtStart
-    } else {
-      var domAfter, desc$1;
-      if (dom == this.contentDOM) {
-        domAfter = dom.childNodes[offset];
-      } else {
-        while (dom.parentNode != this.contentDOM) { dom = dom.parentNode; }
-        domAfter = dom.nextSibling;
-      }
-      while (domAfter && !((desc$1 = domAfter.pmViewDesc) && desc$1.parent == this)) { domAfter = domAfter.nextSibling; }
-      return domAfter ? this.posBeforeChild(desc$1) : this.posAtEnd
-    }
-  }
-  // Otherwise, use various heuristics, falling back on the bias
-  // parameter, to determine whether to return the position at the
-  // start or at the end of this view desc.
-  var atEnd;
-  if (this.contentDOM && this.contentDOM != this.dom && this.dom.contains(this.contentDOM)) {
-    atEnd = dom.compareDocumentPosition(this.contentDOM) & 2;
-  } else if (this.dom.firstChild) {
-    if (offset == 0) { for (var search = dom;; search = search.parentNode) {
-      if (search == this.dom) { atEnd = false; break }
-      if (search.parentNode.firstChild != search) { break }
-    } }
-    if (atEnd == null && offset == dom.childNodes.length) { for (var search$1 = dom;; search$1 = search$1.parentNode) {
-      if (search$1 == this.dom) { atEnd = true; break }
-      if (search$1.parentNode.lastChild != search$1) { break }
-    } }
-  }
-  return (atEnd == null ? bias > 0 : atEnd) ? this.posAtEnd : this.posAtStart
-};
-
-// Scan up the dom finding the first desc that is a descendant of
-// this one.
-index_es_ViewDesc.prototype.nearestDesc = function nearestDesc (dom, onlyNodes) {
-  for (var first = true, cur = dom; cur; cur = cur.parentNode) {
-    var desc = this.getDesc(cur);
-    if (desc && (!onlyNodes || desc.node)) {
-      // If dom is outside of this desc's nodeDOM, don't count it.
-      if (first && desc.nodeDOM &&
-          !(desc.nodeDOM.nodeType == 1 ? desc.nodeDOM.contains(dom.nodeType == 1 ? dom : dom.parentNode) : desc.nodeDOM == dom))
-        { first = false; }
-      else
-        { return desc }
-    }
-  }
-};
-
-index_es_ViewDesc.prototype.getDesc = function getDesc (dom) {
-  var desc = dom.pmViewDesc;
-  for (var cur = desc; cur; cur = cur.parent) { if (cur == this) { return desc } }
-};
-
-index_es_ViewDesc.prototype.posFromDOM = function posFromDOM (dom, offset, bias) {
-  for (var scan = dom; scan; scan = scan.parentNode) {
-    var desc = this.getDesc(scan);
-    if (desc) { return desc.localPosFromDOM(dom, offset, bias) }
-  }
-  return -1
-};
-
-// : (number) → ?NodeViewDesc
-// Find the desc for the node after the given pos, if any. (When a
-// parent node overrode rendering, there might not be one.)
-index_es_ViewDesc.prototype.descAt = function descAt (pos) {
-  for (var i = 0, offset = 0; i < this.children.length; i++) {
-    var child = this.children[i], end = offset + child.size;
-    if (offset == pos && end != offset) {
-      while (!child.border && child.children.length) { child = child.children[0]; }
-      return child
-    }
-    if (pos < end) { return child.descAt(pos - offset - child.border) }
-    offset = end;
-  }
-};
-
-// : (number) → {node: dom.Node, offset: number}
-index_es_ViewDesc.prototype.domFromPos = function domFromPos (pos) {
-  if (!this.contentDOM) { return {node: this.dom, offset: 0} }
-  for (var offset = 0, i = 0;; i++) {
-    if (offset == pos) {
-      while (i < this.children.length && (this.children[i].beforePosition || this.children[i].dom.parentNode != this.contentDOM)) { i++; }
-      return {node: this.contentDOM,
-              offset: i == this.children.length ? this.contentDOM.childNodes.length : domIndex(this.children[i].dom)}
-    }
-    if (i == this.children.length) { throw new Error("Invalid position " + pos) }
-    var child = this.children[i], end = offset + child.size;
-    if (pos < end) { return child.domFromPos(pos - offset - child.border) }
-    offset = end;
-  }
-};
-
-// Used to find a DOM range in a single parent for a given changed
-// range.
-index_es_ViewDesc.prototype.parseRange = function parseRange (from, to, base) {
-    if ( base === void 0 ) base = 0;
-
-  if (this.children.length == 0)
-    { return {node: this.contentDOM, from: from, to: to, fromOffset: 0, toOffset: this.contentDOM.childNodes.length} }
-
-  var fromOffset = -1, toOffset = -1;
-  for (var offset = base, i = 0;; i++) {
-    var child = this.children[i], end = offset + child.size;
-    if (fromOffset == -1 && from <= end) {
-      var childBase = offset + child.border;
-      // FIXME maybe descend mark views to parse a narrower range?
-      if (from >= childBase && to <= end - child.border && child.node &&
-          child.contentDOM && this.contentDOM.contains(child.contentDOM))
-        { return child.parseRange(from, to, childBase) }
-
-      from = offset;
-      for (var j = i; j > 0; j--) {
-        var prev = this.children[j - 1];
-        if (prev.size && prev.dom.parentNode == this.contentDOM && !prev.emptyChildAt(1)) {
-          fromOffset = domIndex(prev.dom) + 1;
-          break
-        }
-        from -= prev.size;
-      }
-      if (fromOffset == -1) { fromOffset = 0; }
-    }
-    if (fromOffset > -1 && (end > to || i == this.children.length - 1)) {
-      to = end;
-      for (var j$1 = i + 1; j$1 < this.children.length; j$1++) {
-        var next = this.children[j$1];
-        if (next.size && next.dom.parentNode == this.contentDOM && !next.emptyChildAt(-1)) {
-          toOffset = domIndex(next.dom);
-          break
-        }
-        to += next.size;
-      }
-      if (toOffset == -1) { toOffset = this.contentDOM.childNodes.length; }
-      break
-    }
-    offset = end;
-  }
-  return {node: this.contentDOM, from: from, to: to, fromOffset: fromOffset, toOffset: toOffset}
-};
-
-index_es_ViewDesc.prototype.emptyChildAt = function emptyChildAt (side) {
-  if (this.border || !this.contentDOM || !this.children.length) { return false }
-  var child = this.children[side < 0 ? 0 : this.children.length - 1];
-  return child.size == 0 || child.emptyChildAt(side)
-};
-
-// : (number) → dom.Node
-index_es_ViewDesc.prototype.domAfterPos = function domAfterPos (pos) {
-  var ref = this.domFromPos(pos);
-    var node = ref.node;
-    var offset = ref.offset;
-  if (node.nodeType != 1 || offset == node.childNodes.length)
-    { throw new RangeError("No node after pos " + pos) }
-  return node.childNodes[offset]
-};
-
-// : (number, number, dom.Document)
-// View descs are responsible for setting any selection that falls
-// entirely inside of them, so that custom implementations can do
-// custom things with the selection. Note that this falls apart when
-// a selection starts in such a node and ends in another, in which
-// case we just use whatever domFromPos produces as a best effort.
-index_es_ViewDesc.prototype.setSelection = function setSelection (anchor, head, root, force) {
-  // If the selection falls entirely in a child, give it to that child
-  var from = Math.min(anchor, head), to = Math.max(anchor, head);
-  for (var i = 0, offset = 0; i < this.children.length; i++) {
-    var child = this.children[i], end = offset + child.size;
-    if (from > offset && to < end)
-      { return child.setSelection(anchor - offset - child.border, head - offset - child.border, root, force) }
-    offset = end;
-  }
-
-  var anchorDOM = this.domFromPos(anchor), headDOM = this.domFromPos(head);
-  var domSel = root.getSelection();
-
-  var brKludge = false;
-  // On Firefox, using Selection.collapse to put the cursor after a
-  // BR node for some reason doesn't always work (#1073). On Safari,
-  // the cursor sometimes inexplicable visually lags behind its
-  // reported position in such situations (#1092).
-  if ((index_es_result.gecko || index_es_result.safari) && anchor == head) {
-    var prev = anchorDOM.node.childNodes[anchorDOM.offset - 1];
-    brKludge = prev && (prev.nodeName == "BR" || prev.contentEditable == "false");
-  }
-
-  if (!(force || brKludge && index_es_result.safari) &&
-      isEquivalentPosition(anchorDOM.node, anchorDOM.offset, domSel.anchorNode, domSel.anchorOffset) &&
-      isEquivalentPosition(headDOM.node, headDOM.offset, domSel.focusNode, domSel.focusOffset))
-    { return }
-
-  // Selection.extend can be used to create an 'inverted' selection
-  // (one where the focus is before the anchor), but not all
-  // browsers support it yet.
-  var domSelExtended = false;
-  if ((domSel.extend || anchor == head) && !brKludge) {
-    domSel.collapse(anchorDOM.node, anchorDOM.offset);
-    try {
-      if (anchor != head) { domSel.extend(headDOM.node, headDOM.offset); }
-      domSelExtended = true;
-    } catch (err) {
-      // In some cases with Chrome the selection is empty after calling
-      // collapse, even when it should be valid. This appears to be a bug, but
-      // it is difficult to isolate. If this happens fallback to the old path
-      // without using extend.
-      if (!(err instanceof DOMException)) { throw err }
-      // declare global: DOMException
-    }
-  }
-  if (!domSelExtended) {
-    if (anchor > head) { var tmp = anchorDOM; anchorDOM = headDOM; headDOM = tmp; }
-    var range = document.createRange();
-    range.setEnd(headDOM.node, headDOM.offset);
-    range.setStart(anchorDOM.node, anchorDOM.offset);
-    domSel.removeAllRanges();
-    domSel.addRange(range);
-  }
-};
-
-// : (dom.MutationRecord) → bool
-index_es_ViewDesc.prototype.ignoreMutation = function ignoreMutation (mutation) {
-  return !this.contentDOM && mutation.type != "selection"
-};
-
-prototypeAccessors.contentLost.get = function () {
-  return this.contentDOM && this.contentDOM != this.dom && !this.dom.contains(this.contentDOM)
-};
-
-// Remove a subtree of the element tree that has been touched
-// by a DOM change, so that the next update will redraw it.
-index_es_ViewDesc.prototype.markDirty = function markDirty (from, to) {
-  for (var offset = 0, i = 0; i < this.children.length; i++) {
-    var child = this.children[i], end = offset + child.size;
-    if (offset == end ? from <= end && to >= offset : from < end && to > offset) {
-      var startInside = offset + child.border, endInside = end - child.border;
-      if (from >= startInside && to <= endInside) {
-        this.dirty = from == offset || to == end ? CONTENT_DIRTY : CHILD_DIRTY;
-        if (from == startInside && to == endInside &&
-            (child.contentLost || child.dom.parentNode != this.contentDOM)) { child.dirty = NODE_DIRTY; }
-        else { child.markDirty(from - startInside, to - startInside); }
-        return
-      } else {
-        child.dirty = NODE_DIRTY;
-      }
-    }
-    offset = end;
-  }
-  this.dirty = CONTENT_DIRTY;
-};
-
-index_es_ViewDesc.prototype.markParentsDirty = function markParentsDirty () {
-  var level = 1;
-  for (var node = this.parent; node; node = node.parent, level++) {
-    var dirty = level == 1 ? CONTENT_DIRTY : CHILD_DIRTY;
-    if (node.dirty < dirty) { node.dirty = dirty; }
-  }
-};
-
-Object.defineProperties( index_es_ViewDesc.prototype, prototypeAccessors );
-
-// Reused array to avoid allocating fresh arrays for things that will
-// stay empty anyway.
-var nothing = [];
-
-// A widget desc represents a widget decoration, which is a DOM node
-// drawn between the document nodes.
-var WidgetViewDesc = /*@__PURE__*/(function (ViewDesc) {
-  function WidgetViewDesc(parent, widget, view, pos) {
-    var self, dom = widget.type.toDOM;
-    if (typeof dom == "function") { dom = dom(view, function () {
-      if (!self) { return pos }
-      if (self.parent) { return self.parent.posBeforeChild(self) }
-    }); }
-    if (!widget.type.spec.raw) {
-      if (dom.nodeType != 1) {
-        var wrap = document.createElement("span");
-        wrap.appendChild(dom);
-        dom = wrap;
-      }
-      dom.contentEditable = false;
-      dom.classList.add("ProseMirror-widget");
-    }
-    ViewDesc.call(this, parent, nothing, dom, null);
-    this.widget = widget;
-    self = this;
-  }
-
-  if ( ViewDesc ) WidgetViewDesc.__proto__ = ViewDesc;
-  WidgetViewDesc.prototype = Object.create( ViewDesc && ViewDesc.prototype );
-  WidgetViewDesc.prototype.constructor = WidgetViewDesc;
-
-  var prototypeAccessors$1 = { beforePosition: { configurable: true } };
-
-  prototypeAccessors$1.beforePosition.get = function () {
-    return this.widget.type.side < 0
-  };
-
-  WidgetViewDesc.prototype.matchesWidget = function matchesWidget (widget) {
-    return this.dirty == NOT_DIRTY && widget.type.eq(this.widget.type)
-  };
-
-  WidgetViewDesc.prototype.parseRule = function parseRule () { return {ignore: true} };
-
-  WidgetViewDesc.prototype.stopEvent = function stopEvent (event) {
-    var stop = this.widget.spec.stopEvent;
-    return stop ? stop(event) : false
-  };
-
-  WidgetViewDesc.prototype.ignoreMutation = function ignoreMutation (mutation) {
-    return mutation.type != "selection" || this.widget.spec.ignoreSelection
-  };
-
-  Object.defineProperties( WidgetViewDesc.prototype, prototypeAccessors$1 );
-
-  return WidgetViewDesc;
-}(index_es_ViewDesc));
-
-var CompositionViewDesc = /*@__PURE__*/(function (ViewDesc) {
-  function CompositionViewDesc(parent, dom, textDOM, text) {
-    ViewDesc.call(this, parent, nothing, dom, null);
-    this.textDOM = textDOM;
-    this.text = text;
-  }
-
-  if ( ViewDesc ) CompositionViewDesc.__proto__ = ViewDesc;
-  CompositionViewDesc.prototype = Object.create( ViewDesc && ViewDesc.prototype );
-  CompositionViewDesc.prototype.constructor = CompositionViewDesc;
-
-  var prototypeAccessors$2 = { size: { configurable: true } };
-
-  prototypeAccessors$2.size.get = function () { return this.text.length };
-
-  CompositionViewDesc.prototype.localPosFromDOM = function localPosFromDOM (dom, offset) {
-    if (dom != this.textDOM) { return this.posAtStart + (offset ? this.size : 0) }
-    return this.posAtStart + offset
-  };
-
-  CompositionViewDesc.prototype.domFromPos = function domFromPos (pos) {
-    return {node: this.textDOM, offset: pos}
-  };
-
-  CompositionViewDesc.prototype.ignoreMutation = function ignoreMutation (mut) {
-    return mut.type === 'characterData' && mut.target.nodeValue == mut.oldValue
-   };
-
-  Object.defineProperties( CompositionViewDesc.prototype, prototypeAccessors$2 );
-
-  return CompositionViewDesc;
-}(index_es_ViewDesc));
-
-// A mark desc represents a mark. May have multiple children,
-// depending on how the mark is split. Note that marks are drawn using
-// a fixed nesting order, for simplicity and predictability, so in
-// some cases they will be split more often than would appear
-// necessary.
-var index_es_MarkViewDesc = /*@__PURE__*/(function (ViewDesc) {
-  function MarkViewDesc(parent, mark, dom, contentDOM) {
-    ViewDesc.call(this, parent, [], dom, contentDOM);
-    this.mark = mark;
-  }
-
-  if ( ViewDesc ) MarkViewDesc.__proto__ = ViewDesc;
-  MarkViewDesc.prototype = Object.create( ViewDesc && ViewDesc.prototype );
-  MarkViewDesc.prototype.constructor = MarkViewDesc;
-
-  MarkViewDesc.create = function create (parent, mark, inline, view) {
-    var custom = view.nodeViews[mark.type.name];
-    var spec = custom && custom(mark, view, inline);
-    if (!spec || !spec.dom)
-      { spec = dist_index_es["DOMSerializer"].renderSpec(document, mark.type.spec.toDOM(mark, inline)); }
-    return new MarkViewDesc(parent, mark, spec.dom, spec.contentDOM || spec.dom)
-  };
-
-  MarkViewDesc.prototype.parseRule = function parseRule () { return {mark: this.mark.type.name, attrs: this.mark.attrs, contentElement: this.contentDOM} };
-
-  MarkViewDesc.prototype.matchesMark = function matchesMark (mark) { return this.dirty != NODE_DIRTY && this.mark.eq(mark) };
-
-  MarkViewDesc.prototype.markDirty = function markDirty (from, to) {
-    ViewDesc.prototype.markDirty.call(this, from, to);
-    // Move dirty info to nearest node view
-    if (this.dirty != NOT_DIRTY) {
-      var parent = this.parent;
-      while (!parent.node) { parent = parent.parent; }
-      if (parent.dirty < this.dirty) { parent.dirty = this.dirty; }
-      this.dirty = NOT_DIRTY;
-    }
-  };
-
-  MarkViewDesc.prototype.slice = function slice (from, to, view) {
-    var copy = MarkViewDesc.create(this.parent, this.mark, true, view);
-    var nodes = this.children, size = this.size;
-    if (to < size) { nodes = replaceNodes(nodes, to, size, view); }
-    if (from > 0) { nodes = replaceNodes(nodes, 0, from, view); }
-    for (var i = 0; i < nodes.length; i++) { nodes[i].parent = copy; }
-    copy.children = nodes;
-    return copy
-  };
-
-  return MarkViewDesc;
-}(index_es_ViewDesc));
-
-// Node view descs are the main, most common type of view desc, and
-// correspond to an actual node in the document. Unlike mark descs,
-// they populate their child array themselves.
-var index_es_NodeViewDesc = /*@__PURE__*/(function (ViewDesc) {
-  function NodeViewDesc(parent, node, outerDeco, innerDeco, dom, contentDOM, nodeDOM, view, pos) {
-    ViewDesc.call(this, parent, node.isLeaf ? nothing : [], dom, contentDOM);
-    this.nodeDOM = nodeDOM;
-    this.node = node;
-    this.outerDeco = outerDeco;
-    this.innerDeco = innerDeco;
-    if (contentDOM) { this.updateChildren(view, pos); }
-  }
-
-  if ( ViewDesc ) NodeViewDesc.__proto__ = ViewDesc;
-  NodeViewDesc.prototype = Object.create( ViewDesc && ViewDesc.prototype );
-  NodeViewDesc.prototype.constructor = NodeViewDesc;
-
-  var prototypeAccessors$3 = { size: { configurable: true },border: { configurable: true } };
-
-  // By default, a node is rendered using the `toDOM` method from the
-  // node type spec. But client code can use the `nodeViews` spec to
-  // supply a custom node view, which can influence various aspects of
-  // the way the node works.
-  //
-  // (Using subclassing for this was intentionally decided against,
-  // since it'd require exposing a whole slew of finnicky
-  // implementation details to the user code that they probably will
-  // never need.)
-  NodeViewDesc.create = function create (parent, node, outerDeco, innerDeco, view, pos) {
-    var assign;
-
-    var custom = view.nodeViews[node.type.name], descObj;
-    var spec = custom && custom(node, view, function () {
-      // (This is a function that allows the custom view to find its
-      // own position)
-      if (!descObj) { return pos }
-      if (descObj.parent) { return descObj.parent.posBeforeChild(descObj) }
-    }, outerDeco);
-
-    var dom = spec && spec.dom, contentDOM = spec && spec.contentDOM;
-    if (node.isText) {
-      if (!dom) { dom = document.createTextNode(node.text); }
-      else if (dom.nodeType != 3) { throw new RangeError("Text must be rendered as a DOM text node") }
-    } else if (!dom) {
-((assign = dist_index_es["DOMSerializer"].renderSpec(document, node.type.spec.toDOM(node)), dom = assign.dom, contentDOM = assign.contentDOM));
-    }
-    if (!contentDOM && !node.isText && dom.nodeName != "BR") { // Chrome gets confused by <br contenteditable=false>
-      if (!dom.hasAttribute("contenteditable")) { dom.contentEditable = false; }
-      if (node.type.spec.draggable) { dom.draggable = true; }
-    }
-
-    var nodeDOM = dom;
-    dom = applyOuterDeco(dom, outerDeco, node);
-
-    if (spec)
-      { return descObj = new CustomNodeViewDesc(parent, node, outerDeco, innerDeco, dom, contentDOM, nodeDOM,
-                                              spec, view, pos + 1) }
-    else if (node.isText)
-      { return new TextViewDesc(parent, node, outerDeco, innerDeco, dom, nodeDOM, view) }
-    else
-      { return new NodeViewDesc(parent, node, outerDeco, innerDeco, dom, contentDOM, nodeDOM, view, pos + 1) }
-  };
-
-  NodeViewDesc.prototype.parseRule = function parseRule () {
-    var this$1 = this;
-
-    // Experimental kludge to allow opt-in re-parsing of nodes
-    if (this.node.type.spec.reparseInView) { return null }
-    // FIXME the assumption that this can always return the current
-    // attrs means that if the user somehow manages to change the
-    // attrs in the dom, that won't be picked up. Not entirely sure
-    // whether this is a problem
-    var rule = {node: this.node.type.name, attrs: this.node.attrs};
-    if (this.node.type.spec.code) { rule.preserveWhitespace = "full"; }
-    if (this.contentDOM && !this.contentLost) { rule.contentElement = this.contentDOM; }
-    else { rule.getContent = function () { return this$1.contentDOM ? dist_index_es["Fragment"].empty : this$1.node.content; }; }
-    return rule
-  };
-
-  NodeViewDesc.prototype.matchesNode = function matchesNode (node, outerDeco, innerDeco) {
-    return this.dirty == NOT_DIRTY && node.eq(this.node) &&
-      sameOuterDeco(outerDeco, this.outerDeco) && innerDeco.eq(this.innerDeco)
-  };
-
-  prototypeAccessors$3.size.get = function () { return this.node.nodeSize };
-
-  prototypeAccessors$3.border.get = function () { return this.node.isLeaf ? 0 : 1 };
-
-  // Syncs `this.children` to match `this.node.content` and the local
-  // decorations, possibly introducing nesting for marks. Then, in a
-  // separate step, syncs the DOM inside `this.contentDOM` to
-  // `this.children`.
-  NodeViewDesc.prototype.updateChildren = function updateChildren (view, pos) {
-    var this$1 = this;
-
-    var inline = this.node.inlineContent, off = pos;
-    var composition = inline && view.composing && this.localCompositionNode(view, pos);
-    var updater = new ViewTreeUpdater(this, composition && composition.node);
-    iterDeco(this.node, this.innerDeco, function (widget, i, insideNode) {
-      if (widget.spec.marks)
-        { updater.syncToMarks(widget.spec.marks, inline, view); }
-      else if (widget.type.side >= 0 && !insideNode)
-        { updater.syncToMarks(i == this$1.node.childCount ? dist_index_es["Mark"].none : this$1.node.child(i).marks, inline, view); }
-      // If the next node is a desc matching this widget, reuse it,
-      // otherwise insert the widget as a new view desc.
-      updater.placeWidget(widget, view, off);
-    }, function (child, outerDeco, innerDeco, i) {
-      // Make sure the wrapping mark descs match the node's marks.
-      updater.syncToMarks(child.marks, inline, view);
-      // Either find an existing desc that exactly matches this node,
-      // and drop the descs before it.
-      updater.findNodeMatch(child, outerDeco, innerDeco, i) ||
-        // Or try updating the next desc to reflect this node.
-        updater.updateNextNode(child, outerDeco, innerDeco, view, i) ||
-        // Or just add it as a new desc.
-        updater.addNode(child, outerDeco, innerDeco, view, off);
-      off += child.nodeSize;
-    });
-    // Drop all remaining descs after the current position.
-    updater.syncToMarks(nothing, inline, view);
-    if (this.node.isTextblock) { updater.addTextblockHacks(); }
-    updater.destroyRest();
-
-    // Sync the DOM if anything changed
-    if (updater.changed || this.dirty == CONTENT_DIRTY) {
-      // May have to protect focused DOM from being changed if a composition is active
-      if (composition) { this.protectLocalComposition(view, composition); }
-      renderDescs(this.contentDOM, this.children, view);
-      if (index_es_result.ios) { iosHacks(this.dom); }
-    }
-  };
-
-  NodeViewDesc.prototype.localCompositionNode = function localCompositionNode (view, pos) {
-    // Only do something if both the selection and a focused text node
-    // are inside of this node, and the node isn't already part of a
-    // view that's a child of this view
-    var ref = view.state.selection;
-    var from = ref.from;
-    var to = ref.to;
-    if (!(view.state.selection instanceof index_es["TextSelection"]) || from < pos || to > pos + this.node.content.size) { return }
-    var sel = view.root.getSelection();
-    var textNode = nearbyTextNode(sel.focusNode, sel.focusOffset);
-    if (!textNode || !this.dom.contains(textNode.parentNode)) { return }
-
-    // Find the text in the focused node in the node, stop if it's not
-    // there (may have been modified through other means, in which
-    // case it should overwritten)
-    var text = textNode.nodeValue;
-    var textPos = findTextInFragment(this.node.content, text, from - pos, to - pos);
-
-    return textPos < 0 ? null : {node: textNode, pos: textPos, text: text}
-  };
-
-  NodeViewDesc.prototype.protectLocalComposition = function protectLocalComposition (view, ref) {
-    var node = ref.node;
-    var pos = ref.pos;
-    var text = ref.text;
-
-    // The node is already part of a local view desc, leave it there
-    if (this.getDesc(node)) { return }
-
-    // Create a composition view for the orphaned nodes
-    var topNode = node;
-    for (;; topNode = topNode.parentNode) {
-      if (topNode.parentNode == this.contentDOM) { break }
-      while (topNode.previousSibling) { topNode.parentNode.removeChild(topNode.previousSibling); }
-      while (topNode.nextSibling) { topNode.parentNode.removeChild(topNode.nextSibling); }
-      if (topNode.pmViewDesc) { topNode.pmViewDesc = null; }
-    }
-    var desc = new CompositionViewDesc(this, topNode, node, text);
-    view.compositionNodes.push(desc);
-
-    // Patch up this.children to contain the composition view
-    this.children = replaceNodes(this.children, pos, pos + text.length, view, desc);
-  };
-
-  // : (Node, [Decoration], DecorationSet, EditorView) → bool
-  // If this desc be updated to match the given node decoration,
-  // do so and return true.
-  NodeViewDesc.prototype.update = function update (node, outerDeco, innerDeco, view) {
-    if (this.dirty == NODE_DIRTY ||
-        !node.sameMarkup(this.node)) { return false }
-    this.updateInner(node, outerDeco, innerDeco, view);
-    return true
-  };
-
-  NodeViewDesc.prototype.updateInner = function updateInner (node, outerDeco, innerDeco, view) {
-    this.updateOuterDeco(outerDeco);
-    this.node = node;
-    this.innerDeco = innerDeco;
-    if (this.contentDOM) { this.updateChildren(view, this.posAtStart); }
-    this.dirty = NOT_DIRTY;
-  };
-
-  NodeViewDesc.prototype.updateOuterDeco = function updateOuterDeco (outerDeco) {
-    if (sameOuterDeco(outerDeco, this.outerDeco)) { return }
-    var needsWrap = this.nodeDOM.nodeType != 1;
-    var oldDOM = this.dom;
-    this.dom = patchOuterDeco(this.dom, this.nodeDOM,
-                              computeOuterDeco(this.outerDeco, this.node, needsWrap),
-                              computeOuterDeco(outerDeco, this.node, needsWrap));
-    if (this.dom != oldDOM) {
-      oldDOM.pmViewDesc = null;
-      this.dom.pmViewDesc = this;
-    }
-    this.outerDeco = outerDeco;
-  };
-
-  // Mark this node as being the selected node.
-  NodeViewDesc.prototype.selectNode = function selectNode () {
-    this.nodeDOM.classList.add("ProseMirror-selectednode");
-    if (this.contentDOM || !this.node.type.spec.draggable) { this.dom.draggable = true; }
-  };
-
-  // Remove selected node marking from this node.
-  NodeViewDesc.prototype.deselectNode = function deselectNode () {
-    this.nodeDOM.classList.remove("ProseMirror-selectednode");
-    if (this.contentDOM || !this.node.type.spec.draggable) { this.dom.removeAttribute("draggable"); }
-  };
-
-  Object.defineProperties( NodeViewDesc.prototype, prototypeAccessors$3 );
-
-  return NodeViewDesc;
-}(index_es_ViewDesc));
-
-// Create a view desc for the top-level document node, to be exported
-// and used by the view class.
-function docViewDesc(doc, outerDeco, innerDeco, dom, view) {
-  applyOuterDeco(dom, outerDeco, doc);
-  return new index_es_NodeViewDesc(null, doc, outerDeco, innerDeco, dom, dom, dom, view, 0)
-}
-
-var TextViewDesc = /*@__PURE__*/(function (NodeViewDesc) {
-  function TextViewDesc(parent, node, outerDeco, innerDeco, dom, nodeDOM, view) {
-    NodeViewDesc.call(this, parent, node, outerDeco, innerDeco, dom, null, nodeDOM, view);
-  }
-
-  if ( NodeViewDesc ) TextViewDesc.__proto__ = NodeViewDesc;
-  TextViewDesc.prototype = Object.create( NodeViewDesc && NodeViewDesc.prototype );
-  TextViewDesc.prototype.constructor = TextViewDesc;
-
-  TextViewDesc.prototype.parseRule = function parseRule () {
-    var skip = this.nodeDOM.parentNode;
-    while (skip && skip != this.dom && !skip.pmIsDeco) { skip = skip.parentNode; }
-    return {skip: skip || true}
-  };
-
-  TextViewDesc.prototype.update = function update (node, outerDeco, _, view) {
-    if (this.dirty == NODE_DIRTY || (this.dirty != NOT_DIRTY && !this.inParent()) ||
-        !node.sameMarkup(this.node)) { return false }
-    this.updateOuterDeco(outerDeco);
-    if ((this.dirty != NOT_DIRTY || node.text != this.node.text) && node.text != this.nodeDOM.nodeValue) {
-      this.nodeDOM.nodeValue = node.text;
-      if (view.trackWrites == this.nodeDOM) { view.trackWrites = null; }
-    }
-    this.node = node;
-    this.dirty = NOT_DIRTY;
-    return true
-  };
-
-  TextViewDesc.prototype.inParent = function inParent () {
-    var parentDOM = this.parent.contentDOM;
-    for (var n = this.nodeDOM; n; n = n.parentNode) { if (n == parentDOM) { return true } }
-    return false
-  };
-
-  TextViewDesc.prototype.domFromPos = function domFromPos (pos) {
-    return {node: this.nodeDOM, offset: pos}
-  };
-
-  TextViewDesc.prototype.localPosFromDOM = function localPosFromDOM (dom, offset, bias) {
-    if (dom == this.nodeDOM) { return this.posAtStart + Math.min(offset, this.node.text.length) }
-    return NodeViewDesc.prototype.localPosFromDOM.call(this, dom, offset, bias)
-  };
-
-  TextViewDesc.prototype.ignoreMutation = function ignoreMutation (mutation) {
-    return mutation.type != "characterData" && mutation.type != "selection"
-  };
-
-  TextViewDesc.prototype.slice = function slice (from, to, view) {
-    var node = this.node.cut(from, to), dom = document.createTextNode(node.text);
-    return new TextViewDesc(this.parent, node, this.outerDeco, this.innerDeco, dom, dom, view)
-  };
-
-  return TextViewDesc;
-}(index_es_NodeViewDesc));
-
-// A dummy desc used to tag trailing BR or span nodes created to work
-// around contentEditable terribleness.
-var BRHackViewDesc = /*@__PURE__*/(function (ViewDesc) {
-  function BRHackViewDesc () {
-    ViewDesc.apply(this, arguments);
-  }
-
-  if ( ViewDesc ) BRHackViewDesc.__proto__ = ViewDesc;
-  BRHackViewDesc.prototype = Object.create( ViewDesc && ViewDesc.prototype );
-  BRHackViewDesc.prototype.constructor = BRHackViewDesc;
-
-  BRHackViewDesc.prototype.parseRule = function parseRule () { return {ignore: true} };
-  BRHackViewDesc.prototype.matchesHack = function matchesHack () { return this.dirty == NOT_DIRTY };
-
-  return BRHackViewDesc;
-}(index_es_ViewDesc));
-
-// A separate subclass is used for customized node views, so that the
-// extra checks only have to be made for nodes that are actually
-// customized.
-var CustomNodeViewDesc = /*@__PURE__*/(function (NodeViewDesc) {
-  function CustomNodeViewDesc(parent, node, outerDeco, innerDeco, dom, contentDOM, nodeDOM, spec, view, pos) {
-    NodeViewDesc.call(this, parent, node, outerDeco, innerDeco, dom, contentDOM, nodeDOM, view, pos);
-    this.spec = spec;
-  }
-
-  if ( NodeViewDesc ) CustomNodeViewDesc.__proto__ = NodeViewDesc;
-  CustomNodeViewDesc.prototype = Object.create( NodeViewDesc && NodeViewDesc.prototype );
-  CustomNodeViewDesc.prototype.constructor = CustomNodeViewDesc;
-
-  // A custom `update` method gets to decide whether the update goes
-  // through. If it does, and there's a `contentDOM` node, our logic
-  // updates the children.
-  CustomNodeViewDesc.prototype.update = function update (node, outerDeco, innerDeco, view) {
-    if (this.dirty == NODE_DIRTY) { return false }
-    if (this.spec.update) {
-      var result = this.spec.update(node, outerDeco);
-      if (result) { this.updateInner(node, outerDeco, innerDeco, view); }
-      return result
-    } else if (!this.contentDOM && !node.isLeaf) {
-      return false
-    } else {
-      return NodeViewDesc.prototype.update.call(this, node, outerDeco, innerDeco, view)
-    }
-  };
-
-  CustomNodeViewDesc.prototype.selectNode = function selectNode () {
-    this.spec.selectNode ? this.spec.selectNode() : NodeViewDesc.prototype.selectNode.call(this);
-  };
-
-  CustomNodeViewDesc.prototype.deselectNode = function deselectNode () {
-    this.spec.deselectNode ? this.spec.deselectNode() : NodeViewDesc.prototype.deselectNode.call(this);
-  };
-
-  CustomNodeViewDesc.prototype.setSelection = function setSelection (anchor, head, root, force) {
-    this.spec.setSelection ? this.spec.setSelection(anchor, head, root)
-      : NodeViewDesc.prototype.setSelection.call(this, anchor, head, root, force);
-  };
-
-  CustomNodeViewDesc.prototype.destroy = function destroy () {
-    if (this.spec.destroy) { this.spec.destroy(); }
-    NodeViewDesc.prototype.destroy.call(this);
-  };
-
-  CustomNodeViewDesc.prototype.stopEvent = function stopEvent (event) {
-    return this.spec.stopEvent ? this.spec.stopEvent(event) : false
-  };
-
-  CustomNodeViewDesc.prototype.ignoreMutation = function ignoreMutation (mutation) {
-    return this.spec.ignoreMutation ? this.spec.ignoreMutation(mutation) : NodeViewDesc.prototype.ignoreMutation.call(this, mutation)
-  };
-
-  return CustomNodeViewDesc;
-}(index_es_NodeViewDesc));
-
-// : (dom.Node, [ViewDesc])
-// Sync the content of the given DOM node with the nodes associated
-// with the given array of view descs, recursing into mark descs
-// because this should sync the subtree for a whole node at a time.
-function renderDescs(parentDOM, descs, view) {
-  var dom = parentDOM.firstChild, written = false;
-  for (var i = 0; i < descs.length; i++) {
-    var desc = descs[i], childDOM = desc.dom;
-    if (childDOM.parentNode == parentDOM) {
-      while (childDOM != dom) { dom = rm(dom); written = true; }
-      dom = dom.nextSibling;
-    } else {
-      written = true;
-      parentDOM.insertBefore(childDOM, dom);
-    }
-    if (desc instanceof index_es_MarkViewDesc) {
-      var pos = dom ? dom.previousSibling : parentDOM.lastChild;
-      renderDescs(desc.contentDOM, desc.children, view);
-      dom = pos ? pos.nextSibling : parentDOM.firstChild;
-    }
-  }
-  while (dom) { dom = rm(dom); written = true; }
-  if (written && view.trackWrites == parentDOM) { view.trackWrites = null; }
-}
-
-function OuterDecoLevel(nodeName) {
-  if (nodeName) { this.nodeName = nodeName; }
-}
-OuterDecoLevel.prototype = Object.create(null);
-
-var noDeco = [new OuterDecoLevel];
-
-function computeOuterDeco(outerDeco, node, needsWrap) {
-  if (outerDeco.length == 0) { return noDeco }
-
-  var top = needsWrap ? noDeco[0] : new OuterDecoLevel, result = [top];
-
-  for (var i = 0; i < outerDeco.length; i++) {
-    var attrs = outerDeco[i].type.attrs, cur = top;
-    if (!attrs) { continue }
-    if (attrs.nodeName)
-      { result.push(cur = new OuterDecoLevel(attrs.nodeName)); }
-
-    for (var name in attrs) {
-      var val = attrs[name];
-      if (val == null) { continue }
-      if (needsWrap && result.length == 1)
-        { result.push(cur = top = new OuterDecoLevel(node.isInline ? "span" : "div")); }
-      if (name == "class") { cur.class = (cur.class ? cur.class + " " : "") + val; }
-      else if (name == "style") { cur.style = (cur.style ? cur.style + ";" : "") + val; }
-      else if (name != "nodeName") { cur[name] = val; }
-    }
-  }
-
-  return result
-}
-
-function patchOuterDeco(outerDOM, nodeDOM, prevComputed, curComputed) {
-  // Shortcut for trivial case
-  if (prevComputed == noDeco && curComputed == noDeco) { return nodeDOM }
-
-  var curDOM = nodeDOM;
-  for (var i = 0; i < curComputed.length; i++) {
-    var deco = curComputed[i], prev = prevComputed[i];
-    if (i) {
-      var parent = (void 0);
-      if (prev && prev.nodeName == deco.nodeName && curDOM != outerDOM &&
-          (parent = curDOM.parentNode) && parent.tagName.toLowerCase() == deco.nodeName) {
-        curDOM = parent;
-      } else {
-        parent = document.createElement(deco.nodeName);
-        parent.pmIsDeco = true;
-        parent.appendChild(curDOM);
-        prev = noDeco[0];
-        curDOM = parent;
-      }
-    }
-    patchAttributes(curDOM, prev || noDeco[0], deco);
-  }
-  return curDOM
-}
-
-function patchAttributes(dom, prev, cur) {
-  for (var name in prev)
-    { if (name != "class" && name != "style" && name != "nodeName" && !(name in cur))
-      { dom.removeAttribute(name); } }
-  for (var name$1 in cur)
-    { if (name$1 != "class" && name$1 != "style" && name$1 != "nodeName" && cur[name$1] != prev[name$1])
-      { dom.setAttribute(name$1, cur[name$1]); } }
-  if (prev.class != cur.class) {
-    var prevList = prev.class ? prev.class.split(" ") : nothing;
-    var curList = cur.class ? cur.class.split(" ") : nothing;
-    for (var i = 0; i < prevList.length; i++) { if (curList.indexOf(prevList[i]) == -1)
-      { dom.classList.remove(prevList[i]); } }
-    for (var i$1 = 0; i$1 < curList.length; i$1++) { if (prevList.indexOf(curList[i$1]) == -1)
-      { dom.classList.add(curList[i$1]); } }
-  }
-  if (prev.style != cur.style) {
-    if (prev.style) {
-      var prop = /\s*([\w\-\xa1-\uffff]+)\s*:(?:"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\(.*?\)|[^;])*/g, m;
-      while (m = prop.exec(prev.style))
-        { dom.style.removeProperty(m[1]); }
-    }
-    if (cur.style)
-      { dom.style.cssText += cur.style; }
-  }
-}
-
-function applyOuterDeco(dom, deco, node) {
-  return patchOuterDeco(dom, dom, noDeco, computeOuterDeco(deco, node, dom.nodeType != 1))
-}
-
-// : ([Decoration], [Decoration]) → bool
-function sameOuterDeco(a, b) {
-  if (a.length != b.length) { return false }
-  for (var i = 0; i < a.length; i++) { if (!a[i].type.eq(b[i].type)) { return false } }
-  return true
-}
-
-// Remove a DOM node and return its next sibling.
-function rm(dom) {
-  var next = dom.nextSibling;
-  dom.parentNode.removeChild(dom);
-  return next
-}
-
-// Helper class for incrementally updating a tree of mark descs and
-// the widget and node descs inside of them.
-var ViewTreeUpdater = function ViewTreeUpdater(top, lockedNode) {
-  this.top = top;
-  this.lock = lockedNode;
-  // Index into `this.top`'s child array, represents the current
-  // update position.
-  this.index = 0;
-  // When entering a mark, the current top and index are pushed
-  // onto this.
-  this.stack = [];
-  // Tracks whether anything was changed
-  this.changed = false;
-
-  var pre = preMatch(top.node.content, top.children);
-  this.preMatched = pre.nodes;
-  this.preMatchOffset = pre.offset;
-};
-
-ViewTreeUpdater.prototype.getPreMatch = function getPreMatch (index) {
-  return index >= this.preMatchOffset ? this.preMatched[index - this.preMatchOffset] : null
-};
-
-// Destroy and remove the children between the given indices in
-// `this.top`.
-ViewTreeUpdater.prototype.destroyBetween = function destroyBetween (start, end) {
-  if (start == end) { return }
-  for (var i = start; i < end; i++) { this.top.children[i].destroy(); }
-  this.top.children.splice(start, end - start);
-  this.changed = true;
-};
-
-// Destroy all remaining children in `this.top`.
-ViewTreeUpdater.prototype.destroyRest = function destroyRest () {
-  this.destroyBetween(this.index, this.top.children.length);
-};
-
-// : ([Mark], EditorView)
-// Sync the current stack of mark descs with the given array of
-// marks, reusing existing mark descs when possible.
-ViewTreeUpdater.prototype.syncToMarks = function syncToMarks (marks, inline, view) {
-  var keep = 0, depth = this.stack.length >> 1;
-  var maxKeep = Math.min(depth, marks.length);
-  while (keep < maxKeep &&
-         (keep == depth - 1 ? this.top : this.stack[(keep + 1) << 1]).matchesMark(marks[keep]) && marks[keep].type.spec.spanning !== false)
-    { keep++; }
-
-  while (keep < depth) {
-    this.destroyRest();
-    this.top.dirty = NOT_DIRTY;
-    this.index = this.stack.pop();
-    this.top = this.stack.pop();
-    depth--;
-  }
-  while (depth < marks.length) {
-    this.stack.push(this.top, this.index + 1);
-    var found = -1;
-    for (var i = this.index; i < Math.min(this.index + 3, this.top.children.length); i++) {
-      if (this.top.children[i].matchesMark(marks[depth])) { found = i; break }
-    }
-    if (found > -1) {
-      if (found > this.index) {
-        this.changed = true;
-        this.destroyBetween(this.index, found);
-      }
-      this.top = this.top.children[this.index];
-    } else {
-      var markDesc = index_es_MarkViewDesc.create(this.top, marks[depth], inline, view);
-      this.top.children.splice(this.index, 0, markDesc);
-      this.top = markDesc;
-      this.changed = true;
-    }
-    this.index = 0;
-    depth++;
-  }
-};
-
-// : (Node, [Decoration], DecorationSet) → bool
-// Try to find a node desc matching the given data. Skip over it and
-// return true when successful.
-ViewTreeUpdater.prototype.findNodeMatch = function findNodeMatch (node, outerDeco, innerDeco, index) {
-  var found = -1, preMatch = index < 0 ? undefined : this.getPreMatch(index), children = this.top.children;
-  if (preMatch && preMatch.matchesNode(node, outerDeco, innerDeco)) {
-    found = children.indexOf(preMatch);
-  } else {
-    for (var i = this.index, e = Math.min(children.length, i + 5); i < e; i++) {
-      var child = children[i];
-      if (child.matchesNode(node, outerDeco, innerDeco) && this.preMatched.indexOf(child) < 0) {
-        found = i;
-        break
-      }
-    }
-  }
-  if (found < 0) { return false }
-  this.destroyBetween(this.index, found);
-  this.index++;
-  return true
-};
-
-// : (Node, [Decoration], DecorationSet, EditorView, Fragment, number) → bool
-// Try to update the next node, if any, to the given data. Checks
-// pre-matches to avoid overwriting nodes that could still be used.
-ViewTreeUpdater.prototype.updateNextNode = function updateNextNode (node, outerDeco, innerDeco, view, index) {
-  for (var i = this.index; i < this.top.children.length; i++) {
-    var next = this.top.children[i];
-    if (next instanceof index_es_NodeViewDesc) {
-      var preMatch = this.preMatched.indexOf(next);
-      if (preMatch > -1 && preMatch + this.preMatchOffset != index) { return false }
-      var nextDOM = next.dom;
-
-      // Can't update if nextDOM is or contains this.lock, except if
-      // it's a text node whose content already matches the new text
-      // and whose decorations match the new ones.
-      var locked = this.lock && (nextDOM == this.lock || nextDOM.nodeType == 1 && nextDOM.contains(this.lock.parentNode)) &&
-          !(node.isText && next.node && next.node.isText && next.nodeDOM.nodeValue == node.text &&
-            next.dirty != NODE_DIRTY && sameOuterDeco(outerDeco, next.outerDeco));
-      if (!locked && next.update(node, outerDeco, innerDeco, view)) {
-        this.destroyBetween(this.index, i);
-        if (next.dom != nextDOM) { this.changed = true; }
-        this.index++;
-        return true
-      }
-      break
-    }
-  }
-  return false
-};
-
-// : (Node, [Decoration], DecorationSet, EditorView)
-// Insert the node as a newly created node desc.
-ViewTreeUpdater.prototype.addNode = function addNode (node, outerDeco, innerDeco, view, pos) {
-  this.top.children.splice(this.index++, 0, index_es_NodeViewDesc.create(this.top, node, outerDeco, innerDeco, view, pos));
-  this.changed = true;
-};
-
-ViewTreeUpdater.prototype.placeWidget = function placeWidget (widget, view, pos) {
-  var next = this.index < this.top.children.length ? this.top.children[this.index] : null;
-  if (next && next.matchesWidget(widget) && (widget == next.widget || !next.widget.type.toDOM.parentNode)) {
-    this.index++;
-  } else {
-    var desc = new WidgetViewDesc(this.top, widget, view, pos);
-    this.top.children.splice(this.index++, 0, desc);
-    this.changed = true;
-  }
-};
-
-// Make sure a textblock looks and behaves correctly in
-// contentEditable.
-ViewTreeUpdater.prototype.addTextblockHacks = function addTextblockHacks () {
-  var lastChild = this.top.children[this.index - 1];
-  while (lastChild instanceof index_es_MarkViewDesc) { lastChild = lastChild.children[lastChild.children.length - 1]; }
-
-  if (!lastChild || // Empty textblock
-      !(lastChild instanceof TextViewDesc) ||
-      /\n$/.test(lastChild.node.text)) {
-    if (this.index < this.top.children.length && this.top.children[this.index].matchesHack()) {
-      this.index++;
-    } else {
-      var dom = document.createElement("br");
-      this.top.children.splice(this.index++, 0, new BRHackViewDesc(this.top, nothing, dom, null));
-      this.changed = true;
-    }
-  }
-};
-
-// : (Fragment, [ViewDesc]) → [ViewDesc]
-// Iterate from the end of the fragment and array of descs to find
-// directly matching ones, in order to avoid overeagerly reusing
-// those for other nodes. Returns an array whose positions correspond
-// to node positions in the fragment, and whose elements are either
-// descs matched to the child at that index, or empty.
-function preMatch(frag, descs) {
-  var result = [], end = frag.childCount;
-  for (var i = descs.length - 1; end > 0 && i >= 0; i--) {
-    var desc = descs[i], node = desc.node;
-    if (!node) { continue }
-    if (node != frag.child(end - 1)) { break }
-    result.push(desc);
-    --end;
-  }
-  return {nodes: result.reverse(), offset: end}
-}
-
-function compareSide(a, b) { return a.type.side - b.type.side }
-
-// : (ViewDesc, DecorationSet, (Decoration, number), (Node, [Decoration], DecorationSet, number))
-// This function abstracts iterating over the nodes and decorations in
-// a fragment. Calls `onNode` for each node, with its local and child
-// decorations. Splits text nodes when there is a decoration starting
-// or ending inside of them. Calls `onWidget` for each widget.
-function iterDeco(parent, deco, onWidget, onNode) {
-  var locals = deco.locals(parent), offset = 0;
-  // Simple, cheap variant for when there are no local decorations
-  if (locals.length == 0) {
-    for (var i = 0; i < parent.childCount; i++) {
-      var child = parent.child(i);
-      onNode(child, locals, deco.forChild(offset, child), i);
-      offset += child.nodeSize;
-    }
-    return
-  }
-
-  var decoIndex = 0, active = [], restNode = null;
-  for (var parentIndex = 0;;) {
-    if (decoIndex < locals.length && locals[decoIndex].to == offset) {
-      var widget = locals[decoIndex++], widgets = (void 0);
-      while (decoIndex < locals.length && locals[decoIndex].to == offset)
-        { (widgets || (widgets = [widget])).push(locals[decoIndex++]); }
-      if (widgets) {
-        widgets.sort(compareSide);
-        for (var i$1 = 0; i$1 < widgets.length; i$1++) { onWidget(widgets[i$1], parentIndex, !!restNode); }
-      } else {
-        onWidget(widget, parentIndex, !!restNode);
-      }
-    }
-
-    var child$1 = (void 0), index = (void 0);
-    if (restNode) {
-      index = -1;
-      child$1 = restNode;
-      restNode = null;
-    } else if (parentIndex < parent.childCount) {
-      index = parentIndex;
-      child$1 = parent.child(parentIndex++);
-    } else {
-      break
-    }
-
-    for (var i$2 = 0; i$2 < active.length; i$2++) { if (active[i$2].to <= offset) { active.splice(i$2--, 1); } }
-    while (decoIndex < locals.length && locals[decoIndex].from <= offset && locals[decoIndex].to > offset)
-      { active.push(locals[decoIndex++]); }
-
-    var end = offset + child$1.nodeSize;
-    if (child$1.isText) {
-      var cutAt = end;
-      if (decoIndex < locals.length && locals[decoIndex].from < cutAt) { cutAt = locals[decoIndex].from; }
-      for (var i$3 = 0; i$3 < active.length; i$3++) { if (active[i$3].to < cutAt) { cutAt = active[i$3].to; } }
-      if (cutAt < end) {
-        restNode = child$1.cut(cutAt - offset);
-        child$1 = child$1.cut(0, cutAt - offset);
-        end = cutAt;
-        index = -1;
-      }
-    }
-
-    var outerDeco = !active.length ? nothing
-        : child$1.isInline && !child$1.isLeaf ? active.filter(function (d) { return !d.inline; })
-        : active.slice();
-    onNode(child$1, outerDeco, deco.forChild(offset, child$1), index);
-    offset = end;
-  }
-}
-
-// List markers in Mobile Safari will mysteriously disappear
-// sometimes. This works around that.
-function iosHacks(dom) {
-  if (dom.nodeName == "UL" || dom.nodeName == "OL") {
-    var oldCSS = dom.style.cssText;
-    dom.style.cssText = oldCSS + "; list-style: square !important";
-    window.getComputedStyle(dom).listStyle;
-    dom.style.cssText = oldCSS;
-  }
-}
-
-function nearbyTextNode(node, offset) {
-  for (;;) {
-    if (node.nodeType == 3) { return node }
-    if (node.nodeType == 1 && offset > 0) {
-      if (node.childNodes.length > offset && node.childNodes[offset].nodeType == 3)
-        { return node.childNodes[offset] }
-      node = node.childNodes[offset - 1];
-      offset = nodeSize(node);
-    } else if (node.nodeType == 1 && offset < node.childNodes.length) {
-      node = node.childNodes[offset];
-      offset = 0;
-    } else {
-      return null
-    }
-  }
-}
-
-// Find a piece of text in an inline fragment, overlapping from-to
-function findTextInFragment(frag, text, from, to) {
-  for (var i = 0, pos = 0; i < frag.childCount && pos <= to;) {
-    var child = frag.child(i++), childStart = pos;
-    pos += child.nodeSize;
-    if (!child.isText) { continue }
-    var str = child.text;
-    while (i < frag.childCount) {
-      var next = frag.child(i++);
-      pos += next.nodeSize;
-      if (!next.isText) { break }
-      str += next.text;
-    }
-    if (pos >= from) {
-      var found = str.lastIndexOf(text, to - childStart);
-      if (found >= 0 && found + text.length + childStart >= from)
-        { return childStart + found }
-    }
-  }
-  return -1
-}
-
-// Replace range from-to in an array of view descs with replacement
-// (may be null to just delete). This goes very much against the grain
-// of the rest of this code, which tends to create nodes with the
-// right shape in one go, rather than messing with them after
-// creation, but is necessary in the composition hack.
-function replaceNodes(nodes, from, to, view, replacement) {
-  var result = [];
-  for (var i = 0, off = 0; i < nodes.length; i++) {
-    var child = nodes[i], start = off, end = off += child.size;
-    if (start >= to || end <= from) {
-      result.push(child);
-    } else {
-      if (start < from) { result.push(child.slice(0, from - start, view)); }
-      if (replacement) {
-        result.push(replacement);
-        replacement = null;
-      }
-      if (end > to) { result.push(child.slice(to - start, child.size, view)); }
-    }
-  }
-  return result
-}
-
-function selectionFromDOM(view, origin) {
-  var domSel = view.root.getSelection(), doc = view.state.doc;
-  if (!domSel.focusNode) { return null }
-  var nearestDesc = view.docView.nearestDesc(domSel.focusNode), inWidget = nearestDesc && nearestDesc.size == 0;
-  var head = view.docView.posFromDOM(domSel.focusNode, domSel.focusOffset);
-  if (head < 0) { return null }
-  var $head = doc.resolve(head), $anchor, selection;
-  if (selectionCollapsed(domSel)) {
-    $anchor = $head;
-    while (nearestDesc && !nearestDesc.node) { nearestDesc = nearestDesc.parent; }
-    if (nearestDesc && nearestDesc.node.isAtom && index_es["NodeSelection"].isSelectable(nearestDesc.node) && nearestDesc.parent
-        && !(nearestDesc.node.isInline && isOnEdge(domSel.focusNode, domSel.focusOffset, nearestDesc.dom))) {
-      var pos = nearestDesc.posBefore;
-      selection = new index_es["NodeSelection"](head == pos ? $head : doc.resolve(pos));
-    }
-  } else {
-    var anchor = view.docView.posFromDOM(domSel.anchorNode, domSel.anchorOffset);
-    if (anchor < 0) { return null }
-    $anchor = doc.resolve(anchor);
-  }
-
-  if (!selection) {
-    var bias = origin == "pointer" || (view.state.selection.head < $head.pos && !inWidget) ? 1 : -1;
-    selection = selectionBetween(view, $anchor, $head, bias);
-  }
-  return selection
-}
-
-function selectionToDOM(view, force) {
-  var sel = view.state.selection;
-  syncNodeSelection(view, sel);
-
-  if (view.editable ? !view.hasFocus() :
-      !(hasSelection(view) && document.activeElement && document.activeElement.contains(view.dom))) { return }
-
-  view.domObserver.disconnectSelection();
-
-  if (view.cursorWrapper) {
-    selectCursorWrapper(view);
-  } else {
-    var anchor = sel.anchor;
-    var head = sel.head;
-    var resetEditableFrom, resetEditableTo;
-    if (brokenSelectBetweenUneditable && !(sel instanceof index_es["TextSelection"])) {
-      if (!sel.$from.parent.inlineContent)
-        { resetEditableFrom = temporarilyEditableNear(view, sel.from); }
-      if (!sel.empty && !sel.$from.parent.inlineContent)
-        { resetEditableTo = temporarilyEditableNear(view, sel.to); }
-    }
-    view.docView.setSelection(anchor, head, view.root, force);
-    if (brokenSelectBetweenUneditable) {
-      if (resetEditableFrom) { resetEditable(resetEditableFrom); }
-      if (resetEditableTo) { resetEditable(resetEditableTo); }
-    }
-    if (sel.visible) {
-      view.dom.classList.remove("ProseMirror-hideselection");
-    } else {
-      view.dom.classList.add("ProseMirror-hideselection");
-      if ("onselectionchange" in document) { removeClassOnSelectionChange(view); }
-    }
-  }
-
-  view.domObserver.setCurSelection();
-  view.domObserver.connectSelection();
-}
-
-// Kludge to work around Webkit not allowing a selection to start/end
-// between non-editable block nodes. We briefly make something
-// editable, set the selection, then set it uneditable again.
-
-var brokenSelectBetweenUneditable = index_es_result.safari || index_es_result.chrome && index_es_result.chrome_version < 63;
-
-function temporarilyEditableNear(view, pos) {
-  var ref = view.docView.domFromPos(pos);
-  var node = ref.node;
-  var offset = ref.offset;
-  var after = offset < node.childNodes.length ? node.childNodes[offset] : null;
-  var before = offset ? node.childNodes[offset - 1] : null;
-  if (index_es_result.safari && after && after.contentEditable == "false") { return setEditable(after) }
-  if ((!after || after.contentEditable == "false") && (!before || before.contentEditable == "false")) {
-    if (after) { return setEditable(after) }
-    else if (before) { return setEditable(before) }
-  }
-}
-
-function setEditable(element) {
-  element.contentEditable = "true";
-  if (index_es_result.safari && element.draggable) { element.draggable = false; element.wasDraggable = true; }
-  return element
-}
-
-function resetEditable(element) {
-  element.contentEditable = "false";
-  if (element.wasDraggable) { element.draggable = true; element.wasDraggable = null; }
-}
-
-function removeClassOnSelectionChange(view) {
-  var doc = view.dom.ownerDocument;
-  doc.removeEventListener("selectionchange", view.hideSelectionGuard);
-  var domSel = view.root.getSelection();
-  var node = domSel.anchorNode, offset = domSel.anchorOffset;
-  doc.addEventListener("selectionchange", view.hideSelectionGuard = function () {
-    if (domSel.anchorNode != node || domSel.anchorOffset != offset) {
-      doc.removeEventListener("selectionchange", view.hideSelectionGuard);
-      view.dom.classList.remove("ProseMirror-hideselection");
-    }
-  });
-}
-
-function selectCursorWrapper(view) {
-  var domSel = view.root.getSelection(), range = document.createRange();
-  var node = view.cursorWrapper.dom, img = node.nodeName == "IMG";
-  if (img) { range.setEnd(node.parentNode, domIndex(node) + 1); }
-  else { range.setEnd(node, 0); }
-  range.collapse(false);
-  domSel.removeAllRanges();
-  domSel.addRange(range);
-  // Kludge to kill 'control selection' in IE11 when selecting an
-  // invisible cursor wrapper, since that would result in those weird
-  // resize handles and a selection that considers the absolutely
-  // positioned wrapper, rather than the root editable node, the
-  // focused element.
-  if (!img && !view.state.selection.visible && index_es_result.ie && index_es_result.ie_version <= 11) {
-    node.disabled = true;
-    node.disabled = false;
-  }
-}
-
-function syncNodeSelection(view, sel) {
-  if (sel instanceof index_es["NodeSelection"]) {
-    var desc = view.docView.descAt(sel.from);
-    if (desc != view.lastSelectedViewDesc) {
-      clearNodeSelection(view);
-      if (desc) { desc.selectNode(); }
-      view.lastSelectedViewDesc = desc;
-    }
-  } else {
-    clearNodeSelection(view);
-  }
-}
-
-// Clear all DOM statefulness of the last node selection.
-function clearNodeSelection(view) {
-  if (view.lastSelectedViewDesc) {
-    if (view.lastSelectedViewDesc.parent)
-      { view.lastSelectedViewDesc.deselectNode(); }
-    view.lastSelectedViewDesc = null;
-  }
-}
-
-function selectionBetween(view, $anchor, $head, bias) {
-  return view.someProp("createSelectionBetween", function (f) { return f(view, $anchor, $head); })
-    || index_es["TextSelection"].between($anchor, $head, bias)
-}
-
-function hasFocusAndSelection(view) {
-  if (view.editable && view.root.activeElement != view.dom) { return false }
-  return hasSelection(view)
-}
-
-function hasSelection(view) {
-  var sel = view.root.getSelection();
-  if (!sel.anchorNode) { return false }
-  try {
-    // Firefox will raise 'permission denied' errors when accessing
-    // properties of `sel.anchorNode` when it's in a generated CSS
-    // element.
-    return view.dom.contains(sel.anchorNode.nodeType == 3 ? sel.anchorNode.parentNode : sel.anchorNode) &&
-      (view.editable || view.dom.contains(sel.focusNode.nodeType == 3 ? sel.focusNode.parentNode : sel.focusNode))
-  } catch(_) {
-    return false
-  }
-}
-
-function anchorInRightPlace(view) {
-  var anchorDOM = view.docView.domFromPos(view.state.selection.anchor);
-  var domSel = view.root.getSelection();
-  return isEquivalentPosition(anchorDOM.node, anchorDOM.offset, domSel.anchorNode, domSel.anchorOffset)
-}
-
-function moveSelectionBlock(state, dir) {
-  var ref = state.selection;
-  var $anchor = ref.$anchor;
-  var $head = ref.$head;
-  var $side = dir > 0 ? $anchor.max($head) : $anchor.min($head);
-  var $start = !$side.parent.inlineContent ? $side : $side.depth ? state.doc.resolve(dir > 0 ? $side.after() : $side.before()) : null;
-  return $start && index_es["Selection"].findFrom($start, dir)
-}
-
-function apply(view, sel) {
-  view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
-  return true
-}
-
-function selectHorizontally(view, dir, mods) {
-  var sel = view.state.selection;
-  if (sel instanceof index_es["TextSelection"]) {
-    if (!sel.empty || mods.indexOf("s") > -1) {
-      return false
-    } else if (view.endOfTextblock(dir > 0 ? "right" : "left")) {
-      var next = moveSelectionBlock(view.state, dir);
-      if (next && (next instanceof index_es["NodeSelection"])) { return apply(view, next) }
-      return false
-    } else if (!(index_es_result.mac && mods.indexOf("m") > -1)) {
-      var $head = sel.$head, node = $head.textOffset ? null : dir < 0 ? $head.nodeBefore : $head.nodeAfter, desc;
-      if (!node || node.isText) { return false }
-      var nodePos = dir < 0 ? $head.pos - node.nodeSize : $head.pos;
-      if (!(node.isAtom || (desc = view.docView.descAt(nodePos)) && !desc.contentDOM)) { return false }
-      if (index_es["NodeSelection"].isSelectable(node)) {
-        return apply(view, new index_es["NodeSelection"](dir < 0 ? view.state.doc.resolve($head.pos - node.nodeSize) : $head))
-      } else if (index_es_result.webkit) {
-        // Chrome and Safari will introduce extra pointless cursor
-        // positions around inline uneditable nodes, so we have to
-        // take over and move the cursor past them (#937)
-        return apply(view, new index_es["TextSelection"](view.state.doc.resolve(dir < 0 ? nodePos : nodePos + node.nodeSize)))
-      } else {
-        return false
-      }
-    }
-  } else if (sel instanceof index_es["NodeSelection"] && sel.node.isInline) {
-    return apply(view, new index_es["TextSelection"](dir > 0 ? sel.$to : sel.$from))
-  } else {
-    var next$1 = moveSelectionBlock(view.state, dir);
-    if (next$1) { return apply(view, next$1) }
-    return false
-  }
-}
-
-function nodeLen(node) {
-  return node.nodeType == 3 ? node.nodeValue.length : node.childNodes.length
-}
-
-function isIgnorable(dom) {
-  var desc = dom.pmViewDesc;
-  return desc && desc.size == 0 && (dom.nextSibling || dom.nodeName != "BR")
-}
-
-// Make sure the cursor isn't directly after one or more ignored
-// nodes, which will confuse the browser's cursor motion logic.
-function skipIgnoredNodesLeft(view) {
-  var sel = view.root.getSelection();
-  var node = sel.focusNode, offset = sel.focusOffset;
-  if (!node) { return }
-  var moveNode, moveOffset, force = false;
-  // Gecko will do odd things when the selection is directly in front
-  // of a non-editable node, so in that case, move it into the next
-  // node if possible. Issue prosemirror/prosemirror#832.
-  if (index_es_result.gecko && node.nodeType == 1 && offset < nodeLen(node) && isIgnorable(node.childNodes[offset])) { force = true; }
-  for (;;) {
-    if (offset > 0) {
-      if (node.nodeType != 1) {
-        break
-      } else {
-        var before = node.childNodes[offset - 1];
-        if (isIgnorable(before)) {
-          moveNode = node;
-          moveOffset = --offset;
-        } else if (before.nodeType == 3) {
-          node = before;
-          offset = node.nodeValue.length;
-        } else { break }
-      }
-    } else if (isBlockNode(node)) {
-      break
-    } else {
-      var prev = node.previousSibling;
-      while (prev && isIgnorable(prev)) {
-        moveNode = node.parentNode;
-        moveOffset = domIndex(prev);
-        prev = prev.previousSibling;
-      }
-      if (!prev) {
-        node = node.parentNode;
-        if (node == view.dom) { break }
-        offset = 0;
-      } else {
-        node = prev;
-        offset = nodeLen(node);
-      }
-    }
-  }
-  if (force) { setSelFocus(view, sel, node, offset); }
-  else if (moveNode) { setSelFocus(view, sel, moveNode, moveOffset); }
-}
-
-// Make sure the cursor isn't directly before one or more ignored
-// nodes.
-function skipIgnoredNodesRight(view) {
-  var sel = view.root.getSelection();
-  var node = sel.focusNode, offset = sel.focusOffset;
-  if (!node) { return }
-  var len = nodeLen(node);
-  var moveNode, moveOffset;
-  for (;;) {
-    if (offset < len) {
-      if (node.nodeType != 1) { break }
-      var after = node.childNodes[offset];
-      if (isIgnorable(after)) {
-        moveNode = node;
-        moveOffset = ++offset;
-      }
-      else { break }
-    } else if (isBlockNode(node)) {
-      break
-    } else {
-      var next = node.nextSibling;
-      while (next && isIgnorable(next)) {
-        moveNode = next.parentNode;
-        moveOffset = domIndex(next) + 1;
-        next = next.nextSibling;
-      }
-      if (!next) {
-        node = node.parentNode;
-        if (node == view.dom) { break }
-        offset = len = 0;
-      } else {
-        node = next;
-        offset = 0;
-        len = nodeLen(node);
-      }
-    }
-  }
-  if (moveNode) { setSelFocus(view, sel, moveNode, moveOffset); }
-}
-
-function isBlockNode(dom) {
-  var desc = dom.pmViewDesc;
-  return desc && desc.node && desc.node.isBlock
-}
-
-function setSelFocus(view, sel, node, offset) {
-  if (selectionCollapsed(sel)) {
-    var range = document.createRange();
-    range.setEnd(node, offset);
-    range.setStart(node, offset);
-    sel.removeAllRanges();
-    sel.addRange(range);
-  } else if (sel.extend) {
-    sel.extend(node, offset);
-  }
-  view.domObserver.setCurSelection();
-  var state = view.state;
-  // If no state update ends up happening, reset the selection.
-  setTimeout(function () {
-    if (view.state == state) { selectionToDOM(view); }
-  }, 50);
-}
-
-// : (EditorState, number)
-// Check whether vertical selection motion would involve node
-// selections. If so, apply it (if not, the result is left to the
-// browser)
-function selectVertically(view, dir, mods) {
-  var sel = view.state.selection;
-  if (sel instanceof index_es["TextSelection"] && !sel.empty || mods.indexOf("s") > -1) { return false }
-  if (index_es_result.mac && mods.indexOf("m") > -1) { return false }
-  var $from = sel.$from;
-  var $to = sel.$to;
-
-  if (!$from.parent.inlineContent || view.endOfTextblock(dir < 0 ? "up" : "down")) {
-    var next = moveSelectionBlock(view.state, dir);
-    if (next && (next instanceof index_es["NodeSelection"]))
-      { return apply(view, next) }
-  }
-  if (!$from.parent.inlineContent) {
-    var beyond = index_es["Selection"].findFrom(dir < 0 ? $from : $to, dir);
-    return beyond ? apply(view, beyond) : true
-  }
-  return false
-}
-
-function stopNativeHorizontalDelete(view, dir) {
-  if (!(view.state.selection instanceof index_es["TextSelection"])) { return true }
-  var ref = view.state.selection;
-  var $head = ref.$head;
-  var $anchor = ref.$anchor;
-  var empty = ref.empty;
-  if (!$head.sameParent($anchor)) { return true }
-  if (!empty) { return false }
-  if (view.endOfTextblock(dir > 0 ? "forward" : "backward")) { return true }
-  var nextNode = !$head.textOffset && (dir < 0 ? $head.nodeBefore : $head.nodeAfter);
-  if (nextNode && !nextNode.isText) {
-    var tr = view.state.tr;
-    if (dir < 0) { tr.delete($head.pos - nextNode.nodeSize, $head.pos); }
-    else { tr.delete($head.pos, $head.pos + nextNode.nodeSize); }
-    view.dispatch(tr);
-    return true
-  }
-  return false
-}
-
-function switchEditable(view, node, state) {
-  view.domObserver.stop();
-  node.contentEditable = state;
-  view.domObserver.start();
-}
-
-// Issue #867 / #1090 / https://bugs.chromium.org/p/chromium/issues/detail?id=903821
-// In which Safari (and at some point in the past, Chrome) does really
-// wrong things when the down arrow is pressed when the cursor is
-// directly at the start of a textblock and has an uneditable node
-// after it
-function safariDownArrowBug(view) {
-  if (!index_es_result.safari || view.state.selection.$head.parentOffset > 0) { return }
-  var ref = view.root.getSelection();
-  var focusNode = ref.focusNode;
-  var focusOffset = ref.focusOffset;
-  if (focusNode && focusNode.nodeType == 1 && focusOffset == 0 &&
-      focusNode.firstChild && focusNode.firstChild.contentEditable == "false") {
-    var child = focusNode.firstChild;
-    switchEditable(view, child, true);
-    setTimeout(function () { return switchEditable(view, child, false); }, 20);
-  }
-}
-
-// A backdrop key mapping used to make sure we always suppress keys
-// that have a dangerous default effect, even if the commands they are
-// bound to return false, and to make sure that cursor-motion keys
-// find a cursor (as opposed to a node selection) when pressed. For
-// cursor-motion keys, the code in the handlers also takes care of
-// block selections.
-
-function getMods(event) {
-  var result = "";
-  if (event.ctrlKey) { result += "c"; }
-  if (event.metaKey) { result += "m"; }
-  if (event.altKey) { result += "a"; }
-  if (event.shiftKey) { result += "s"; }
-  return result
-}
-
-function captureKeyDown(view, event) {
-  var code = event.keyCode, mods = getMods(event);
-  if (code == 8 || (index_es_result.mac && code == 72 && mods == "c")) { // Backspace, Ctrl-h on Mac
-    return stopNativeHorizontalDelete(view, -1) || skipIgnoredNodesLeft(view)
-  } else if (code == 46 || (index_es_result.mac && code == 68 && mods == "c")) { // Delete, Ctrl-d on Mac
-    return stopNativeHorizontalDelete(view, 1) || skipIgnoredNodesRight(view)
-  } else if (code == 13 || code == 27) { // Enter, Esc
-    return true
-  } else if (code == 37) { // Left arrow
-    return selectHorizontally(view, -1, mods) || skipIgnoredNodesLeft(view)
-  } else if (code == 39) { // Right arrow
-    return selectHorizontally(view, 1, mods) || skipIgnoredNodesRight(view)
-  } else if (code == 38) { // Up arrow
-    return selectVertically(view, -1, mods) || skipIgnoredNodesLeft(view)
-  } else if (code == 40) { // Down arrow
-    return safariDownArrowBug(view) || selectVertically(view, 1, mods) || skipIgnoredNodesRight(view)
-  } else if (mods == (index_es_result.mac ? "m" : "c") &&
-             (code == 66 || code == 73 || code == 89 || code == 90)) { // Mod-[biyz]
-    return true
-  }
-  return false
-}
-
-// Note that all referencing and parsing is done with the
-// start-of-operation selection and document, since that's the one
-// that the DOM represents. If any changes came in in the meantime,
-// the modification is mapped over those before it is applied, in
-// readDOMChange.
-
-function parseBetween(view, from_, to_) {
-  var ref = view.docView.parseRange(from_, to_);
-  var parent = ref.node;
-  var fromOffset = ref.fromOffset;
-  var toOffset = ref.toOffset;
-  var from = ref.from;
-  var to = ref.to;
-
-  var domSel = view.root.getSelection(), find = null, anchor = domSel.anchorNode;
-  if (anchor && view.dom.contains(anchor.nodeType == 1 ? anchor : anchor.parentNode)) {
-    find = [{node: anchor, offset: domSel.anchorOffset}];
-    if (!selectionCollapsed(domSel))
-      { find.push({node: domSel.focusNode, offset: domSel.focusOffset}); }
-  }
-  // Work around issue in Chrome where backspacing sometimes replaces
-  // the deleted content with a random BR node (issues #799, #831)
-  if (index_es_result.chrome && view.lastKeyCode === 8) {
-    for (var off = toOffset; off > fromOffset; off--) {
-      var node = parent.childNodes[off - 1], desc = node.pmViewDesc;
-      if (node.nodeType == "BR" && !desc) { toOffset = off; break }
-      if (!desc || desc.size) { break }
-    }
-  }
-  var startDoc = view.state.doc;
-  var parser = view.someProp("domParser") || dist_index_es["DOMParser"].fromSchema(view.state.schema);
-  var $from = startDoc.resolve(from);
-
-  var sel = null, doc = parser.parse(parent, {
-    topNode: $from.parent,
-    topMatch: $from.parent.contentMatchAt($from.index()),
-    topOpen: true,
-    from: fromOffset,
-    to: toOffset,
-    preserveWhitespace: $from.parent.type.spec.code ? "full" : true,
-    editableContent: true,
-    findPositions: find,
-    ruleFromNode: ruleFromNode,
-    context: $from
-  });
-  if (find && find[0].pos != null) {
-    var anchor$1 = find[0].pos, head = find[1] && find[1].pos;
-    if (head == null) { head = anchor$1; }
-    sel = {anchor: anchor$1 + from, head: head + from};
-  }
-  return {doc: doc, sel: sel, from: from, to: to}
-}
-
-function ruleFromNode(dom) {
-  var desc = dom.pmViewDesc;
-  if (desc) {
-    return desc.parseRule()
-  } else if (dom.nodeName == "BR" && dom.parentNode) {
-    // Safari replaces the list item or table cell with a BR
-    // directly in the list node (?!) if you delete the last
-    // character in a list item or table cell (#708, #862)
-    if (index_es_result.safari && /^(ul|ol)$/i.test(dom.parentNode.nodeName)) {
-      var skip = document.createElement("div");
-      skip.appendChild(document.createElement("li"));
-      return {skip: skip}
-    } else if (dom.parentNode.lastChild == dom || index_es_result.safari && /^(tr|table)$/i.test(dom.parentNode.nodeName)) {
-      return {ignore: true}
-    }
-  } else if (dom.nodeName == "IMG" && dom.getAttribute("mark-placeholder")) {
-    return {ignore: true}
-  }
-}
-
-function readDOMChange(view, from, to, typeOver, addedNodes) {
-  if (from < 0) {
-    var origin = view.lastSelectionTime > Date.now() - 50 ? view.lastSelectionOrigin : null;
-    var newSel = selectionFromDOM(view, origin);
-    if (newSel && !view.state.selection.eq(newSel)) {
-      var tr$1 = view.state.tr.setSelection(newSel);
-      if (origin == "pointer") { tr$1.setMeta("pointer", true); }
-      else if (origin == "key") { tr$1.scrollIntoView(); }
-      view.dispatch(tr$1);
-    }
-    return
-  }
-
-  var $before = view.state.doc.resolve(from);
-  var shared = $before.sharedDepth(to);
-  from = $before.before(shared + 1);
-  to = view.state.doc.resolve(to).after(shared + 1);
-
-  var sel = view.state.selection;
-  var parse = parseBetween(view, from, to);
-
-  var doc = view.state.doc, compare = doc.slice(parse.from, parse.to);
-  var preferredPos, preferredSide;
-  // Prefer anchoring to end when Backspace is pressed
-  if (view.lastKeyCode === 8 && Date.now() - 100 < view.lastKeyCodeTime) {
-    preferredPos = view.state.selection.to;
-    preferredSide = "end";
-  } else {
-    preferredPos = view.state.selection.from;
-    preferredSide = "start";
-  }
-  view.lastKeyCode = null;
-
-  var change = findDiff(compare.content, parse.doc.content, parse.from, preferredPos, preferredSide);
-  if (!change) {
-    if (typeOver && sel instanceof index_es["TextSelection"] && !sel.empty && sel.$head.sameParent(sel.$anchor) &&
-        !view.composing && !(parse.sel && parse.sel.anchor != parse.sel.head)) {
-      change = {start: sel.from, endA: sel.to, endB: sel.to};
-    } else {
-      if (parse.sel) {
-        var sel$1 = resolveSelection(view, view.state.doc, parse.sel);
-        if (sel$1 && !sel$1.eq(view.state.selection)) { view.dispatch(view.state.tr.setSelection(sel$1)); }
-      }
-      return
-    }
-  }
-  view.domChangeCount++;
-  // Handle the case where overwriting a selection by typing matches
-  // the start or end of the selected content, creating a change
-  // that's smaller than what was actually overwritten.
-  if (view.state.selection.from < view.state.selection.to &&
-      change.start == change.endB &&
-      view.state.selection instanceof index_es["TextSelection"]) {
-    if (change.start > view.state.selection.from && change.start <= view.state.selection.from + 2) {
-      change.start = view.state.selection.from;
-    } else if (change.endA < view.state.selection.to && change.endA >= view.state.selection.to - 2) {
-      change.endB += (view.state.selection.to - change.endA);
-      change.endA = view.state.selection.to;
-    }
-  }
-
-  // IE11 will insert a non-breaking space _ahead_ of the space after
-  // the cursor space when adding a space before another space. When
-  // that happened, adjust the change to cover the space instead.
-  if (index_es_result.ie && index_es_result.ie_version <= 11 && change.endB == change.start + 1 &&
-      change.endA == change.start && change.start > parse.from &&
-      parse.doc.textBetween(change.start - parse.from - 1, change.start - parse.from + 1) == " \u00a0") {
-    change.start--;
-    change.endA--;
-    change.endB--;
-  }
-
-  var $from = parse.doc.resolveNoCache(change.start - parse.from);
-  var $to = parse.doc.resolveNoCache(change.endB - parse.from);
-  var inlineChange = $from.sameParent($to) && $from.parent.inlineContent;
-  var nextSel;
-  // If this looks like the effect of pressing Enter (or was recorded
-  // as being an iOS enter press), just dispatch an Enter key instead.
-  if (((index_es_result.ios && view.lastIOSEnter > Date.now() - 225 &&
-        (!inlineChange || addedNodes.some(function (n) { return n.nodeName == "DIV" || n.nodeName == "P"; }))) ||
-       (!inlineChange && $from.pos < parse.doc.content.size &&
-        (nextSel = index_es["Selection"].findFrom(parse.doc.resolve($from.pos + 1), 1, true)) &&
-        nextSel.head == $to.pos)) &&
-      view.someProp("handleKeyDown", function (f) { return f(view, keyEvent(13, "Enter")); })) {
-    view.lastIOSEnter = 0;
-    return
-  }
-  // Same for backspace
-  if (view.state.selection.anchor > change.start &&
-      looksLikeJoin(doc, change.start, change.endA, $from, $to) &&
-      view.someProp("handleKeyDown", function (f) { return f(view, keyEvent(8, "Backspace")); })) {
-    if (index_es_result.android && index_es_result.chrome) { view.domObserver.suppressSelectionUpdates(); } // #820
-    return
-  }
-
-  // This tries to detect Android virtual keyboard
-  // enter-and-pick-suggestion action. That sometimes (see issue
-  // #1059) first fires a DOM mutation, before moving the selection to
-  // the newly created block. And then, because ProseMirror cleans up
-  // the DOM selection, it gives up moving the selection entirely,
-  // leaving the cursor in the wrong place. When that happens, we drop
-  // the new paragraph from the initial change, and fire a simulated
-  // enter key afterwards.
-  if (index_es_result.android && !inlineChange && $from.start() != $to.start() && $to.parentOffset == 0 && $from.depth == $to.depth &&
-      parse.sel && parse.sel.anchor == parse.sel.head && parse.sel.head == change.endA) {
-    change.endB -= 2;
-    $to = parse.doc.resolveNoCache(change.endB - parse.from);
-    setTimeout(function () {
-      view.someProp("handleKeyDown", function (f) { return f(view, keyEvent(13, "Enter")); });
-    }, 20);
-  }
-
-  var chFrom = change.start, chTo = change.endA;
-
-  var tr, storedMarks, markChange, $from1;
-  if (inlineChange) {
-    if ($from.pos == $to.pos) { // Deletion
-      // IE11 sometimes weirdly moves the DOM selection around after
-      // backspacing out the first element in a textblock
-      if (index_es_result.ie && index_es_result.ie_version <= 11 && $from.parentOffset == 0) {
-        view.domObserver.suppressSelectionUpdates();
-        setTimeout(function () { return selectionToDOM(view); }, 20);
-      }
-      tr = view.state.tr.delete(chFrom, chTo);
-      storedMarks = doc.resolve(change.start).marksAcross(doc.resolve(change.endA));
-    } else if ( // Adding or removing a mark
-      change.endA == change.endB && ($from1 = doc.resolve(change.start)) &&
-      (markChange = isMarkChange($from.parent.content.cut($from.parentOffset, $to.parentOffset),
-                                 $from1.parent.content.cut($from1.parentOffset, change.endA - $from1.start())))
-    ) {
-      tr = view.state.tr;
-      if (markChange.type == "add") { tr.addMark(chFrom, chTo, markChange.mark); }
-      else { tr.removeMark(chFrom, chTo, markChange.mark); }
-    } else if ($from.parent.child($from.index()).isText && $from.index() == $to.index() - ($to.textOffset ? 0 : 1)) {
-      // Both positions in the same text node -- simply insert text
-      var text = $from.parent.textBetween($from.parentOffset, $to.parentOffset);
-      if (view.someProp("handleTextInput", function (f) { return f(view, chFrom, chTo, text); })) { return }
-      tr = view.state.tr.insertText(text, chFrom, chTo);
-    }
-  }
-
-  if (!tr)
-    { tr = view.state.tr.replace(chFrom, chTo, parse.doc.slice(change.start - parse.from, change.endB - parse.from)); }
-  if (parse.sel) {
-    var sel$2 = resolveSelection(view, tr.doc, parse.sel);
-    // Chrome Android will sometimes, during composition, report the
-    // selection in the wrong place. If it looks like that is
-    // happening, don't update the selection.
-    // Edge just doesn't move the cursor forward when you start typing
-    // in an empty block or between br nodes.
-    if (sel$2 && !(index_es_result.chrome && index_es_result.android && view.composing && sel$2.empty &&
-                   (sel$2.head == chFrom || sel$2.head == tr.mapping.map(chTo) - 1) ||
-                 index_es_result.ie && sel$2.empty && sel$2.head == chFrom))
-      { tr.setSelection(sel$2); }
-  }
-  if (storedMarks) { tr.ensureMarks(storedMarks); }
-  view.dispatch(tr.scrollIntoView());
-}
-
-function resolveSelection(view, doc, parsedSel) {
-  if (Math.max(parsedSel.anchor, parsedSel.head) > doc.content.size) { return null }
-  return selectionBetween(view, doc.resolve(parsedSel.anchor), doc.resolve(parsedSel.head))
-}
-
-// : (Fragment, Fragment) → ?{mark: Mark, type: string}
-// Given two same-length, non-empty fragments of inline content,
-// determine whether the first could be created from the second by
-// removing or adding a single mark type.
-function isMarkChange(cur, prev) {
-  var curMarks = cur.firstChild.marks, prevMarks = prev.firstChild.marks;
-  var added = curMarks, removed = prevMarks, type, mark, update;
-  for (var i = 0; i < prevMarks.length; i++) { added = prevMarks[i].removeFromSet(added); }
-  for (var i$1 = 0; i$1 < curMarks.length; i$1++) { removed = curMarks[i$1].removeFromSet(removed); }
-  if (added.length == 1 && removed.length == 0) {
-    mark = added[0];
-    type = "add";
-    update = function (node) { return node.mark(mark.addToSet(node.marks)); };
-  } else if (added.length == 0 && removed.length == 1) {
-    mark = removed[0];
-    type = "remove";
-    update = function (node) { return node.mark(mark.removeFromSet(node.marks)); };
-  } else {
-    return null
-  }
-  var updated = [];
-  for (var i$2 = 0; i$2 < prev.childCount; i$2++) { updated.push(update(prev.child(i$2))); }
-  if (dist_index_es["Fragment"].from(updated).eq(cur)) { return {mark: mark, type: type} }
-}
-
-function looksLikeJoin(old, start, end, $newStart, $newEnd) {
-  if (!$newStart.parent.isTextblock ||
-      // The content must have shrunk
-      end - start <= $newEnd.pos - $newStart.pos ||
-      // newEnd must point directly at or after the end of the block that newStart points into
-      skipClosingAndOpening($newStart, true, false) < $newEnd.pos)
-    { return false }
-
-  var $start = old.resolve(start);
-  // Start must be at the end of a block
-  if ($start.parentOffset < $start.parent.content.size || !$start.parent.isTextblock)
-    { return false }
-  var $next = old.resolve(skipClosingAndOpening($start, true, true));
-  // The next textblock must start before end and end near it
-  if (!$next.parent.isTextblock || $next.pos > end ||
-      skipClosingAndOpening($next, true, false) < end)
-    { return false }
-
-  // The fragments after the join point must match
-  return $newStart.parent.content.cut($newStart.parentOffset).eq($next.parent.content)
-}
-
-function skipClosingAndOpening($pos, fromEnd, mayOpen) {
-  var depth = $pos.depth, end = fromEnd ? $pos.end() : $pos.pos;
-  while (depth > 0 && (fromEnd || $pos.indexAfter(depth) == $pos.node(depth).childCount)) {
-    depth--;
-    end++;
-    fromEnd = false;
-  }
-  if (mayOpen) {
-    var next = $pos.node(depth).maybeChild($pos.indexAfter(depth));
-    while (next && !next.isLeaf) {
-      next = next.firstChild;
-      end++;
-    }
-  }
-  return end
-}
-
-function findDiff(a, b, pos, preferredPos, preferredSide) {
-  var start = a.findDiffStart(b, pos);
-  if (start == null) { return null }
-  var ref = a.findDiffEnd(b, pos + a.size, pos + b.size);
-  var endA = ref.a;
-  var endB = ref.b;
-  if (preferredSide == "end") {
-    var adjust = Math.max(0, start - Math.min(endA, endB));
-    preferredPos -= endA + adjust - start;
-  }
-  if (endA < start && a.size < b.size) {
-    var move = preferredPos <= start && preferredPos >= endA ? start - preferredPos : 0;
-    start -= move;
-    endB = start + (endB - endA);
-    endA = start;
-  } else if (endB < start) {
-    var move$1 = preferredPos <= start && preferredPos >= endB ? start - preferredPos : 0;
-    start -= move$1;
-    endA = start + (endA - endB);
-    endB = start;
-  }
-  return {start: start, endA: endA, endB: endB}
-}
-
-function serializeForClipboard(view, slice) {
-  var context = [];
-  var content = slice.content;
-  var openStart = slice.openStart;
-  var openEnd = slice.openEnd;
-  while (openStart > 1 && openEnd > 1 && content.childCount == 1 && content.firstChild.childCount == 1) {
-    openStart--;
-    openEnd--;
-    var node = content.firstChild;
-    context.push(node.type.name, node.type.hasRequiredAttrs() ? node.attrs : null);
-    content = node.content;
-  }
-
-  var serializer = view.someProp("clipboardSerializer") || dist_index_es["DOMSerializer"].fromSchema(view.state.schema);
-  var doc = detachedDoc(), wrap = doc.createElement("div");
-  wrap.appendChild(serializer.serializeFragment(content, {document: doc}));
-
-  var firstChild = wrap.firstChild, needsWrap;
-  while (firstChild && firstChild.nodeType == 1 && (needsWrap = wrapMap[firstChild.nodeName.toLowerCase()])) {
-    for (var i = needsWrap.length - 1; i >= 0; i--) {
-      var wrapper = doc.createElement(needsWrap[i]);
-      while (wrap.firstChild) { wrapper.appendChild(wrap.firstChild); }
-      wrap.appendChild(wrapper);
-    }
-    firstChild = wrap.firstChild;
-  }
-
-  if (firstChild && firstChild.nodeType == 1)
-    { firstChild.setAttribute("data-pm-slice", (openStart + " " + openEnd + " " + (JSON.stringify(context)))); }
-
-  var text = view.someProp("clipboardTextSerializer", function (f) { return f(slice); }) ||
-      slice.content.textBetween(0, slice.content.size, "\n\n");
-
-  return {dom: wrap, text: text}
-}
-
-// : (EditorView, string, string, ?bool, ResolvedPos) → ?Slice
-// Read a slice of content from the clipboard (or drop data).
-function parseFromClipboard(view, text, html, plainText, $context) {
-  var dom, inCode = $context.parent.type.spec.code, slice;
-  if (!html && !text) { return null }
-  var asText = text && (plainText || inCode || !html);
-  if (asText) {
-    view.someProp("transformPastedText", function (f) { text = f(text, inCode || plainText); });
-    if (inCode) { return new dist_index_es["Slice"](dist_index_es["Fragment"].from(view.state.schema.text(text)), 0, 0) }
-    var parsed = view.someProp("clipboardTextParser", function (f) { return f(text, $context, plainText); });
-    if (parsed) {
-      slice = parsed;
-    } else {
-      dom = document.createElement("div");
-      text.trim().split(/(?:\r\n?|\n)+/).forEach(function (block) {
-        dom.appendChild(document.createElement("p")).textContent = block;
-      });
-    }
-  } else {
-    view.someProp("transformPastedHTML", function (f) { html = f(html); });
-    dom = readHTML(html);
-  }
-
-  var contextNode = dom && dom.querySelector("[data-pm-slice]");
-  var sliceData = contextNode && /^(\d+) (\d+) (.*)/.exec(contextNode.getAttribute("data-pm-slice"));
-  if (!slice) {
-    var parser = view.someProp("clipboardParser") || view.someProp("domParser") || dist_index_es["DOMParser"].fromSchema(view.state.schema);
-    slice = parser.parseSlice(dom, {preserveWhitespace: !!(asText || sliceData), context: $context});
-  }
-  if (sliceData)
-    { slice = addContext(closeSlice(slice, +sliceData[1], +sliceData[2]), sliceData[3]); }
-  else // HTML wasn't created by ProseMirror. Make sure top-level siblings are coherent
-    { slice = dist_index_es["Slice"].maxOpen(normalizeSiblings(slice.content, $context), false); }
-
-  view.someProp("transformPasted", function (f) { slice = f(slice); });
-  return slice
-}
-
-// Takes a slice parsed with parseSlice, which means there hasn't been
-// any content-expression checking done on the top nodes, tries to
-// find a parent node in the current context that might fit the nodes,
-// and if successful, rebuilds the slice so that it fits into that parent.
-//
-// This addresses the problem that Transform.replace expects a
-// coherent slice, and will fail to place a set of siblings that don't
-// fit anywhere in the schema.
-function normalizeSiblings(fragment, $context) {
-  if (fragment.childCount < 2) { return fragment }
-  var loop = function ( d ) {
-    var parent = $context.node(d);
-    var match = parent.contentMatchAt($context.index(d));
-    var lastWrap = (void 0), result = [];
-    fragment.forEach(function (node) {
-      if (!result) { return }
-      var wrap = match.findWrapping(node.type), inLast;
-      if (!wrap) { return result = null }
-      if (inLast = result.length && lastWrap.length && addToSibling(wrap, lastWrap, node, result[result.length - 1], 0)) {
-        result[result.length - 1] = inLast;
-      } else {
-        if (result.length) { result[result.length - 1] = closeRight(result[result.length - 1], lastWrap.length); }
-        var wrapped = withWrappers(node, wrap);
-        result.push(wrapped);
-        match = match.matchType(wrapped.type, wrapped.attrs);
-        lastWrap = wrap;
-      }
-    });
-    if (result) { return { v: dist_index_es["Fragment"].from(result) } }
-  };
-
-  for (var d = $context.depth; d >= 0; d--) {
-    var returned = loop( d );
-
-    if ( returned ) return returned.v;
-  }
-  return fragment
-}
-
-function withWrappers(node, wrap, from) {
-  if ( from === void 0 ) from = 0;
-
-  for (var i = wrap.length - 1; i >= from; i--)
-    { node = wrap[i].create(null, dist_index_es["Fragment"].from(node)); }
-  return node
-}
-
-// Used to group adjacent nodes wrapped in similar parents by
-// normalizeSiblings into the same parent node
-function addToSibling(wrap, lastWrap, node, sibling, depth) {
-  if (depth < wrap.length && depth < lastWrap.length && wrap[depth] == lastWrap[depth]) {
-    var inner = addToSibling(wrap, lastWrap, node, sibling.lastChild, depth + 1);
-    if (inner) { return sibling.copy(sibling.content.replaceChild(sibling.childCount - 1, inner)) }
-    var match = sibling.contentMatchAt(sibling.childCount);
-    if (match.matchType(depth == wrap.length - 1 ? node.type : wrap[depth + 1]))
-      { return sibling.copy(sibling.content.append(dist_index_es["Fragment"].from(withWrappers(node, wrap, depth + 1)))) }
-  }
-}
-
-function closeRight(node, depth) {
-  if (depth == 0) { return node }
-  var fragment = node.content.replaceChild(node.childCount - 1, closeRight(node.lastChild, depth - 1));
-  var fill = node.contentMatchAt(node.childCount).fillBefore(dist_index_es["Fragment"].empty, true);
-  return node.copy(fragment.append(fill))
-}
-
-function closeRange(fragment, side, from, to, depth, openEnd) {
-  var node = side < 0 ? fragment.firstChild : fragment.lastChild, inner = node.content;
-  if (depth < to - 1) { inner = closeRange(inner, side, from, to, depth + 1, openEnd); }
-  if (depth >= from)
-    { inner = side < 0 ? node.contentMatchAt(0).fillBefore(inner, fragment.childCount > 1 || openEnd <= depth).append(inner)
-      : inner.append(node.contentMatchAt(node.childCount).fillBefore(dist_index_es["Fragment"].empty, true)); }
-  return fragment.replaceChild(side < 0 ? 0 : fragment.childCount - 1, node.copy(inner))
-}
-
-function closeSlice(slice, openStart, openEnd) {
-  if (openStart < slice.openStart)
-    { slice = new dist_index_es["Slice"](closeRange(slice.content, -1, openStart, slice.openStart, 0, slice.openEnd), openStart, slice.openEnd); }
-  if (openEnd < slice.openEnd)
-    { slice = new dist_index_es["Slice"](closeRange(slice.content, 1, openEnd, slice.openEnd, 0, 0), slice.openStart, openEnd); }
-  return slice
-}
-
-// Trick from jQuery -- some elements must be wrapped in other
-// elements for innerHTML to work. I.e. if you do `div.innerHTML =
-// "<td>..</td>"` the table cells are ignored.
-var wrapMap = {
-  thead: ["table"],
-  tbody: ["table"],
-  tfoot: ["table"],
-  caption: ["table"],
-  colgroup: ["table"],
-  col: ["table", "colgroup"],
-  tr: ["table", "tbody"],
-  td: ["table", "tbody", "tr"],
-  th: ["table", "tbody", "tr"]
-};
-
-var _detachedDoc = null;
-function detachedDoc() {
-  return _detachedDoc || (_detachedDoc = document.implementation.createHTMLDocument("title"))
-}
-
-function readHTML(html) {
-  var metas = /(\s*<meta [^>]*>)*/.exec(html);
-  if (metas) { html = html.slice(metas[0].length); }
-  var elt = detachedDoc().createElement("div");
-  var firstTag = /(?:<meta [^>]*>)*<([a-z][^>\s]+)/i.exec(html), wrap, depth = 0;
-  if (wrap = firstTag && wrapMap[firstTag[1].toLowerCase()]) {
-    html = wrap.map(function (n) { return "<" + n + ">"; }).join("") + html + wrap.map(function (n) { return "</" + n + ">"; }).reverse().join("");
-    depth = wrap.length;
-  }
-  elt.innerHTML = html;
-  for (var i = 0; i < depth; i++) { elt = elt.firstChild; }
-  return elt
-}
-
-function addContext(slice, context) {
-  if (!slice.size) { return slice }
-  var schema = slice.content.firstChild.type.schema, array;
-  try { array = JSON.parse(context); }
-  catch(e) { return slice }
-  var content = slice.content;
-  var openStart = slice.openStart;
-  var openEnd = slice.openEnd;
-  for (var i = array.length - 2; i >= 0; i -= 2) {
-    var type = schema.nodes[array[i]];
-    if (!type || type.hasRequiredAttrs()) { break }
-    content = dist_index_es["Fragment"].from(type.create(array[i + 1], content));
-    openStart++; openEnd++;
-  }
-  return new dist_index_es["Slice"](content, openStart, openEnd)
-}
-
-var observeOptions = {
-  childList: true,
-  characterData: true,
-  characterDataOldValue: true,
-  attributes: true,
-  attributeOldValue: true,
-  subtree: true
-};
-// IE11 has very broken mutation observers, so we also listen to DOMCharacterDataModified
-var useCharData = index_es_result.ie && index_es_result.ie_version <= 11;
-
-var SelectionState = function SelectionState() {
-  this.anchorNode = this.anchorOffset = this.focusNode = this.focusOffset = null;
-};
-
-SelectionState.prototype.set = function set (sel) {
-  this.anchorNode = sel.anchorNode; this.anchorOffset = sel.anchorOffset;
-  this.focusNode = sel.focusNode; this.focusOffset = sel.focusOffset;
-};
-
-SelectionState.prototype.eq = function eq (sel) {
-  return sel.anchorNode == this.anchorNode && sel.anchorOffset == this.anchorOffset &&
-    sel.focusNode == this.focusNode && sel.focusOffset == this.focusOffset
-};
-
-var DOMObserver = function DOMObserver(view, handleDOMChange) {
-  var this$1 = this;
-
-  this.view = view;
-  this.handleDOMChange = handleDOMChange;
-  this.queue = [];
-  this.flushingSoon = -1;
-  this.observer = window.MutationObserver &&
-    new window.MutationObserver(function (mutations) {
-      for (var i = 0; i < mutations.length; i++) { this$1.queue.push(mutations[i]); }
-      // IE11 will sometimes (on backspacing out a single character
-      // text node after a BR node) call the observer callback
-      // before actually updating the DOM, which will cause
-      // ProseMirror to miss the change (see #930)
-      if (index_es_result.ie && index_es_result.ie_version <= 11 && mutations.some(
-        function (m) { return m.type == "childList" && m.removedNodes.length ||
-             m.type == "characterData" && m.oldValue.length > m.target.nodeValue.length; }))
-        { this$1.flushSoon(); }
-      else
-        { this$1.flush(); }
-    });
-  this.currentSelection = new SelectionState;
-  if (useCharData) {
-    this.onCharData = function (e) {
-      this$1.queue.push({target: e.target, type: "characterData", oldValue: e.prevValue});
-      this$1.flushSoon();
-    };
-  }
-  this.onSelectionChange = this.onSelectionChange.bind(this);
-  this.suppressingSelectionUpdates = false;
-};
-
-DOMObserver.prototype.flushSoon = function flushSoon () {
-    var this$1 = this;
-
-  if (this.flushingSoon < 0)
-    { this.flushingSoon = window.setTimeout(function () { this$1.flushingSoon = -1; this$1.flush(); }, 20); }
-};
-
-DOMObserver.prototype.forceFlush = function forceFlush () {
-  if (this.flushingSoon > -1) {
-    window.clearTimeout(this.flushingSoon);
-    this.flushingSoon = -1;
-    this.flush();
-  }
-};
-
-DOMObserver.prototype.start = function start () {
-  if (this.observer)
-    { this.observer.observe(this.view.dom, observeOptions); }
-  if (useCharData)
-    { this.view.dom.addEventListener("DOMCharacterDataModified", this.onCharData); }
-  this.connectSelection();
-};
-
-DOMObserver.prototype.stop = function stop () {
-    var this$1 = this;
-
-  if (this.observer) {
-    var take = this.observer.takeRecords();
-    if (take.length) {
-      for (var i = 0; i < take.length; i++) { this.queue.push(take[i]); }
-      window.setTimeout(function () { return this$1.flush(); }, 20);
-    }
-    this.observer.disconnect();
-  }
-  if (useCharData) { this.view.dom.removeEventListener("DOMCharacterDataModified", this.onCharData); }
-  this.disconnectSelection();
-};
-
-DOMObserver.prototype.connectSelection = function connectSelection () {
-  this.view.dom.ownerDocument.addEventListener("selectionchange", this.onSelectionChange);
-};
-
-DOMObserver.prototype.disconnectSelection = function disconnectSelection () {
-  this.view.dom.ownerDocument.removeEventListener("selectionchange", this.onSelectionChange);
-};
-
-DOMObserver.prototype.suppressSelectionUpdates = function suppressSelectionUpdates () {
-    var this$1 = this;
-
-  this.suppressingSelectionUpdates = true;
-  setTimeout(function () { return this$1.suppressingSelectionUpdates = false; }, 50);
-};
-
-DOMObserver.prototype.onSelectionChange = function onSelectionChange () {
-  if (!hasFocusAndSelection(this.view)) { return }
-  if (this.suppressingSelectionUpdates) { return selectionToDOM(this.view) }
-  // Deletions on IE11 fire their events in the wrong order, giving
-  // us a selection change event before the DOM changes are
-  // reported.
-  if (index_es_result.ie && index_es_result.ie_version <= 11 && !this.view.state.selection.empty) {
-    var sel = this.view.root.getSelection();
-    // Selection.isCollapsed isn't reliable on IE
-    if (sel.focusNode && isEquivalentPosition(sel.focusNode, sel.focusOffset, sel.anchorNode, sel.anchorOffset))
-      { return this.flushSoon() }
-  }
-  this.flush();
-};
-
-DOMObserver.prototype.setCurSelection = function setCurSelection () {
-  this.currentSelection.set(this.view.root.getSelection());
-};
-
-DOMObserver.prototype.ignoreSelectionChange = function ignoreSelectionChange (sel) {
-  if (sel.rangeCount == 0) { return true }
-  var container = sel.getRangeAt(0).commonAncestorContainer;
-  var desc = this.view.docView.nearestDesc(container);
-  if (desc && desc.ignoreMutation({type: "selection", target: container.nodeType == 3 ? container.parentNode : container})) {
-    this.setCurSelection();
-    return true
-  }
-};
-
-DOMObserver.prototype.flush = function flush () {
-  if (!this.view.docView || this.flushingSoon > -1) { return }
-  var mutations = this.observer ? this.observer.takeRecords() : [];
-  if (this.queue.length) {
-    mutations = this.queue.concat(mutations);
-    this.queue.length = 0;
-  }
-
-  var sel = this.view.root.getSelection();
-  var newSel = !this.suppressingSelectionUpdates && !this.currentSelection.eq(sel) && hasSelection(this.view) && !this.ignoreSelectionChange(sel);
-
-  var from = -1, to = -1, typeOver = false, added = [];
-  if (this.view.editable) {
-    for (var i = 0; i < mutations.length; i++) {
-      var result$1 = this.registerMutation(mutations[i], added);
-      if (result$1) {
-        from = from < 0 ? result$1.from : Math.min(result$1.from, from);
-        to = to < 0 ? result$1.to : Math.max(result$1.to, to);
-        if (result$1.typeOver) { typeOver = true; }
-      }
-    }
-  }
-
-  if (index_es_result.gecko && added.length > 1) {
-    var brs = added.filter(function (n) { return n.nodeName == "BR"; });
-    if (brs.length == 2) {
-      var a = brs[0];
-        var b = brs[1];
-      if (a.parentNode && a.parentNode.parentNode == b.parentNode) { b.remove(); }
-      else { a.remove(); }
-    }
-  }
-
-  if (from > -1 || newSel) {
-    if (from > -1) {
-      this.view.docView.markDirty(from, to);
-      checkCSS(this.view);
-    }
-    this.handleDOMChange(from, to, typeOver, added);
-    if (this.view.docView.dirty) { this.view.updateState(this.view.state); }
-    else if (!this.currentSelection.eq(sel)) { selectionToDOM(this.view); }
-  }
-};
-
-DOMObserver.prototype.registerMutation = function registerMutation (mut, added) {
-  // Ignore mutations inside nodes that were already noted as inserted
-  if (added.indexOf(mut.target) > -1) { return null }
-  var desc = this.view.docView.nearestDesc(mut.target);
-  if (mut.type == "attributes" &&
-      (desc == this.view.docView || mut.attributeName == "contenteditable" ||
-       // Firefox sometimes fires spurious events for null/empty styles
-       (mut.attributeName == "style" && !mut.oldValue && !mut.target.getAttribute("style"))))
-    { return null }
-  if (!desc || desc.ignoreMutation(mut)) { return null }
-
-  if (mut.type == "childList") {
-    var prev = mut.previousSibling, next = mut.nextSibling;
-    if (index_es_result.ie && index_es_result.ie_version <= 11 && mut.addedNodes.length) {
-      // IE11 gives us incorrect next/prev siblings for some
-      // insertions, so if there are added nodes, recompute those
-      for (var i = 0; i < mut.addedNodes.length; i++) {
-        var ref = mut.addedNodes[i];
-          var previousSibling = ref.previousSibling;
-          var nextSibling = ref.nextSibling;
-        if (!previousSibling || Array.prototype.indexOf.call(mut.addedNodes, previousSibling) < 0) { prev = previousSibling; }
-        if (!nextSibling || Array.prototype.indexOf.call(mut.addedNodes, nextSibling) < 0) { next = nextSibling; }
-      }
-    }
-    var fromOffset = prev && prev.parentNode == mut.target
-        ? domIndex(prev) + 1 : 0;
-    var from = desc.localPosFromDOM(mut.target, fromOffset, -1);
-    var toOffset = next && next.parentNode == mut.target
-        ? domIndex(next) : mut.target.childNodes.length;
-    for (var i$1 = 0; i$1 < mut.addedNodes.length; i$1++) { added.push(mut.addedNodes[i$1]); }
-    var to = desc.localPosFromDOM(mut.target, toOffset, 1);
-    return {from: from, to: to}
-  } else if (mut.type == "attributes") {
-    return {from: desc.posAtStart - desc.border, to: desc.posAtEnd + desc.border}
-  } else { // "characterData"
-    return {
-      from: desc.posAtStart,
-      to: desc.posAtEnd,
-      // An event was generated for a text change that didn't change
-      // any text. Mark the dom change to fall back to assuming the
-      // selection was typed over with an identical value if it can't
-      // find another change.
-      typeOver: mut.target.nodeValue == mut.oldValue
-    }
-  }
-};
-
-var cssChecked = false;
-
-function checkCSS(view) {
-  if (cssChecked) { return }
-  cssChecked = true;
-  if (getComputedStyle(view.dom).whiteSpace == "normal")
-    { console["warn"]("ProseMirror expects the CSS white-space property to be set, preferably to 'pre-wrap'. It is recommended to load style/prosemirror.css from the prosemirror-view package."); }
-}
-
-// A collection of DOM events that occur within the editor, and callback functions
-// to invoke when the event fires.
-var handlers = {}, editHandlers = {};
-
-function initInput(view) {
-  view.shiftKey = false;
-  view.mouseDown = null;
-  view.lastKeyCode = null;
-  view.lastKeyCodeTime = 0;
-  view.lastClick = {time: 0, x: 0, y: 0, type: ""};
-  view.lastSelectionOrigin = null;
-  view.lastSelectionTime = 0;
-
-  view.lastIOSEnter = 0;
-  view.lastIOSEnterFallbackTimeout = null;
-
-  view.composing = false;
-  view.composingTimeout = null;
-  view.compositionNodes = [];
-  view.compositionEndedAt = -2e8;
-
-  view.domObserver = new DOMObserver(view, function (from, to, typeOver, added) { return readDOMChange(view, from, to, typeOver, added); });
-  view.domObserver.start();
-  // Used by hacks like the beforeinput handler to check whether anything happened in the DOM
-  view.domChangeCount = 0;
-
-  view.eventHandlers = Object.create(null);
-  var loop = function ( event ) {
-    var handler = handlers[event];
-    view.dom.addEventListener(event, view.eventHandlers[event] = function (event) {
-      if (eventBelongsToView(view, event) && !runCustomHandler(view, event) &&
-          (view.editable || !(event.type in editHandlers)))
-        { handler(view, event); }
-    });
-  };
-
-  for (var event in handlers) loop( event );
-  // On Safari, for reasons beyond my understanding, adding an input
-  // event handler makes an issue where the composition vanishes when
-  // you press enter go away.
-  if (index_es_result.safari) { view.dom.addEventListener("input", function () { return null; }); }
-
-  ensureListeners(view);
-}
-
-function setSelectionOrigin(view, origin) {
-  view.lastSelectionOrigin = origin;
-  view.lastSelectionTime = Date.now();
-}
-
-function destroyInput(view) {
-  view.domObserver.stop();
-  for (var type in view.eventHandlers)
-    { view.dom.removeEventListener(type, view.eventHandlers[type]); }
-  clearTimeout(view.composingTimeout);
-  clearTimeout(view.lastIOSEnterFallbackTimeout);
-}
-
-function ensureListeners(view) {
-  view.someProp("handleDOMEvents", function (currentHandlers) {
-    for (var type in currentHandlers) { if (!view.eventHandlers[type])
-      { view.dom.addEventListener(type, view.eventHandlers[type] = function (event) { return runCustomHandler(view, event); }); } }
-  });
-}
-
-function runCustomHandler(view, event) {
-  return view.someProp("handleDOMEvents", function (handlers) {
-    var handler = handlers[event.type];
-    return handler ? handler(view, event) || event.defaultPrevented : false
-  })
-}
-
-function eventBelongsToView(view, event) {
-  if (!event.bubbles) { return true }
-  if (event.defaultPrevented) { return false }
-  for (var node = event.target; node != view.dom; node = node.parentNode)
-    { if (!node || node.nodeType == 11 ||
-        (node.pmViewDesc && node.pmViewDesc.stopEvent(event)))
-      { return false } }
-  return true
-}
-
-function dispatchEvent(view, event) {
-  if (!runCustomHandler(view, event) && handlers[event.type] &&
-      (view.editable || !(event.type in editHandlers)))
-    { handlers[event.type](view, event); }
-}
-
-editHandlers.keydown = function (view, event) {
-  view.shiftKey = event.keyCode == 16 || event.shiftKey;
-  if (inOrNearComposition(view, event)) { return }
-  view.domObserver.forceFlush();
-  view.lastKeyCode = event.keyCode;
-  view.lastKeyCodeTime = Date.now();
-  // On iOS, if we preventDefault enter key presses, the virtual
-  // keyboard gets confused. So the hack here is to set a flag that
-  // makes the DOM change code recognize that what just happens should
-  // be replaced by whatever the Enter key handlers do.
-  if (index_es_result.ios && event.keyCode == 13 && !event.ctrlKey && !event.altKey && !event.metaKey) {
-    var now = Date.now();
-    view.lastIOSEnter = now;
-    view.lastIOSEnterFallbackTimeout = setTimeout(function () {
-      if (view.lastIOSEnter == now) {
-        view.someProp("handleKeyDown", function (f) { return f(view, keyEvent(13, "Enter")); });
-        view.lastIOSEnter = 0;
-      }
-    }, 200);
-  } else if (view.someProp("handleKeyDown", function (f) { return f(view, event); }) || captureKeyDown(view, event)) {
-    event.preventDefault();
-  } else {
-    setSelectionOrigin(view, "key");
-  }
-};
-
-editHandlers.keyup = function (view, e) {
-  if (e.keyCode == 16) { view.shiftKey = false; }
-};
-
-editHandlers.keypress = function (view, event) {
-  if (inOrNearComposition(view, event) || !event.charCode ||
-      event.ctrlKey && !event.altKey || index_es_result.mac && event.metaKey) { return }
-
-  if (view.someProp("handleKeyPress", function (f) { return f(view, event); })) {
-    event.preventDefault();
-    return
-  }
-
-  var sel = view.state.selection;
-  if (!(sel instanceof index_es["TextSelection"]) || !sel.$from.sameParent(sel.$to)) {
-    var text = String.fromCharCode(event.charCode);
-    if (!view.someProp("handleTextInput", function (f) { return f(view, sel.$from.pos, sel.$to.pos, text); }))
-      { view.dispatch(view.state.tr.insertText(text).scrollIntoView()); }
-    event.preventDefault();
-  }
-};
-
-function eventCoords(event) { return {left: event.clientX, top: event.clientY} }
-
-function isNear(event, click) {
-  var dx = click.x - event.clientX, dy = click.y - event.clientY;
-  return dx * dx + dy * dy < 100
-}
-
-function runHandlerOnContext(view, propName, pos, inside, event) {
-  if (inside == -1) { return false }
-  var $pos = view.state.doc.resolve(inside);
-  var loop = function ( i ) {
-    if (view.someProp(propName, function (f) { return i > $pos.depth ? f(view, pos, $pos.nodeAfter, $pos.before(i), event, true)
-                                                    : f(view, pos, $pos.node(i), $pos.before(i), event, false); }))
-      { return { v: true } }
-  };
-
-  for (var i = $pos.depth + 1; i > 0; i--) {
-    var returned = loop( i );
-
-    if ( returned ) return returned.v;
-  }
-  return false
-}
-
-function updateSelection(view, selection, origin) {
-  if (!view.focused) { view.focus(); }
-  var tr = view.state.tr.setSelection(selection);
-  if (origin == "pointer") { tr.setMeta("pointer", true); }
-  view.dispatch(tr);
-}
-
-function selectClickedLeaf(view, inside) {
-  if (inside == -1) { return false }
-  var $pos = view.state.doc.resolve(inside), node = $pos.nodeAfter;
-  if (node && node.isAtom && index_es["NodeSelection"].isSelectable(node)) {
-    updateSelection(view, new index_es["NodeSelection"]($pos), "pointer");
-    return true
-  }
-  return false
-}
-
-function selectClickedNode(view, inside) {
-  if (inside == -1) { return false }
-  var sel = view.state.selection, selectedNode, selectAt;
-  if (sel instanceof index_es["NodeSelection"]) { selectedNode = sel.node; }
-
-  var $pos = view.state.doc.resolve(inside);
-  for (var i = $pos.depth + 1; i > 0; i--) {
-    var node = i > $pos.depth ? $pos.nodeAfter : $pos.node(i);
-    if (index_es["NodeSelection"].isSelectable(node)) {
-      if (selectedNode && sel.$from.depth > 0 &&
-          i >= sel.$from.depth && $pos.before(sel.$from.depth + 1) == sel.$from.pos)
-        { selectAt = $pos.before(sel.$from.depth); }
-      else
-        { selectAt = $pos.before(i); }
-      break
-    }
-  }
-
-  if (selectAt != null) {
-    updateSelection(view, index_es["NodeSelection"].create(view.state.doc, selectAt), "pointer");
-    return true
-  } else {
-    return false
-  }
-}
-
-function handleSingleClick(view, pos, inside, event, selectNode) {
-  return runHandlerOnContext(view, "handleClickOn", pos, inside, event) ||
-    view.someProp("handleClick", function (f) { return f(view, pos, event); }) ||
-    (selectNode ? selectClickedNode(view, inside) : selectClickedLeaf(view, inside))
-}
-
-function handleDoubleClick(view, pos, inside, event) {
-  return runHandlerOnContext(view, "handleDoubleClickOn", pos, inside, event) ||
-    view.someProp("handleDoubleClick", function (f) { return f(view, pos, event); })
-}
-
-function handleTripleClick(view, pos, inside, event) {
-  return runHandlerOnContext(view, "handleTripleClickOn", pos, inside, event) ||
-    view.someProp("handleTripleClick", function (f) { return f(view, pos, event); }) ||
-    defaultTripleClick(view, inside)
-}
-
-function defaultTripleClick(view, inside) {
-  var doc = view.state.doc;
-  if (inside == -1) {
-    if (doc.inlineContent) {
-      updateSelection(view, index_es["TextSelection"].create(doc, 0, doc.content.size), "pointer");
-      return true
-    }
-    return false
-  }
-
-  var $pos = doc.resolve(inside);
-  for (var i = $pos.depth + 1; i > 0; i--) {
-    var node = i > $pos.depth ? $pos.nodeAfter : $pos.node(i);
-    var nodePos = $pos.before(i);
-    if (node.inlineContent)
-      { updateSelection(view, index_es["TextSelection"].create(doc, nodePos + 1, nodePos + 1 + node.content.size), "pointer"); }
-    else if (index_es["NodeSelection"].isSelectable(node))
-      { updateSelection(view, index_es["NodeSelection"].create(doc, nodePos), "pointer"); }
-    else
-      { continue }
-    return true
-  }
-}
-
-function forceDOMFlush(view) {
-  return endComposition(view)
-}
-
-var selectNodeModifier = index_es_result.mac ? "metaKey" : "ctrlKey";
-
-handlers.mousedown = function (view, event) {
-  view.shiftKey = event.shiftKey;
-  var flushed = forceDOMFlush(view);
-  var now = Date.now(), type = "singleClick";
-  if (now - view.lastClick.time < 500 && isNear(event, view.lastClick) && !event[selectNodeModifier]) {
-    if (view.lastClick.type == "singleClick") { type = "doubleClick"; }
-    else if (view.lastClick.type == "doubleClick") { type = "tripleClick"; }
-  }
-  view.lastClick = {time: now, x: event.clientX, y: event.clientY, type: type};
-
-  var pos = view.posAtCoords(eventCoords(event));
-  if (!pos) { return }
-
-  if (type == "singleClick")
-    { view.mouseDown = new index_es_MouseDown(view, pos, event, flushed); }
-  else if ((type == "doubleClick" ? handleDoubleClick : handleTripleClick)(view, pos.pos, pos.inside, event))
-    { event.preventDefault(); }
-  else
-    { setSelectionOrigin(view, "pointer"); }
-};
-
-var index_es_MouseDown = function MouseDown(view, pos, event, flushed) {
-  var this$1 = this;
-
-  this.view = view;
-  this.startDoc = view.state.doc;
-  this.pos = pos;
-  this.event = event;
-  this.flushed = flushed;
-  this.selectNode = event[selectNodeModifier];
-  this.allowDefault = event.shiftKey;
-
-  var targetNode, targetPos;
-  if (pos.inside > -1) {
-    targetNode = view.state.doc.nodeAt(pos.inside);
-    targetPos = pos.inside;
-  } else {
-    var $pos = view.state.doc.resolve(pos.pos);
-    targetNode = $pos.parent;
-    targetPos = $pos.depth ? $pos.before() : 0;
-  }
-
-  this.mightDrag = null;
-
-  var target = flushed ? null : event.target;
-  var targetDesc = target ? view.docView.nearestDesc(target, true) : null;
-  this.target = targetDesc ? targetDesc.dom : null;
-
-  if (targetNode.type.spec.draggable && targetNode.type.spec.selectable !== false ||
-      view.state.selection instanceof index_es["NodeSelection"] && targetPos == view.state.selection.from)
-    { this.mightDrag = {node: targetNode,
-                      pos: targetPos,
-                      addAttr: this.target && !this.target.draggable,
-                      setUneditable: this.target && index_es_result.gecko && !this.target.hasAttribute("contentEditable")}; }
-
-  if (this.target && this.mightDrag && (this.mightDrag.addAttr || this.mightDrag.setUneditable)) {
-    this.view.domObserver.stop();
-    if (this.mightDrag.addAttr) { this.target.draggable = true; }
-    if (this.mightDrag.setUneditable)
-      { setTimeout(function () { return this$1.target.setAttribute("contentEditable", "false"); }, 20); }
-    this.view.domObserver.start();
-  }
-
-  view.root.addEventListener("mouseup", this.up = this.up.bind(this));
-  view.root.addEventListener("mousemove", this.move = this.move.bind(this));
-  setSelectionOrigin(view, "pointer");
-};
-
-index_es_MouseDown.prototype.done = function done () {
-  this.view.root.removeEventListener("mouseup", this.up);
-  this.view.root.removeEventListener("mousemove", this.move);
-  if (this.mightDrag && this.target) {
-    this.view.domObserver.stop();
-    if (this.mightDrag.addAttr) { this.target.removeAttribute("draggable"); }
-    if (this.mightDrag.setUneditable) { this.target.removeAttribute("contentEditable"); }
-    this.view.domObserver.start();
-  }
-  this.view.mouseDown = null;
-};
-
-index_es_MouseDown.prototype.up = function up (event) {
-  this.done();
-
-  if (!this.view.dom.contains(event.target.nodeType == 3 ? event.target.parentNode : event.target))
-    { return }
-
-  var pos = this.pos;
-  if (this.view.state.doc != this.startDoc) { pos = this.view.posAtCoords(eventCoords(event)); }
-
-  if (this.allowDefault || !pos) {
-    setSelectionOrigin(this.view, "pointer");
-  } else if (handleSingleClick(this.view, pos.pos, pos.inside, event, this.selectNode)) {
-    event.preventDefault();
-  } else if (this.flushed ||
-             // Safari ignores clicks on draggable elements
-             (index_es_result.safari && this.mightDrag && !this.mightDrag.node.isAtom) ||
-             // Chrome will sometimes treat a node selection as a
-             // cursor, but still report that the node is selected
-             // when asked through getSelection. You'll then get a
-             // situation where clicking at the point where that
-             // (hidden) cursor is doesn't change the selection, and
-             // thus doesn't get a reaction from ProseMirror. This
-             // works around that.
-             (index_es_result.chrome && !(this.view.state.selection instanceof index_es["TextSelection"]) &&
-              (pos.pos == this.view.state.selection.from || pos.pos == this.view.state.selection.to))) {
-    updateSelection(this.view, index_es["Selection"].near(this.view.state.doc.resolve(pos.pos)), "pointer");
-    event.preventDefault();
-  } else {
-    setSelectionOrigin(this.view, "pointer");
-  }
-};
-
-index_es_MouseDown.prototype.move = function move (event) {
-  if (!this.allowDefault && (Math.abs(this.event.x - event.clientX) > 4 ||
-                             Math.abs(this.event.y - event.clientY) > 4))
-    { this.allowDefault = true; }
-  setSelectionOrigin(this.view, "pointer");
-};
-
-handlers.touchdown = function (view) {
-  forceDOMFlush(view);
-  setSelectionOrigin(view, "pointer");
-};
-
-handlers.contextmenu = function (view) { return forceDOMFlush(view); };
-
-function inOrNearComposition(view, event) {
-  if (view.composing) { return true }
-  // See https://www.stum.de/2016/06/24/handling-ime-events-in-javascript/.
-  // On Japanese input method editors (IMEs), the Enter key is used to confirm character
-  // selection. On Safari, when Enter is pressed, compositionend and keydown events are
-  // emitted. The keydown event triggers newline insertion, which we don't want.
-  // This method returns true if the keydown event should be ignored.
-  // We only ignore it once, as pressing Enter a second time *should* insert a newline.
-  // Furthermore, the keydown event timestamp must be close to the compositionEndedAt timestamp.
-  // This guards against the case where compositionend is triggered without the keyboard
-  // (e.g. character confirmation may be done with the mouse), and keydown is triggered
-  // afterwards- we wouldn't want to ignore the keydown event in this case.
-  if (index_es_result.safari && Math.abs(event.timeStamp - view.compositionEndedAt) < 500) {
-    view.compositionEndedAt = -2e8;
-    return true
-  }
-  return false
-}
-
-// Drop active composition after 5 seconds of inactivity on Android
-var timeoutComposition = index_es_result.android ? 5000 : -1;
-
-editHandlers.compositionstart = editHandlers.compositionupdate = function (view) {
-  if (!view.composing) {
-    view.domObserver.flush();
-    var state = view.state;
-    var $pos = state.selection.$from;
-    if (state.selection.empty &&
-        (state.storedMarks || (!$pos.textOffset && $pos.parentOffset && $pos.nodeBefore.marks.some(function (m) { return m.type.spec.inclusive === false; })))) {
-      // Need to wrap the cursor in mark nodes different from the ones in the DOM context
-      view.markCursor = view.state.storedMarks || $pos.marks();
-      endComposition(view, true);
-      view.markCursor = null;
-    } else {
-      endComposition(view);
-      // In firefox, if the cursor is after but outside a marked node,
-      // the inserted text won't inherit the marks. So this moves it
-      // inside if necessary.
-      if (index_es_result.gecko && state.selection.empty && $pos.parentOffset && !$pos.textOffset && $pos.nodeBefore.marks.length) {
-        var sel = view.root.getSelection();
-        for (var node = sel.focusNode, offset = sel.focusOffset; node && node.nodeType == 1 && offset != 0;) {
-          var before = offset < 0 ? node.lastChild : node.childNodes[offset - 1];
-          if (!before) { break }
-          if (before.nodeType == 3) {
-            sel.collapse(before, before.nodeValue.length);
-            break
-          } else {
-            node = before;
-            offset = -1;
-          }
-        }
-      }
-    }
-    view.composing = true;
-  }
-  scheduleComposeEnd(view, timeoutComposition);
-};
-
-editHandlers.compositionend = function (view, event) {
-  if (view.composing) {
-    view.composing = false;
-    view.compositionEndedAt = event.timeStamp;
-    scheduleComposeEnd(view, 20);
-  }
-};
-
-function scheduleComposeEnd(view, delay) {
-  clearTimeout(view.composingTimeout);
-  if (delay > -1) { view.composingTimeout = setTimeout(function () { return endComposition(view); }, delay); }
-}
-
-function clearComposition(view) {
-  view.composing = false;
-  while (view.compositionNodes.length > 0) { view.compositionNodes.pop().markParentsDirty(); }
-}
-
-function endComposition(view, forceUpdate) {
-  view.domObserver.forceFlush();
-  clearComposition(view);
-  if (forceUpdate || view.docView.dirty) {
-    var sel = selectionFromDOM(view);
-    if (sel && !sel.eq(view.state.selection)) { view.dispatch(view.state.tr.setSelection(sel)); }
-    else { view.updateState(view.state); }
-    return true
-  }
-  return false
-}
-
-function captureCopy(view, dom) {
-  // The extra wrapper is somehow necessary on IE/Edge to prevent the
-  // content from being mangled when it is put onto the clipboard
-  if (!view.dom.parentNode) { return }
-  var wrap = view.dom.parentNode.appendChild(document.createElement("div"));
-  wrap.appendChild(dom);
-  wrap.style.cssText = "position: fixed; left: -10000px; top: 10px";
-  var sel = getSelection(), range = document.createRange();
-  range.selectNodeContents(dom);
-  // Done because IE will fire a selectionchange moving the selection
-  // to its start when removeAllRanges is called and the editor still
-  // has focus (which will mess up the editor's selection state).
-  view.dom.blur();
-  sel.removeAllRanges();
-  sel.addRange(range);
-  setTimeout(function () {
-    if (wrap.parentNode) { wrap.parentNode.removeChild(wrap); }
-    view.focus();
-  }, 50);
-}
-
-// This is very crude, but unfortunately both these browsers _pretend_
-// that they have a clipboard API—all the objects and methods are
-// there, they just don't work, and they are hard to test.
-var brokenClipboardAPI = (index_es_result.ie && index_es_result.ie_version < 15) ||
-      (index_es_result.ios && index_es_result.webkit_version < 604);
-
-handlers.copy = editHandlers.cut = function (view, e) {
-  var sel = view.state.selection, cut = e.type == "cut";
-  if (sel.empty) { return }
-
-  // IE and Edge's clipboard interface is completely broken
-  var data = brokenClipboardAPI ? null : e.clipboardData;
-  var slice = sel.content();
-  var ref = serializeForClipboard(view, slice);
-  var dom = ref.dom;
-  var text = ref.text;
-  if (data) {
-    e.preventDefault();
-    data.clearData();
-    data.setData("text/html", dom.innerHTML);
-    data.setData("text/plain", text);
-  } else {
-    captureCopy(view, dom);
-  }
-  if (cut) { view.dispatch(view.state.tr.deleteSelection().scrollIntoView().setMeta("uiEvent", "cut")); }
-};
-
-function sliceSingleNode(slice) {
-  return slice.openStart == 0 && slice.openEnd == 0 && slice.content.childCount == 1 ? slice.content.firstChild : null
-}
-
-function capturePaste(view, e) {
-  if (!view.dom.parentNode) { return }
-  var plainText = view.shiftKey || view.state.selection.$from.parent.type.spec.code;
-  var target = view.dom.parentNode.appendChild(document.createElement(plainText ? "textarea" : "div"));
-  if (!plainText) { target.contentEditable = "true"; }
-  target.style.cssText = "position: fixed; left: -10000px; top: 10px";
-  target.focus();
-  setTimeout(function () {
-    view.focus();
-    if (target.parentNode) { target.parentNode.removeChild(target); }
-    if (plainText) { doPaste(view, target.value, null, e); }
-    else { doPaste(view, target.textContent, target.innerHTML, e); }
-  }, 50);
-}
-
-function doPaste(view, text, html, e) {
-  var slice = parseFromClipboard(view, text, html, view.shiftKey, view.state.selection.$from);
-  if (view.someProp("handlePaste", function (f) { return f(view, e, slice || dist_index_es["Slice"].empty); }) || !slice) { return }
-
-  var singleNode = sliceSingleNode(slice);
-  var tr = singleNode ? view.state.tr.replaceSelectionWith(singleNode, view.shiftKey) : view.state.tr.replaceSelection(slice);
-  view.dispatch(tr.scrollIntoView().setMeta("paste", true).setMeta("uiEvent", "paste"));
-}
-
-editHandlers.paste = function (view, e) {
-  var data = brokenClipboardAPI ? null : e.clipboardData;
-  var html = data && data.getData("text/html"), text = data && data.getData("text/plain");
-  if (data && (html || text || data.files.length)) {
-    doPaste(view, text, html, e);
-    e.preventDefault();
-  } else {
-    capturePaste(view, e);
-  }
-};
-
-var Dragging = function Dragging(slice, move) {
-  this.slice = slice;
-  this.move = move;
-};
-
-var dragCopyModifier = index_es_result.mac ? "altKey" : "ctrlKey";
-
-handlers.dragstart = function (view, e) {
-  var mouseDown = view.mouseDown;
-  if (mouseDown) { mouseDown.done(); }
-  if (!e.dataTransfer) { return }
-
-  var sel = view.state.selection;
-  var pos = sel.empty ? null : view.posAtCoords(eventCoords(e));
-  if (pos && pos.pos >= sel.from && pos.pos <= (sel instanceof index_es["NodeSelection"] ? sel.to - 1: sel.to)) ; else if (mouseDown && mouseDown.mightDrag) {
-    view.dispatch(view.state.tr.setSelection(index_es["NodeSelection"].create(view.state.doc, mouseDown.mightDrag.pos)));
-  } else if (e.target && e.target.nodeType == 1) {
-    var desc = view.docView.nearestDesc(e.target, true);
-    if (!desc || !desc.node.type.spec.draggable || desc == view.docView) { return }
-    view.dispatch(view.state.tr.setSelection(index_es["NodeSelection"].create(view.state.doc, desc.posBefore)));
-  }
-  var slice = view.state.selection.content();
-  var ref = serializeForClipboard(view, slice);
-  var dom = ref.dom;
-  var text = ref.text;
-  e.dataTransfer.clearData();
-  e.dataTransfer.setData(brokenClipboardAPI ? "Text" : "text/html", dom.innerHTML);
-  if (!brokenClipboardAPI) { e.dataTransfer.setData("text/plain", text); }
-  view.dragging = new Dragging(slice, !e[dragCopyModifier]);
-};
-
-handlers.dragend = function (view) {
-  window.setTimeout(function () { return view.dragging = null; }, 50);
-};
-
-editHandlers.dragover = editHandlers.dragenter = function (_, e) { return e.preventDefault(); };
-
-editHandlers.drop = function (view, e) {
-  var dragging = view.dragging;
-  view.dragging = null;
-
-  if (!e.dataTransfer) { return }
-
-  var eventPos = view.posAtCoords(eventCoords(e));
-  if (!eventPos) { return }
-  var $mouse = view.state.doc.resolve(eventPos.pos);
-  if (!$mouse) { return }
-  var slice = dragging && dragging.slice ||
-      parseFromClipboard(view, e.dataTransfer.getData(brokenClipboardAPI ? "Text" : "text/plain"),
-                         brokenClipboardAPI ? null : e.dataTransfer.getData("text/html"), false, $mouse);
-  var move = dragging && !e[dragCopyModifier];
-  if (view.someProp("handleDrop", function (f) { return f(view, e, slice || dist_index_es["Slice"].empty, move); })) {
-    e.preventDefault();
-    return
-  }
-  if (!slice) { return }
-
-  e.preventDefault();
-  var insertPos = slice ? Object(prosemirror_transform_dist_index_es["h" /* dropPoint */])(view.state.doc, $mouse.pos, slice) : $mouse.pos;
-  if (insertPos == null) { insertPos = $mouse.pos; }
-
-  var tr = view.state.tr;
-  if (move) { tr.deleteSelection(); }
-
-  var pos = tr.mapping.map(insertPos);
-  var isNode = slice.openStart == 0 && slice.openEnd == 0 && slice.content.childCount == 1;
-  var beforeInsert = tr.doc;
-  if (isNode)
-    { tr.replaceRangeWith(pos, pos, slice.content.firstChild); }
-  else
-    { tr.replaceRange(pos, pos, slice); }
-  if (tr.doc.eq(beforeInsert)) { return }
-
-  var $pos = tr.doc.resolve(pos);
-  if (isNode && index_es["NodeSelection"].isSelectable(slice.content.firstChild) &&
-      $pos.nodeAfter && $pos.nodeAfter.sameMarkup(slice.content.firstChild)) {
-    tr.setSelection(new index_es["NodeSelection"]($pos));
-  } else {
-    var end = tr.mapping.map(insertPos);
-    tr.mapping.maps[tr.mapping.maps.length - 1].forEach(function (_from, _to, _newFrom, newTo) { return end = newTo; });
-    tr.setSelection(selectionBetween(view, $pos, tr.doc.resolve(end)));
-  }
-  view.focus();
-  view.dispatch(tr.setMeta("uiEvent", "drop"));
-};
-
-handlers.focus = function (view) {
-  if (!view.focused) {
-    view.domObserver.stop();
-    view.dom.classList.add("ProseMirror-focused");
-    view.domObserver.start();
-    view.focused = true;
-    setTimeout(function () {
-      if (view.docView && view.hasFocus() && !view.domObserver.currentSelection.eq(view.root.getSelection()))
-        { selectionToDOM(view); }
-    }, 20);
-  }
-};
-
-handlers.blur = function (view) {
-  if (view.focused) {
-    view.domObserver.stop();
-    view.dom.classList.remove("ProseMirror-focused");
-    view.domObserver.start();
-    view.domObserver.currentSelection.set({});
-    view.focused = false;
-  }
-};
-
-handlers.beforeinput = function (view, event) {
-  // We should probably do more with beforeinput events, but support
-  // is so spotty that I'm still waiting to see where they are going.
-
-  // Very specific hack to deal with backspace sometimes failing on
-  // Chrome Android when after an uneditable node.
-  if (index_es_result.chrome && index_es_result.android && event.inputType == "deleteContentBackward") {
-    var domChangeCount = view.domChangeCount;
-    setTimeout(function () {
-      if (view.domChangeCount != domChangeCount) { return } // Event already had some effect
-      // This bug tends to close the virtual keyboard, so we refocus
-      view.dom.blur();
-      view.focus();
-      if (view.someProp("handleKeyDown", function (f) { return f(view, keyEvent(8, "Backspace")); })) { return }
-      var ref = view.state.selection;
-      var $cursor = ref.$cursor;
-      // Crude approximation of backspace behavior when no command handled it
-      if ($cursor && $cursor.pos > 0) { view.dispatch(view.state.tr.delete($cursor.pos - 1, $cursor.pos).scrollIntoView()); }
-    }, 50);
-  }
-};
-
-// Make sure all handlers get registered
-for (var index_es_prop in editHandlers) { handlers[index_es_prop] = editHandlers[index_es_prop]; }
-
-function compareObjs(a, b) {
-  if (a == b) { return true }
-  for (var p in a) { if (a[p] !== b[p]) { return false } }
-  for (var p$1 in b) { if (!(p$1 in a)) { return false } }
-  return true
-}
-
-var WidgetType = function WidgetType(toDOM, spec) {
-  this.spec = spec || noSpec;
-  this.side = this.spec.side || 0;
-  this.toDOM = toDOM;
-};
-
-WidgetType.prototype.map = function map (mapping, span, offset, oldOffset) {
-  var ref = mapping.mapResult(span.from + oldOffset, this.side < 0 ? -1 : 1);
-    var pos = ref.pos;
-    var deleted = ref.deleted;
-  return deleted ? null : new Decoration(pos - offset, pos - offset, this)
-};
-
-WidgetType.prototype.valid = function valid () { return true };
-
-WidgetType.prototype.eq = function eq (other) {
-  return this == other ||
-    (other instanceof WidgetType &&
-     (this.spec.key && this.spec.key == other.spec.key ||
-      this.toDOM == other.toDOM && compareObjs(this.spec, other.spec)))
-};
-
-var InlineType = function InlineType(attrs, spec) {
-  this.spec = spec || noSpec;
-  this.attrs = attrs;
-};
-
-InlineType.prototype.map = function map (mapping, span, offset, oldOffset) {
-  var from = mapping.map(span.from + oldOffset, this.spec.inclusiveStart ? -1 : 1) - offset;
-  var to = mapping.map(span.to + oldOffset, this.spec.inclusiveEnd ? 1 : -1) - offset;
-  return from >= to ? null : new Decoration(from, to, this)
-};
-
-InlineType.prototype.valid = function valid (_, span) { return span.from < span.to };
-
-InlineType.prototype.eq = function eq (other) {
-  return this == other ||
-    (other instanceof InlineType && compareObjs(this.attrs, other.attrs) &&
-     compareObjs(this.spec, other.spec))
-};
-
-InlineType.is = function is (span) { return span.type instanceof InlineType };
-
-var NodeType = function NodeType(attrs, spec) {
-  this.spec = spec || noSpec;
-  this.attrs = attrs;
-};
-
-NodeType.prototype.map = function map (mapping, span, offset, oldOffset) {
-  var from = mapping.mapResult(span.from + oldOffset, 1);
-  if (from.deleted) { return null }
-  var to = mapping.mapResult(span.to + oldOffset, -1);
-  if (to.deleted || to.pos <= from.pos) { return null }
-  return new Decoration(from.pos - offset, to.pos - offset, this)
-};
-
-NodeType.prototype.valid = function valid (node, span) {
-  var ref = node.content.findIndex(span.from);
-    var index = ref.index;
-    var offset = ref.offset;
-  return offset == span.from && offset + node.child(index).nodeSize == span.to
-};
-
-NodeType.prototype.eq = function eq (other) {
-  return this == other ||
-    (other instanceof NodeType && compareObjs(this.attrs, other.attrs) &&
-     compareObjs(this.spec, other.spec))
-};
-
-// ::- Decoration objects can be provided to the view through the
-// [`decorations` prop](#view.EditorProps.decorations). They come in
-// several variants—see the static members of this class for details.
-var Decoration = function Decoration(from, to, type) {
-  // :: number
-  // The start position of the decoration.
-  this.from = from;
-  // :: number
-  // The end position. Will be the same as `from` for [widget
-  // decorations](#view.Decoration^widget).
-  this.to = to;
-  this.type = type;
-};
-
-var prototypeAccessors$1 = { spec: { configurable: true },inline: { configurable: true } };
-
-Decoration.prototype.copy = function copy (from, to) {
-  return new Decoration(from, to, this.type)
-};
-
-Decoration.prototype.eq = function eq (other, offset) {
-    if ( offset === void 0 ) offset = 0;
-
-  return this.type.eq(other.type) && this.from + offset == other.from && this.to + offset == other.to
-};
-
-Decoration.prototype.map = function map (mapping, offset, oldOffset) {
-  return this.type.map(mapping, this, offset, oldOffset)
-};
-
-// :: (number, union<(view: EditorView, getPos: () → number) → dom.Node, dom.Node>, ?Object) → Decoration
-// Creates a widget decoration, which is a DOM node that's shown in
-// the document at the given position. It is recommended that you
-// delay rendering the widget by passing a function that will be
-// called when the widget is actually drawn in a view, but you can
-// also directly pass a DOM node. `getPos` can be used to find the
-// widget's current document position.
-//
-// spec::- These options are supported:
-//
-//   side:: ?number
-//   Controls which side of the document position this widget is
-//   associated with. When negative, it is drawn before a cursor
-//   at its position, and content inserted at that position ends
-//   up after the widget. When zero (the default) or positive, the
-//   widget is drawn after the cursor and content inserted there
-//   ends up before the widget.
-//
-//   When there are multiple widgets at a given position, their
-//   `side` values determine the order in which they appear. Those
-//   with lower values appear first. The ordering of widgets with
-//   the same `side` value is unspecified.
-//
-//   When `marks` is null, `side` also determines the marks that
-//   the widget is wrapped in—those of the node before when
-//   negative, those of the node after when positive.
-//
-//   marks:: ?[Mark]
-//   The precise set of marks to draw around the widget.
-//
-//   stopEvent:: ?(event: dom.Event) → bool
-//   Can be used to control which DOM events, when they bubble out
-//   of this widget, the editor view should ignore.
-//
-//   ignoreSelection:: ?bool
-//   When set (defaults to false), selection changes inside the
-//   widget are ignored, and don't cause ProseMirror to try and
-//   re-sync the selection with its selection state.
-//
-//   key:: ?string
-//   When comparing decorations of this type (in order to decide
-//   whether it needs to be redrawn), ProseMirror will by default
-//   compare the widget DOM node by identity. If you pass a key,
-//   that key will be compared instead, which can be useful when
-//   you generate decorations on the fly and don't want to store
-//   and reuse DOM nodes. Make sure that any widgets with the same
-//   key are interchangeable—if widgets differ in, for example,
-//   the behavior of some event handler, they should get
-//   different keys.
-Decoration.widget = function widget (pos, toDOM, spec) {
-  return new Decoration(pos, pos, new WidgetType(toDOM, spec))
-};
-
-// :: (number, number, DecorationAttrs, ?Object) → Decoration
-// Creates an inline decoration, which adds the given attributes to
-// each inline node between `from` and `to`.
-//
-// spec::- These options are recognized:
-//
-//   inclusiveStart:: ?bool
-//   Determines how the left side of the decoration is
-//   [mapped](#transform.Position_Mapping) when content is
-//   inserted directly at that position. By default, the decoration
-//   won't include the new content, but you can set this to `true`
-//   to make it inclusive.
-//
-//   inclusiveEnd:: ?bool
-//   Determines how the right side of the decoration is mapped.
-//   See
-//   [`inclusiveStart`](#view.Decoration^inline^spec.inclusiveStart).
-Decoration.inline = function inline (from, to, attrs, spec) {
-  return new Decoration(from, to, new InlineType(attrs, spec))
-};
-
-// :: (number, number, DecorationAttrs, ?Object) → Decoration
-// Creates a node decoration. `from` and `to` should point precisely
-// before and after a node in the document. That node, and only that
-// node, will receive the given attributes.
-//
-// spec::-
-//
-// Optional information to store with the decoration. It
-// is also used when comparing decorators for equality.
-Decoration.node = function node (from, to, attrs, spec) {
-  return new Decoration(from, to, new NodeType(attrs, spec))
-};
-
-// :: Object
-// The spec provided when creating this decoration. Can be useful
-// if you've stored extra information in that object.
-prototypeAccessors$1.spec.get = function () { return this.type.spec };
-
-prototypeAccessors$1.inline.get = function () { return this.type instanceof InlineType };
-
-Object.defineProperties( Decoration.prototype, prototypeAccessors$1 );
-
-// DecorationAttrs:: interface
-// A set of attributes to add to a decorated node. Most properties
-// simply directly correspond to DOM attributes of the same name,
-// which will be set to the property's value. These are exceptions:
-//
-//   class:: ?string
-//   A CSS class name or a space-separated set of class names to be
-//   _added_ to the classes that the node already had.
-//
-//   style:: ?string
-//   A string of CSS to be _added_ to the node's existing `style` property.
-//
-//   nodeName:: ?string
-//   When non-null, the target node is wrapped in a DOM element of
-//   this type (and the other attributes are applied to this element).
-
-var none = [], noSpec = {};
-
-// ::- A collection of [decorations](#view.Decoration), organized in
-// such a way that the drawing algorithm can efficiently use and
-// compare them. This is a persistent data structure—it is not
-// modified, updates create a new value.
-var DecorationSet = function DecorationSet(local, children) {
-  this.local = local && local.length ? local : none;
-  this.children = children && children.length ? children : none;
-};
-
-// :: (Node, [Decoration]) → DecorationSet
-// Create a set of decorations, using the structure of the given
-// document.
-DecorationSet.create = function create (doc, decorations) {
-  return decorations.length ? buildTree(decorations, doc, 0, noSpec) : index_es_empty
-};
-
-// :: (?number, ?number, ?(spec: Object) → bool) → [Decoration]
-// Find all decorations in this set which touch the given range
-// (including decorations that start or end directly at the
-// boundaries) and match the given predicate on their spec. When
-// `start` and `end` are omitted, all decorations in the set are
-// considered. When `predicate` isn't given, all decorations are
-// assumed to match.
-DecorationSet.prototype.find = function find (start, end, predicate) {
-  var result = [];
-  this.findInner(start == null ? 0 : start, end == null ? 1e9 : end, result, 0, predicate);
-  return result
-};
-
-DecorationSet.prototype.findInner = function findInner (start, end, result, offset, predicate) {
-  for (var i = 0; i < this.local.length; i++) {
-    var span = this.local[i];
-    if (span.from <= end && span.to >= start && (!predicate || predicate(span.spec)))
-      { result.push(span.copy(span.from + offset, span.to + offset)); }
-  }
-  for (var i$1 = 0; i$1 < this.children.length; i$1 += 3) {
-    if (this.children[i$1] < end && this.children[i$1 + 1] > start) {
-      var childOff = this.children[i$1] + 1;
-      this.children[i$1 + 2].findInner(start - childOff, end - childOff, result, offset + childOff, predicate);
-    }
-  }
-};
-
-// :: (Mapping, Node, ?Object) → DecorationSet
-// Map the set of decorations in response to a change in the
-// document.
-//
-// options::- An optional set of options.
-//
-//   onRemove:: ?(decorationSpec: Object)
-//   When given, this function will be called for each decoration
-//   that gets dropped as a result of the mapping, passing the
-//   spec of that decoration.
-DecorationSet.prototype.map = function map (mapping, doc, options) {
-  if (this == index_es_empty || mapping.maps.length == 0) { return this }
-  return this.mapInner(mapping, doc, 0, 0, options || noSpec)
-};
-
-DecorationSet.prototype.mapInner = function mapInner (mapping, node, offset, oldOffset, options) {
-  var newLocal;
-  for (var i = 0; i < this.local.length; i++) {
-    var mapped = this.local[i].map(mapping, offset, oldOffset);
-    if (mapped && mapped.type.valid(node, mapped)) { (newLocal || (newLocal = [])).push(mapped); }
-    else if (options.onRemove) { options.onRemove(this.local[i].spec); }
-  }
-
-  if (this.children.length)
-    { return mapChildren(this.children, newLocal, mapping, node, offset, oldOffset, options) }
-  else
-    { return newLocal ? new DecorationSet(newLocal.sort(byPos)) : index_es_empty }
-};
-
-// :: (Node, [Decoration]) → DecorationSet
-// Add the given array of decorations to the ones in the set,
-// producing a new set. Needs access to the current document to
-// create the appropriate tree structure.
-DecorationSet.prototype.add = function add (doc, decorations) {
-  if (!decorations.length) { return this }
-  if (this == index_es_empty) { return DecorationSet.create(doc, decorations) }
-  return this.addInner(doc, decorations, 0)
-};
-
-DecorationSet.prototype.addInner = function addInner (doc, decorations, offset) {
-    var this$1 = this;
-
-  var children, childIndex = 0;
-  doc.forEach(function (childNode, childOffset) {
-    var baseOffset = childOffset + offset, found;
-    if (!(found = takeSpansForNode(decorations, childNode, baseOffset))) { return }
-
-    if (!children) { children = this$1.children.slice(); }
-    while (childIndex < children.length && children[childIndex] < childOffset) { childIndex += 3; }
-    if (children[childIndex] == childOffset)
-      { children[childIndex + 2] = children[childIndex + 2].addInner(childNode, found, baseOffset + 1); }
-    else
-      { children.splice(childIndex, 0, childOffset, childOffset + childNode.nodeSize, buildTree(found, childNode, baseOffset + 1, noSpec)); }
-    childIndex += 3;
-  });
-
-  var local = moveSpans(childIndex ? withoutNulls(decorations) : decorations, -offset);
-  return new DecorationSet(local.length ? this.local.concat(local).sort(byPos) : this.local,
-                           children || this.children)
-};
-
-// :: ([Decoration]) → DecorationSet
-// Create a new set that contains the decorations in this set, minus
-// the ones in the given array.
-DecorationSet.prototype.remove = function remove (decorations) {
-  if (decorations.length == 0 || this == index_es_empty) { return this }
-  return this.removeInner(decorations, 0)
-};
-
-DecorationSet.prototype.removeInner = function removeInner (decorations, offset) {
-  var children = this.children, local = this.local;
-  for (var i = 0; i < children.length; i += 3) {
-    var found = (void 0), from = children[i] + offset, to = children[i + 1] + offset;
-    for (var j = 0, span = (void 0); j < decorations.length; j++) { if (span = decorations[j]) {
-      if (span.from > from && span.to < to) {
-        decorations[j] = null
-        ;(found || (found = [])).push(span);
-      }
-    } }
-    if (!found) { continue }
-    if (children == this.children) { children = this.children.slice(); }
-    var removed = children[i + 2].removeInner(found, from + 1);
-    if (removed != index_es_empty) {
-      children[i + 2] = removed;
-    } else {
-      children.splice(i, 3);
-      i -= 3;
-    }
-  }
-  if (local.length) { for (var i$1 = 0, span$1 = (void 0); i$1 < decorations.length; i$1++) { if (span$1 = decorations[i$1]) {
-    for (var j$1 = 0; j$1 < local.length; j$1++) { if (local[j$1].eq(span$1, offset)) {
-      if (local == this.local) { local = this.local.slice(); }
-      local.splice(j$1--, 1);
-    } }
-  } } }
-  if (children == this.children && local == this.local) { return this }
-  return local.length || children.length ? new DecorationSet(local, children) : index_es_empty
-};
-
-DecorationSet.prototype.forChild = function forChild (offset, node) {
-  if (this == index_es_empty) { return this }
-  if (node.isLeaf) { return DecorationSet.empty }
-
-  var child, local;
-  for (var i = 0; i < this.children.length; i += 3) { if (this.children[i] >= offset) {
-    if (this.children[i] == offset) { child = this.children[i + 2]; }
-    break
-  } }
-  var start = offset + 1, end = start + node.content.size;
-  for (var i$1 = 0; i$1 < this.local.length; i$1++) {
-    var dec = this.local[i$1];
-    if (dec.from < end && dec.to > start && (dec.type instanceof InlineType)) {
-      var from = Math.max(start, dec.from) - start, to = Math.min(end, dec.to) - start;
-      if (from < to) { (local || (local = [])).push(dec.copy(from, to)); }
-    }
-  }
-  if (local) {
-    var localSet = new DecorationSet(local.sort(byPos));
-    return child ? new DecorationGroup([localSet, child]) : localSet
-  }
-  return child || index_es_empty
-};
-
-DecorationSet.prototype.eq = function eq (other) {
-  if (this == other) { return true }
-  if (!(other instanceof DecorationSet) ||
-      this.local.length != other.local.length ||
-      this.children.length != other.children.length) { return false }
-  for (var i = 0; i < this.local.length; i++)
-    { if (!this.local[i].eq(other.local[i])) { return false } }
-  for (var i$1 = 0; i$1 < this.children.length; i$1 += 3)
-    { if (this.children[i$1] != other.children[i$1] ||
-        this.children[i$1 + 1] != other.children[i$1 + 1] ||
-        !this.children[i$1 + 2].eq(other.children[i$1 + 2])) { return false } }
-  return true
-};
-
-DecorationSet.prototype.locals = function locals (node) {
-  return removeOverlap(this.localsInner(node))
-};
-
-DecorationSet.prototype.localsInner = function localsInner (node) {
-  if (this == index_es_empty) { return none }
-  if (node.inlineContent || !this.local.some(InlineType.is)) { return this.local }
-  var result = [];
-  for (var i = 0; i < this.local.length; i++) {
-    if (!(this.local[i].type instanceof InlineType))
-      { result.push(this.local[i]); }
-  }
-  return result
-};
-
-var index_es_empty = new DecorationSet();
-
-// :: DecorationSet
-// The empty set of decorations.
-DecorationSet.empty = index_es_empty;
-
-DecorationSet.removeOverlap = removeOverlap;
-
-// :- An abstraction that allows the code dealing with decorations to
-// treat multiple DecorationSet objects as if it were a single object
-// with (a subset of) the same interface.
-var DecorationGroup = function DecorationGroup(members) {
-  this.members = members;
-};
-
-DecorationGroup.prototype.forChild = function forChild (offset, child) {
-  if (child.isLeaf) { return DecorationSet.empty }
-  var found = [];
-  for (var i = 0; i < this.members.length; i++) {
-    var result = this.members[i].forChild(offset, child);
-    if (result == index_es_empty) { continue }
-    if (result instanceof DecorationGroup) { found = found.concat(result.members); }
-    else { found.push(result); }
-  }
-  return DecorationGroup.from(found)
-};
-
-DecorationGroup.prototype.eq = function eq (other) {
-  if (!(other instanceof DecorationGroup) ||
-      other.members.length != this.members.length) { return false }
-  for (var i = 0; i < this.members.length; i++)
-    { if (!this.members[i].eq(other.members[i])) { return false } }
-  return true
-};
-
-DecorationGroup.prototype.locals = function locals (node) {
-  var result, sorted = true;
-  for (var i = 0; i < this.members.length; i++) {
-    var locals = this.members[i].localsInner(node);
-    if (!locals.length) { continue }
-    if (!result) {
-      result = locals;
-    } else {
-      if (sorted) {
-        result = result.slice();
-        sorted = false;
-      }
-      for (var j = 0; j < locals.length; j++) { result.push(locals[j]); }
-    }
-  }
-  return result ? removeOverlap(sorted ? result : result.sort(byPos)) : none
-};
-
-// : ([DecorationSet]) → union<DecorationSet, DecorationGroup>
-// Create a group for the given array of decoration sets, or return
-// a single set when possible.
-DecorationGroup.from = function from (members) {
-  switch (members.length) {
-    case 0: return index_es_empty
-    case 1: return members[0]
-    default: return new DecorationGroup(members)
-  }
-};
-
-function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, options) {
-  var children = oldChildren.slice();
-
-  // Mark the children that are directly touched by changes, and
-  // move those that are after the changes.
-  var shift = function (oldStart, oldEnd, newStart, newEnd) {
-    for (var i = 0; i < children.length; i += 3) {
-      var end = children[i + 1], dSize = (void 0);
-      if (end == -1 || oldStart > end + oldOffset) { continue }
-      if (oldEnd >= children[i] + oldOffset) {
-        children[i + 1] = -1;
-      } else if (newStart >= offset && (dSize = (newEnd - newStart) - (oldEnd - oldStart))) {
-        children[i] += dSize;
-        children[i + 1] += dSize;
-      }
-    }
-  };
-  for (var i = 0; i < mapping.maps.length; i++) { mapping.maps[i].forEach(shift); }
-
-  // Find the child nodes that still correspond to a single node,
-  // recursively call mapInner on them and update their positions.
-  var mustRebuild = false;
-  for (var i$1 = 0; i$1 < children.length; i$1 += 3) { if (children[i$1 + 1] == -1) { // Touched nodes
-    var from = mapping.map(oldChildren[i$1] + oldOffset), fromLocal = from - offset;
-    if (fromLocal < 0 || fromLocal >= node.content.size) {
-      mustRebuild = true;
-      continue
-    }
-    // Must read oldChildren because children was tagged with -1
-    var to = mapping.map(oldChildren[i$1 + 1] + oldOffset, -1), toLocal = to - offset;
-    var ref = node.content.findIndex(fromLocal);
-    var index = ref.index;
-    var childOffset = ref.offset;
-    var childNode = node.maybeChild(index);
-    if (childNode && childOffset == fromLocal && childOffset + childNode.nodeSize == toLocal) {
-      var mapped = children[i$1 + 2].mapInner(mapping, childNode, from + 1, oldChildren[i$1] + oldOffset + 1, options);
-      if (mapped != index_es_empty) {
-        children[i$1] = fromLocal;
-        children[i$1 + 1] = toLocal;
-        children[i$1 + 2] = mapped;
-      } else {
-        children[i$1 + 1] = -2;
-        mustRebuild = true;
-      }
-    } else {
-      mustRebuild = true;
-    }
-  } }
-
-  // Remaining children must be collected and rebuilt into the appropriate structure
-  if (mustRebuild) {
-    var decorations = mapAndGatherRemainingDecorations(children, oldChildren, newLocal || [], mapping,
-                                                       offset, oldOffset, options);
-    var built = buildTree(decorations, node, 0, options);
-    newLocal = built.local;
-    for (var i$2 = 0; i$2 < children.length; i$2 += 3) { if (children[i$2 + 1] < 0) {
-      children.splice(i$2, 3);
-      i$2 -= 3;
-    } }
-    for (var i$3 = 0, j = 0; i$3 < built.children.length; i$3 += 3) {
-      var from$1 = built.children[i$3];
-      while (j < children.length && children[j] < from$1) { j += 3; }
-      children.splice(j, 0, built.children[i$3], built.children[i$3 + 1], built.children[i$3 + 2]);
-    }
-  }
-
-  return new DecorationSet(newLocal && newLocal.sort(byPos), children)
-}
-
-function moveSpans(spans, offset) {
-  if (!offset || !spans.length) { return spans }
-  var result = [];
-  for (var i = 0; i < spans.length; i++) {
-    var span = spans[i];
-    result.push(new Decoration(span.from + offset, span.to + offset, span.type));
-  }
-  return result
-}
-
-function mapAndGatherRemainingDecorations(children, oldChildren, decorations, mapping, offset, oldOffset, options) {
-  // Gather all decorations from the remaining marked children
-  function gather(set, oldOffset) {
-    for (var i = 0; i < set.local.length; i++) {
-      var mapped = set.local[i].map(mapping, offset, oldOffset);
-      if (mapped) { decorations.push(mapped); }
-      else if (options.onRemove) { options.onRemove(set.local[i].spec); }
-    }
-    for (var i$1 = 0; i$1 < set.children.length; i$1 += 3)
-      { gather(set.children[i$1 + 2], set.children[i$1] + oldOffset + 1); }
-  }
-  for (var i = 0; i < children.length; i += 3) { if (children[i + 1] == -1)
-    { gather(children[i + 2], oldChildren[i] + oldOffset + 1); } }
-
-  return decorations
-}
-
-function takeSpansForNode(spans, node, offset) {
-  if (node.isLeaf) { return null }
-  var end = offset + node.nodeSize, found = null;
-  for (var i = 0, span = (void 0); i < spans.length; i++) {
-    if ((span = spans[i]) && span.from > offset && span.to < end) {
-(found || (found = [])).push(span);
-      spans[i] = null;
-    }
-  }
-  return found
-}
-
-function withoutNulls(array) {
-  var result = [];
-  for (var i = 0; i < array.length; i++)
-    { if (array[i] != null) { result.push(array[i]); } }
-  return result
-}
-
-// : ([Decoration], Node, number) → DecorationSet
-// Build up a tree that corresponds to a set of decorations. `offset`
-// is a base offset that should be subtractet from the `from` and `to`
-// positions in the spans (so that we don't have to allocate new spans
-// for recursive calls).
-function buildTree(spans, node, offset, options) {
-  var children = [], hasNulls = false;
-  node.forEach(function (childNode, localStart) {
-    var found = takeSpansForNode(spans, childNode, localStart + offset);
-    if (found) {
-      hasNulls = true;
-      var subtree = buildTree(found, childNode, offset + localStart + 1, options);
-      if (subtree != index_es_empty)
-        { children.push(localStart, localStart + childNode.nodeSize, subtree); }
-    }
-  });
-  var locals = moveSpans(hasNulls ? withoutNulls(spans) : spans, -offset).sort(byPos);
-  for (var i = 0; i < locals.length; i++) { if (!locals[i].type.valid(node, locals[i])) {
-    if (options.onRemove) { options.onRemove(locals[i].spec); }
-    locals.splice(i--, 1);
-  } }
-  return locals.length || children.length ? new DecorationSet(locals, children) : index_es_empty
-}
-
-// : (Decoration, Decoration) → number
-// Used to sort decorations so that ones with a low start position
-// come first, and within a set with the same start position, those
-// with an smaller end position come first.
-function byPos(a, b) {
-  return a.from - b.from || a.to - b.to
-}
-
-// : ([Decoration]) → [Decoration]
-// Scan a sorted array of decorations for partially overlapping spans,
-// and split those so that only fully overlapping spans are left (to
-// make subsequent rendering easier). Will return the input array if
-// no partially overlapping spans are found (the common case).
-function removeOverlap(spans) {
-  var working = spans;
-  for (var i = 0; i < working.length - 1; i++) {
-    var span = working[i];
-    if (span.from != span.to) { for (var j = i + 1; j < working.length; j++) {
-      var next = working[j];
-      if (next.from == span.from) {
-        if (next.to != span.to) {
-          if (working == spans) { working = spans.slice(); }
-          // Followed by a partially overlapping larger span. Split that
-          // span.
-          working[j] = next.copy(next.from, span.to);
-          insertAhead(working, j + 1, next.copy(span.to, next.to));
-        }
-        continue
-      } else {
-        if (next.from < span.to) {
-          if (working == spans) { working = spans.slice(); }
-          // The end of this one overlaps with a subsequent span. Split
-          // this one.
-          working[i] = span.copy(span.from, next.from);
-          insertAhead(working, j, span.copy(next.from, span.to));
-        }
-        break
-      }
-    } }
-  }
-  return working
-}
-
-function insertAhead(array, i, deco) {
-  while (i < array.length && byPos(deco, array[i]) > 0) { i++; }
-  array.splice(i, 0, deco);
-}
-
-// : (EditorView) → union<DecorationSet, DecorationGroup>
-// Get the decorations associated with the current props of a view.
-function viewDecorations(view) {
-  var found = [];
-  view.someProp("decorations", function (f) {
-    var result = f(view.state);
-    if (result && result != index_es_empty) { found.push(result); }
-  });
-  if (view.cursorWrapper)
-    { found.push(DecorationSet.create(view.state.doc, [view.cursorWrapper.deco])); }
-  return DecorationGroup.from(found)
-}
-
-// ::- An editor view manages the DOM structure that represents an
-// editable document. Its state and behavior are determined by its
-// [props](#view.DirectEditorProps).
-var EditorView = function EditorView(place, props) {
-  this._props = props;
-  // :: EditorState
-  // The view's current [state](#state.EditorState).
-  this.state = props.state;
-
-  this.dispatch = this.dispatch.bind(this);
-
-  this._root = null;
-  this.focused = false;
-  // Kludge used to work around a Chrome bug
-  this.trackWrites = null;
-
-  // :: dom.Element
-  // An editable DOM node containing the document. (You probably
-  // should not directly interfere with its content.)
-  this.dom = (place && place.mount) || document.createElement("div");
-  if (place) {
-    if (place.appendChild) { place.appendChild(this.dom); }
-    else if (place.apply) { place(this.dom); }
-    else if (place.mount) { this.mounted = true; }
-  }
-
-  // :: bool
-  // Indicates whether the editor is currently [editable](#view.EditorProps.editable).
-  this.editable = getEditable(this);
-  this.markCursor = null;
-  this.cursorWrapper = null;
-  updateCursorWrapper(this);
-  this.nodeViews = buildNodeViews(this);
-  this.docView = docViewDesc(this.state.doc, computeDocDeco(this), viewDecorations(this), this.dom, this);
-
-  this.lastSelectedViewDesc = null;
-  // :: ?{slice: Slice, move: bool}
-  // When editor content is being dragged, this object contains
-  // information about the dragged slice and whether it is being
-  // copied or moved. At any other time, it is null.
-  this.dragging = null;
-
-  initInput(this);
-
-  this.pluginViews = [];
-  this.updatePluginViews();
-};
-
-var prototypeAccessors$2 = { props: { configurable: true },root: { configurable: true } };
-
-// composing:: boolean
-// Holds `true` when a
-// [composition](https://developer.mozilla.org/en-US/docs/Mozilla/IME_handling_guide)
-// is active.
-
-// :: DirectEditorProps
-// The view's current [props](#view.EditorProps).
-prototypeAccessors$2.props.get = function () {
-  if (this._props.state != this.state) {
-    var prev = this._props;
-    this._props = {};
-    for (var name in prev) { this._props[name] = prev[name]; }
-    this._props.state = this.state;
-  }
-  return this._props
-};
-
-// :: (DirectEditorProps)
-// Update the view's props. Will immediately cause an update to
-// the DOM.
-EditorView.prototype.update = function update (props) {
-  if (props.handleDOMEvents != this._props.handleDOMEvents) { ensureListeners(this); }
-  this._props = props;
-  this.updateStateInner(props.state, true);
-};
-
-// :: (DirectEditorProps)
-// Update the view by updating existing props object with the object
-// given as argument. Equivalent to `view.update(Object.assign({},
-// view.props, props))`.
-EditorView.prototype.setProps = function setProps (props) {
-  var updated = {};
-  for (var name in this._props) { updated[name] = this._props[name]; }
-  updated.state = this.state;
-  for (var name$1 in props) { updated[name$1] = props[name$1]; }
-  this.update(updated);
-};
-
-// :: (EditorState)
-// Update the editor's `state` prop, without touching any of the
-// other props.
-EditorView.prototype.updateState = function updateState (state) {
-  this.updateStateInner(state, this.state.plugins != state.plugins);
-};
-
-EditorView.prototype.updateStateInner = function updateStateInner (state, reconfigured) {
-    var this$1 = this;
-
-  var prev = this.state, redraw = false, updateSel = false;
-  // When stored marks are added, stop composition, so that they can
-  // be displayed.
-  if (state.storedMarks && this.composing) {
-    clearComposition(this);
-    updateSel = true;
-  }
-  this.state = state;
-  if (reconfigured) {
-    var nodeViews = buildNodeViews(this);
-    if (changedNodeViews(nodeViews, this.nodeViews)) {
-      this.nodeViews = nodeViews;
-      redraw = true;
-    }
-    ensureListeners(this);
-  }
-
-  this.editable = getEditable(this);
-  updateCursorWrapper(this);
-  var innerDeco = viewDecorations(this), outerDeco = computeDocDeco(this);
-
-  var scroll = reconfigured ? "reset"
-      : state.scrollToSelection > prev.scrollToSelection ? "to selection" : "preserve";
-  var updateDoc = redraw || !this.docView.matchesNode(state.doc, outerDeco, innerDeco);
-  if (updateDoc || !state.selection.eq(prev.selection)) { updateSel = true; }
-  var oldScrollPos = scroll == "preserve" && updateSel && this.dom.style.overflowAnchor == null && storeScrollPos(this);
-
-  if (updateSel) {
-    this.domObserver.stop();
-    // Work around an issue in Chrome, IE, and Edge where changing
-    // the DOM around an active selection puts it into a broken
-    // state where the thing the user sees differs from the
-    // selection reported by the Selection object (#710, #973,
-    // #1011, #1013, #1035).
-    var forceSelUpdate = updateDoc && (index_es_result.ie || index_es_result.chrome) && !this.composing &&
-        !prev.selection.empty && !state.selection.empty && selectionContextChanged(prev.selection, state.selection);
-    if (updateDoc) {
-      // If the node that the selection points into is written to,
-      // Chrome sometimes starts misreporting the selection, so this
-      // tracks that and forces a selection reset when our update
-      // did write to the node.
-      var chromeKludge = index_es_result.chrome ? (this.trackWrites = this.root.getSelection().focusNode) : null;
-      if (redraw || !this.docView.update(state.doc, outerDeco, innerDeco, this)) {
-        this.docView.updateOuterDeco([]);
-        this.docView.destroy();
-        this.docView = docViewDesc(state.doc, outerDeco, innerDeco, this.dom, this);
-      }
-      if (chromeKludge && !this.trackWrites) { forceSelUpdate = true; }
-    }
-    // Work around for an issue where an update arriving right between
-    // a DOM selection change and the "selectionchange" event for it
-    // can cause a spurious DOM selection update, disrupting mouse
-    // drag selection.
-    if (forceSelUpdate ||
-        !(this.mouseDown && this.domObserver.currentSelection.eq(this.root.getSelection()) && anchorInRightPlace(this))) {
-      selectionToDOM(this, forceSelUpdate);
-    } else {
-      syncNodeSelection(this, state.selection);
-      this.domObserver.setCurSelection();
-    }
-    this.domObserver.start();
-  }
-
-  this.updatePluginViews(prev);
-
-  if (scroll == "reset") {
-    this.dom.scrollTop = 0;
-  } else if (scroll == "to selection") {
-    var startDOM = this.root.getSelection().focusNode;
-    if (this.someProp("handleScrollToSelection", function (f) { return f(this$1); }))
-      ; // Handled
-    else if (state.selection instanceof index_es["NodeSelection"])
-      { scrollRectIntoView(this, this.docView.domAfterPos(state.selection.from).getBoundingClientRect(), startDOM); }
-    else
-      { scrollRectIntoView(this, this.coordsAtPos(state.selection.head), startDOM); }
-  } else if (oldScrollPos) {
-    resetScrollPos(oldScrollPos);
-  }
-};
-
-EditorView.prototype.destroyPluginViews = function destroyPluginViews () {
-  var view;
-  while (view = this.pluginViews.pop()) { if (view.destroy) { view.destroy(); } }
-};
-
-EditorView.prototype.updatePluginViews = function updatePluginViews (prevState) {
-  if (!prevState || prevState.plugins != this.state.plugins) {
-    this.destroyPluginViews();
-    for (var i = 0; i < this.state.plugins.length; i++) {
-      var plugin = this.state.plugins[i];
-      if (plugin.spec.view) { this.pluginViews.push(plugin.spec.view(this)); }
-    }
-  } else {
-    for (var i$1 = 0; i$1 < this.pluginViews.length; i$1++) {
-      var pluginView = this.pluginViews[i$1];
-      if (pluginView.update) { pluginView.update(this, prevState); }
-    }
-  }
-};
-
-// :: (string, ?(prop: *) → *) → *
-// Goes over the values of a prop, first those provided directly,
-// then those from plugins (in order), and calls `f` every time a
-// non-undefined value is found. When `f` returns a truthy value,
-// that is immediately returned. When `f` isn't provided, it is
-// treated as the identity function (the prop value is returned
-// directly).
-EditorView.prototype.someProp = function someProp (propName, f) {
-  var prop = this._props && this._props[propName], value;
-  if (prop != null && (value = f ? f(prop) : prop)) { return value }
-  var plugins = this.state.plugins;
-  if (plugins) { for (var i = 0; i < plugins.length; i++) {
-    var prop$1 = plugins[i].props[propName];
-    if (prop$1 != null && (value = f ? f(prop$1) : prop$1)) { return value }
-  } }
-};
-
-// :: () → bool
-// Query whether the view has focus.
-EditorView.prototype.hasFocus = function hasFocus () {
-  return this.root.activeElement == this.dom
-};
-
-// :: ()
-// Focus the editor.
-EditorView.prototype.focus = function focus () {
-  this.domObserver.stop();
-  if (this.editable) { focusPreventScroll(this.dom); }
-  selectionToDOM(this);
-  this.domObserver.start();
-};
-
-// :: union<dom.Document, dom.DocumentFragment>
-// Get the document root in which the editor exists. This will
-// usually be the top-level `document`, but might be a [shadow
-// DOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Shadow_DOM)
-// root if the editor is inside one.
-prototypeAccessors$2.root.get = function () {
-  var cached = this._root;
-  if (cached == null) { for (var search = this.dom.parentNode; search; search = search.parentNode) {
-    if (search.nodeType == 9 || (search.nodeType == 11 && search.host)) {
-      if (!search.getSelection) { Object.getPrototypeOf(search).getSelection = function () { return document.getSelection(); }; }
-      return this._root = search
-    }
-  } }
-  return cached || document
-};
-
-// :: ({left: number, top: number}) → ?{pos: number, inside: number}
-// Given a pair of viewport coordinates, return the document
-// position that corresponds to them. May return null if the given
-// coordinates aren't inside of the editor. When an object is
-// returned, its `pos` property is the position nearest to the
-// coordinates, and its `inside` property holds the position of the
-// inner node that the position falls inside of, or -1 if it is at
-// the top level, not in any node.
-EditorView.prototype.posAtCoords = function posAtCoords$1 (coords) {
-  return posAtCoords(this, coords)
-};
-
-// :: (number) → {left: number, right: number, top: number, bottom: number}
-// Returns the viewport rectangle at a given document position. `left`
-// and `right` will be the same number, as this returns a flat
-// cursor-ish rectangle.
-EditorView.prototype.coordsAtPos = function coordsAtPos$1 (pos) {
-  return coordsAtPos(this, pos)
-};
-
-// :: (number) → {node: dom.Node, offset: number}
-// Find the DOM position that corresponds to the given document
-// position. Note that you should **not** mutate the editor's
-// internal DOM, only inspect it (and even that is usually not
-// necessary).
-EditorView.prototype.domAtPos = function domAtPos (pos) {
-  return this.docView.domFromPos(pos)
-};
-
-// :: (number) → ?dom.Node
-// Find the DOM node that represents the document node after the
-// given position. May return `null` when the position doesn't point
-// in front of a node or if the node is inside an opaque node view.
-//
-// This is intended to be able to call things like
-// `getBoundingClientRect` on that DOM node. Do **not** mutate the
-// editor DOM directly, or add styling this way, since that will be
-// immediately overriden by the editor as it redraws the node.
-EditorView.prototype.nodeDOM = function nodeDOM (pos) {
-  var desc = this.docView.descAt(pos);
-  return desc ? desc.nodeDOM : null
-};
-
-// :: (dom.Node, number, ?number) → number
-// Find the document position that corresponds to a given DOM
-// position. (Whenever possible, it is preferable to inspect the
-// document structure directly, rather than poking around in the
-// DOM, but sometimes—for example when interpreting an event
-// target—you don't have a choice.)
-//
-// The `bias` parameter can be used to influence which side of a DOM
-// node to use when the position is inside a leaf node.
-EditorView.prototype.posAtDOM = function posAtDOM (node, offset, bias) {
-    if ( bias === void 0 ) bias = -1;
-
-  var pos = this.docView.posFromDOM(node, offset, bias);
-  if (pos == null) { throw new RangeError("DOM position not inside the editor") }
-  return pos
-};
-
-// :: (union<"up", "down", "left", "right", "forward", "backward">, ?EditorState) → bool
-// Find out whether the selection is at the end of a textblock when
-// moving in a given direction. When, for example, given `"left"`,
-// it will return true if moving left from the current cursor
-// position would leave that position's parent textblock. Will apply
-// to the view's current state by default, but it is possible to
-// pass a different state.
-EditorView.prototype.endOfTextblock = function endOfTextblock$1 (dir, state) {
-  return endOfTextblock(this, state || this.state, dir)
-};
-
-// :: ()
-// Removes the editor from the DOM and destroys all [node
-// views](#view.NodeView).
-EditorView.prototype.destroy = function destroy () {
-  if (!this.docView) { return }
-  destroyInput(this);
-  this.destroyPluginViews();
-  if (this.mounted) {
-    this.docView.update(this.state.doc, [], viewDecorations(this), this);
-    this.dom.textContent = "";
-  } else if (this.dom.parentNode) {
-    this.dom.parentNode.removeChild(this.dom);
-  }
-  this.docView.destroy();
-  this.docView = null;
-};
-
-// Used for testing.
-EditorView.prototype.dispatchEvent = function dispatchEvent$1 (event) {
-  return dispatchEvent(this, event)
-};
-
-// :: (Transaction)
-// Dispatch a transaction. Will call
-// [`dispatchTransaction`](#view.DirectEditorProps.dispatchTransaction)
-// when given, and otherwise defaults to applying the transaction to
-// the current state and calling
-// [`updateState`](#view.EditorView.updateState) with the result.
-// This method is bound to the view instance, so that it can be
-// easily passed around.
-EditorView.prototype.dispatch = function dispatch (tr) {
-  var dispatchTransaction = this._props.dispatchTransaction;
-  if (dispatchTransaction) { dispatchTransaction.call(this, tr); }
-  else { this.updateState(this.state.apply(tr)); }
-};
-
-Object.defineProperties( EditorView.prototype, prototypeAccessors$2 );
-
-function computeDocDeco(view) {
-  var attrs = Object.create(null);
-  attrs.class = "ProseMirror";
-  attrs.contenteditable = String(view.editable);
-
-  view.someProp("attributes", function (value) {
-    if (typeof value == "function") { value = value(view.state); }
-    if (value) { for (var attr in value) {
-      if (attr == "class")
-        { attrs.class += " " + value[attr]; }
-      else if (!attrs[attr] && attr != "contenteditable" && attr != "nodeName")
-        { attrs[attr] = String(value[attr]); }
-    } }
-  });
-
-  return [Decoration.node(0, view.state.doc.content.size, attrs)]
-}
-
-function updateCursorWrapper(view) {
-  if (view.markCursor) {
-    var dom = document.createElement("img");
-    dom.setAttribute("mark-placeholder", "true");
-    view.cursorWrapper = {dom: dom, deco: Decoration.widget(view.state.selection.head, dom, {raw: true, marks: view.markCursor})};
-  } else {
-    view.cursorWrapper = null;
-  }
-}
-
-function getEditable(view) {
-  return !view.someProp("editable", function (value) { return value(view.state) === false; })
-}
-
-function selectionContextChanged(sel1, sel2) {
-  var depth = Math.min(sel1.$anchor.sharedDepth(sel1.head), sel2.$anchor.sharedDepth(sel2.head));
-  return sel1.$anchor.start(depth) != sel2.$anchor.start(depth)
-}
-
-function buildNodeViews(view) {
-  var result = {};
-  view.someProp("nodeViews", function (obj) {
-    for (var prop in obj) { if (!Object.prototype.hasOwnProperty.call(result, prop))
-      { result[prop] = obj[prop]; } }
-  });
-  return result
-}
-
-function changedNodeViews(a, b) {
-  var nA = 0, nB = 0;
-  for (var prop in a) {
-    if (a[prop] != b[prop]) { return true }
-    nA++;
-  }
-  for (var _ in b) { nB++; }
-  return nA != nB
-}
-
-// EditorProps:: interface
-//
-// Props are configuration values that can be passed to an editor view
-// or included in a plugin. This interface lists the supported props.
-//
-// The various event-handling functions may all return `true` to
-// indicate that they handled the given event. The view will then take
-// care to call `preventDefault` on the event, except with
-// `handleDOMEvents`, where the handler itself is responsible for that.
-//
-// How a prop is resolved depends on the prop. Handler functions are
-// called one at a time, starting with the base props and then
-// searching through the plugins (in order of appearance) until one of
-// them returns true. For some props, the first plugin that yields a
-// value gets precedence.
-//
-//   handleDOMEvents:: ?Object<(view: EditorView, event: dom.Event) → bool>
-//   Can be an object mapping DOM event type names to functions that
-//   handle them. Such functions will be called before any handling
-//   ProseMirror does of events fired on the editable DOM element.
-//   Contrary to the other event handling props, when returning true
-//   from such a function, you are responsible for calling
-//   `preventDefault` yourself (or not, if you want to allow the
-//   default behavior).
-//
-//   handleKeyDown:: ?(view: EditorView, event: dom.KeyboardEvent) → bool
-//   Called when the editor receives a `keydown` event.
-//
-//   handleKeyPress:: ?(view: EditorView, event: dom.KeyboardEvent) → bool
-//   Handler for `keypress` events.
-//
-//   handleTextInput:: ?(view: EditorView, from: number, to: number, text: string) → bool
-//   Whenever the user directly input text, this handler is called
-//   before the input is applied. If it returns `true`, the default
-//   behavior of actually inserting the text is suppressed.
-//
-//   handleClickOn:: ?(view: EditorView, pos: number, node: Node, nodePos: number, event: dom.MouseEvent, direct: bool) → bool
-//   Called for each node around a click, from the inside out. The
-//   `direct` flag will be true for the inner node.
-//
-//   handleClick:: ?(view: EditorView, pos: number, event: dom.MouseEvent) → bool
-//   Called when the editor is clicked, after `handleClickOn` handlers
-//   have been called.
-//
-//   handleDoubleClickOn:: ?(view: EditorView, pos: number, node: Node, nodePos: number, event: dom.MouseEvent, direct: bool) → bool
-//   Called for each node around a double click.
-//
-//   handleDoubleClick:: ?(view: EditorView, pos: number, event: dom.MouseEvent) → bool
-//   Called when the editor is double-clicked, after `handleDoubleClickOn`.
-//
-//   handleTripleClickOn:: ?(view: EditorView, pos: number, node: Node, nodePos: number, event: dom.MouseEvent, direct: bool) → bool
-//   Called for each node around a triple click.
-//
-//   handleTripleClick:: ?(view: EditorView, pos: number, event: dom.MouseEvent) → bool
-//   Called when the editor is triple-clicked, after `handleTripleClickOn`.
-//
-//   handlePaste:: ?(view: EditorView, event: dom.ClipboardEvent, slice: Slice) → bool
-//   Can be used to override the behavior of pasting. `slice` is the
-//   pasted content parsed by the editor, but you can directly access
-//   the event to get at the raw content.
-//
-//   handleDrop:: ?(view: EditorView, event: dom.Event, slice: Slice, moved: bool) → bool
-//   Called when something is dropped on the editor. `moved` will be
-//   true if this drop moves from the current selection (which should
-//   thus be deleted).
-//
-//   handleScrollToSelection:: ?(view: EditorView) → bool
-//   Called when the view, after updating its state, tries to scroll
-//   the selection into view. A handler function may return false to
-//   indicate that it did not handle the scrolling and further
-//   handlers or the default behavior should be tried.
-//
-//   createSelectionBetween:: ?(view: EditorView, anchor: ResolvedPos, head: ResolvedPos) → ?Selection
-//   Can be used to override the way a selection is created when
-//   reading a DOM selection between the given anchor and head.
-//
-//   domParser:: ?DOMParser
-//   The [parser](#model.DOMParser) to use when reading editor changes
-//   from the DOM. Defaults to calling
-//   [`DOMParser.fromSchema`](#model.DOMParser^fromSchema) on the
-//   editor's schema.
-//
-//   transformPastedHTML:: ?(html: string) → string
-//   Can be used to transform pasted HTML text, _before_ it is parsed,
-//   for example to clean it up.
-//
-//   clipboardParser:: ?DOMParser
-//   The [parser](#model.DOMParser) to use when reading content from
-//   the clipboard. When not given, the value of the
-//   [`domParser`](#view.EditorProps.domParser) prop is used.
-//
-//   transformPastedText:: ?(text: string, plain: bool) → string
-//   Transform pasted plain text. The `plain` flag will be true when
-//   the text is pasted as plain text.
-//
-//   clipboardTextParser:: ?(text: string, $context: ResolvedPos, plain: bool) → Slice
-//   A function to parse text from the clipboard into a document
-//   slice. Called after
-//   [`transformPastedText`](#view.EditorProps.transformPastedText).
-//   The default behavior is to split the text into lines, wrap them
-//   in `<p>` tags, and call
-//   [`clipboardParser`](#view.EditorProps.clipboardParser) on it.
-//   The `plain` flag will be true when the text is pasted as plain text.
-//
-//   transformPasted:: ?(Slice) → Slice
-//   Can be used to transform pasted content before it is applied to
-//   the document.
-//
-//   nodeViews:: ?Object<(node: Node, view: EditorView, getPos: () → number, decorations: [Decoration]) → NodeView>
-//   Allows you to pass custom rendering and behavior logic for nodes
-//   and marks. Should map node and mark names to constructor
-//   functions that produce a [`NodeView`](#view.NodeView) object
-//   implementing the node's display behavior. For nodes, the third
-//   argument `getPos` is a function that can be called to get the
-//   node's current position, which can be useful when creating
-//   transactions to update it. For marks, the third argument is a
-//   boolean that indicates whether the mark's content is inline.
-//
-//   `decorations` is an array of node or inline decorations that are
-//   active around the node. They are automatically drawn in the
-//   normal way, and you will usually just want to ignore this, but
-//   they can also be used as a way to provide context information to
-//   the node view without adding it to the document itself.
-//
-//   clipboardSerializer:: ?DOMSerializer
-//   The DOM serializer to use when putting content onto the
-//   clipboard. If not given, the result of
-//   [`DOMSerializer.fromSchema`](#model.DOMSerializer^fromSchema)
-//   will be used.
-//
-//   clipboardTextSerializer:: ?(Slice) → string
-//   A function that will be called to get the text for the current
-//   selection when copying text to the clipboard. By default, the
-//   editor will use [`textBetween`](#model.Node.textBetween) on the
-//   selected range.
-//
-//   decorations:: ?(state: EditorState) → ?DecorationSet
-//   A set of [document decorations](#view.Decoration) to show in the
-//   view.
-//
-//   editable:: ?(state: EditorState) → bool
-//   When this returns false, the content of the view is not directly
-//   editable.
-//
-//   attributes:: ?union<Object<string>, (EditorState) → ?Object<string>>
-//   Control the DOM attributes of the editable element. May be either
-//   an object or a function going from an editor state to an object.
-//   By default, the element will get a class `"ProseMirror"`, and
-//   will have its `contentEditable` attribute determined by the
-//   [`editable` prop](#view.EditorProps.editable). Additional classes
-//   provided here will be added to the class. For other attributes,
-//   the value provided first (as in
-//   [`someProp`](#view.EditorView.someProp)) will be used.
-//
-//   scrollThreshold:: ?union<number, {top: number, right: number, bottom: number, left: number}>
-//   Determines the distance (in pixels) between the cursor and the
-//   end of the visible viewport at which point, when scrolling the
-//   cursor into view, scrolling takes place. Defaults to 0.
-//
-//   scrollMargin:: ?union<number, {top: number, right: number, bottom: number, left: number}>
-//   Determines the extra space (in pixels) that is left above or
-//   below the cursor when it is scrolled into view. Defaults to 5.
-
-// DirectEditorProps:: interface extends EditorProps
-//
-// The props object given directly to the editor view supports two
-// fields that can't be used in plugins:
-//
-//   state:: EditorState
-//   The current state of the editor.
-//
-//   dispatchTransaction:: ?(tr: Transaction)
-//   The callback over which to send transactions (state updates)
-//   produced by the view. If you specify this, you probably want to
-//   make sure this ends up calling the view's
-//   [`updateState`](#view.EditorView.updateState) method with a new
-//   state that has the transaction
-//   [applied](#state.EditorState.apply). The callback will be bound to have
-//   the view instance as its `this` binding.
-
-
-//# sourceMappingURL=index.es.js.map
 
 // CONCATENATED MODULE: ./node_modules/prosemirror-dropcursor/dist/index.es.js
 
@@ -68223,9 +63310,6 @@ DropCursorView.prototype.dragleave = function dragleave (event) {
 // EXTERNAL MODULE: ./node_modules/prosemirror-keymap/dist/index.es.js + 1 modules
 var prosemirror_keymap_dist_index_es = __webpack_require__("7f06");
 
-// EXTERNAL MODULE: ./node_modules/prosemirror-view/dist/index.es.js
-var prosemirror_view_dist_index_es = __webpack_require__("576a");
-
 // CONCATENATED MODULE: ./node_modules/prosemirror-gapcursor/dist/index.es.js
 
 
@@ -68248,7 +63332,7 @@ var index_es_GapCursor = /*@__PURE__*/(function (Selection) {
     return GapCursor.valid($pos) ? new GapCursor($pos) : Selection.near($pos)
   };
 
-  GapCursor.prototype.content = function content () { return dist_index_es["Slice"].empty };
+  GapCursor.prototype.content = function content () { return prosemirror_model_dist_index_es["Slice"].empty };
 
   GapCursor.prototype.eq = function eq (other) {
     return other instanceof GapCursor && other.head == this.head
@@ -68420,7 +63504,7 @@ function drawGapCursor(state) {
   if (!(state.selection instanceof index_es_GapCursor)) { return null }
   var node = document.createElement("div");
   node.className = "ProseMirror-gapcursor";
-  return prosemirror_view_dist_index_es["b" /* DecorationSet */].create(state.doc, [prosemirror_view_dist_index_es["a" /* Decoration */].widget(state.selection.head, node, {key: "gapcursor"})])
+  return dist_index_es["b" /* DecorationSet */].create(state.doc, [dist_index_es["a" /* Decoration */].widget(state.selection.head, node, {key: "gapcursor"})])
 }
 
 
@@ -68768,7 +63852,7 @@ function splitBlock(state, dispatch) {
     if (can) {
       tr.split(tr.mapping.map($from.pos), 1, types);
       if (!atEnd && !$from.parentOffset && $from.parent.type != deflt &&
-          $from.node(-1).canReplace($from.index(-1), $from.indexAfter(-1), dist_index_es["Fragment"].from(deflt.create(), $from.parent)))
+          $from.node(-1).canReplace($from.index(-1), $from.indexAfter(-1), prosemirror_model_dist_index_es["Fragment"].from(deflt.create(), $from.parent)))
         { tr.setNodeMarkup(tr.mapping.map($from.before()), deflt); }
     }
     dispatch(tr.scrollIntoView());
@@ -68835,11 +63919,11 @@ function deleteBarrier(state, $cut, dispatch) {
       (conn = (match = before.contentMatchAt(before.childCount)).findWrapping(after.type)) &&
       match.matchType(conn[0] || after.type).validEnd) {
     if (dispatch) {
-      var end = $cut.pos + after.nodeSize, wrap = dist_index_es["Fragment"].empty;
+      var end = $cut.pos + after.nodeSize, wrap = prosemirror_model_dist_index_es["Fragment"].empty;
       for (var i = conn.length - 1; i >= 0; i--)
-        { wrap = dist_index_es["Fragment"].from(conn[i].create(null, wrap)); }
-      wrap = dist_index_es["Fragment"].from(before.copy(wrap));
-      var tr = state.tr.step(new prosemirror_transform_dist_index_es["b" /* ReplaceAroundStep */]($cut.pos - 1, end, $cut.pos, end, new dist_index_es["Slice"](wrap, 1, 0), conn.length, true));
+        { wrap = prosemirror_model_dist_index_es["Fragment"].from(conn[i].create(null, wrap)); }
+      wrap = prosemirror_model_dist_index_es["Fragment"].from(before.copy(wrap));
+      var tr = state.tr.step(new prosemirror_transform_dist_index_es["b" /* ReplaceAroundStep */]($cut.pos - 1, end, $cut.pos, end, new prosemirror_model_dist_index_es["Slice"](wrap, 1, 0), conn.length, true));
       var joinAt = end + 2 * conn.length;
       if (Object(prosemirror_transform_dist_index_es["f" /* canJoin */])(tr.doc, joinAt)) { tr.join(joinAt); }
       dispatch(tr.scrollIntoView());
@@ -69179,8 +64263,13 @@ function undoInputRule(state, dispatch) {
         var tr = state.tr, toUndo = undoable.transform;
         for (var j = toUndo.steps.length - 1; j >= 0; j--)
           { tr.step(toUndo.steps[j].invert(toUndo.docs[j])); }
-        var marks = tr.doc.resolve(undoable.from).marks();
-        dispatch(tr.replaceWith(undoable.from, undoable.to, state.schema.text(undoable.text, marks)));
+        if (undoable.text) {
+          var marks = tr.doc.resolve(undoable.from).marks();
+          tr.replaceWith(undoable.from, undoable.to, state.schema.text(undoable.text, marks));
+        } else {
+          tr.delete(undoable.from, undoable.to);
+        }
+        dispatch(tr);
       }
       return true
     }
@@ -69262,8 +64351,8 @@ var prosemirror_utils_dist = __webpack_require__("986d");
 // CONCATENATED MODULE: ./node_modules/tiptap-utils/dist/utils.esm.js
 
     /*!
-    * tiptap-utils v1.10.4
-    * (c) 2020 überdosis GbR (limited liability)
+    * tiptap-utils v1.11.0
+    * (c) 2021 überdosis GbR (limited liability)
     * @license MIT
     */
   
@@ -69466,9 +64555,9 @@ function wrapInList(listType, attrs) {
       // Don't do anything if this is the top of the list
       if ($from.index(range.depth - 1) == 0) { return false }
       var $insert = state.doc.resolve(range.start - 2);
-      outerRange = new dist_index_es["NodeRange"]($insert, $insert, range.depth);
+      outerRange = new prosemirror_model_dist_index_es["NodeRange"]($insert, $insert, range.depth);
       if (range.endIndex < range.parent.childCount)
-        { range = new dist_index_es["NodeRange"]($from, state.doc.resolve($to.end(range.depth)), range.depth); }
+        { range = new prosemirror_model_dist_index_es["NodeRange"]($from, state.doc.resolve($to.end(range.depth)), range.depth); }
       doJoin = true;
     }
     var wrap = Object(prosemirror_transform_dist_index_es["i" /* findWrapping */])(outerRange, listType, attrs, range);
@@ -69479,12 +64568,12 @@ function wrapInList(listType, attrs) {
 }
 
 function doWrapInList(tr, range, wrappers, joinBefore, listType) {
-  var content = dist_index_es["Fragment"].empty;
+  var content = prosemirror_model_dist_index_es["Fragment"].empty;
   for (var i = wrappers.length - 1; i >= 0; i--)
-    { content = dist_index_es["Fragment"].from(wrappers[i].type.create(wrappers[i].attrs, content)); }
+    { content = prosemirror_model_dist_index_es["Fragment"].from(wrappers[i].type.create(wrappers[i].attrs, content)); }
 
   tr.step(new prosemirror_transform_dist_index_es["b" /* ReplaceAroundStep */](range.start - (joinBefore ? 2 : 0), range.end, range.start, range.end,
-                                new dist_index_es["Slice"](content, 0, 0), wrappers.length, true));
+                                new prosemirror_model_dist_index_es["Slice"](content, 0, 0), wrappers.length, true));
 
   var found = 0;
   for (var i$1 = 0; i$1 < wrappers.length; i$1++) { if (wrappers[i$1].type == listType) { found = i$1 + 1; } }
@@ -69520,14 +64609,14 @@ function splitListItem(itemType) {
       if ($from.depth == 2 || $from.node(-3).type != itemType ||
           $from.index(-2) != $from.node(-2).childCount - 1) { return false }
       if (dispatch) {
-        var wrap = dist_index_es["Fragment"].empty, keepItem = $from.index(-1) > 0;
+        var wrap = prosemirror_model_dist_index_es["Fragment"].empty, keepItem = $from.index(-1) > 0;
         // Build a fragment containing empty versions of the structure
         // from the outer list item to the parent node of the cursor
         for (var d = $from.depth - (keepItem ? 1 : 2); d >= $from.depth - 3; d--)
-          { wrap = dist_index_es["Fragment"].from($from.node(d).copy(wrap)); }
+          { wrap = prosemirror_model_dist_index_es["Fragment"].from($from.node(d).copy(wrap)); }
         // Add a second list item with an empty default start node
-        wrap = wrap.append(dist_index_es["Fragment"].from(itemType.createAndFill()));
-        var tr$1 = state.tr.replace($from.before(keepItem ? null : -1), $from.after(-3), new dist_index_es["Slice"](wrap, keepItem ? 3 : 2, 2));
+        wrap = wrap.append(prosemirror_model_dist_index_es["Fragment"].from(itemType.createAndFill()));
+        var tr$1 = state.tr.replace($from.before(keepItem ? null : -1), $from.after(-3), new prosemirror_model_dist_index_es["Slice"](wrap, keepItem ? 3 : 2, 2));
         tr$1.setSelection(state.selection.constructor.near(tr$1.doc.resolve($from.pos + (keepItem ? 3 : 2))));
         dispatch(tr$1.scrollIntoView());
       }
@@ -69566,8 +64655,8 @@ function liftToOuterList(state, dispatch, itemType, range) {
     // There are siblings after the lifted items, which must become
     // children of the last item
     tr.step(new prosemirror_transform_dist_index_es["b" /* ReplaceAroundStep */](end - 1, endOfList, end, endOfList,
-                                  new dist_index_es["Slice"](dist_index_es["Fragment"].from(itemType.create(null, range.parent.copy())), 1, 0), 1, true));
-    range = new dist_index_es["NodeRange"](tr.doc.resolve(range.$from.pos), tr.doc.resolve(endOfList), range.depth);
+                                  new prosemirror_model_dist_index_es["Slice"](prosemirror_model_dist_index_es["Fragment"].from(itemType.create(null, range.parent.copy())), 1, 0), 1, true));
+    range = new prosemirror_model_dist_index_es["NodeRange"](tr.doc.resolve(range.$from.pos), tr.doc.resolve(endOfList), range.depth);
   }
   dispatch(tr.lift(range, Object(prosemirror_transform_dist_index_es["k" /* liftTarget */])(range)).scrollIntoView());
   return true
@@ -69584,15 +64673,15 @@ function liftOutOfList(state, dispatch, range) {
   var atStart = range.startIndex == 0, atEnd = range.endIndex == list.childCount;
   var parent = $start.node(-1), indexBefore = $start.index(-1);
   if (!parent.canReplace(indexBefore + (atStart ? 0 : 1), indexBefore + 1,
-                         item.content.append(atEnd ? dist_index_es["Fragment"].empty : dist_index_es["Fragment"].from(list))))
+                         item.content.append(atEnd ? prosemirror_model_dist_index_es["Fragment"].empty : prosemirror_model_dist_index_es["Fragment"].from(list))))
     { return false }
   var start = $start.pos, end = start + item.nodeSize;
   // Strip off the surrounding list. At the sides where we're not at
   // the end of the list, the existing list is closed. At sides where
   // this is the end, it is overwritten to its end.
   tr.step(new prosemirror_transform_dist_index_es["b" /* ReplaceAroundStep */](start - (atStart ? 1 : 0), end + (atEnd ? 1 : 0), start + 1, end - 1,
-                                new dist_index_es["Slice"]((atStart ? dist_index_es["Fragment"].empty : dist_index_es["Fragment"].from(list.copy(dist_index_es["Fragment"].empty)))
-                                          .append(atEnd ? dist_index_es["Fragment"].empty : dist_index_es["Fragment"].from(list.copy(dist_index_es["Fragment"].empty))),
+                                new prosemirror_model_dist_index_es["Slice"]((atStart ? prosemirror_model_dist_index_es["Fragment"].empty : prosemirror_model_dist_index_es["Fragment"].from(list.copy(prosemirror_model_dist_index_es["Fragment"].empty)))
+                                          .append(atEnd ? prosemirror_model_dist_index_es["Fragment"].empty : prosemirror_model_dist_index_es["Fragment"].from(list.copy(prosemirror_model_dist_index_es["Fragment"].empty))),
                                           atStart ? 0 : 1, atEnd ? 0 : 1), atStart ? 0 : 1));
   dispatch(tr.scrollIntoView());
   return true
@@ -69615,8 +64704,8 @@ function sinkListItem(itemType) {
 
     if (dispatch) {
       var nestedBefore = nodeBefore.lastChild && nodeBefore.lastChild.type == parent.type;
-      var inner = dist_index_es["Fragment"].from(nestedBefore ? itemType.create() : null);
-      var slice = new dist_index_es["Slice"](dist_index_es["Fragment"].from(itemType.create(null, dist_index_es["Fragment"].from(parent.type.create(null, inner)))),
+      var inner = prosemirror_model_dist_index_es["Fragment"].from(nestedBefore ? itemType.create() : null);
+      var slice = new prosemirror_model_dist_index_es["Slice"](prosemirror_model_dist_index_es["Fragment"].from(itemType.create(null, prosemirror_model_dist_index_es["Fragment"].from(parent.type.create(null, inner)))),
                             nestedBefore ? 3 : 1, 0);
       var before = range.start, after = range.end;
       dispatch(state.tr.step(new prosemirror_transform_dist_index_es["b" /* ReplaceAroundStep */](before - (nestedBefore ? 3 : 1), after,
@@ -69630,190 +64719,11 @@ function sinkListItem(itemType) {
 
 //# sourceMappingURL=index.es.js.map
 
-// CONCATENATED MODULE: ./node_modules/tiptap-commands/node_modules/prosemirror-inputrules/dist/index.es.js
-
-
-
-// ::- Input rules are regular expressions describing a piece of text
-// that, when typed, causes something to happen. This might be
-// changing two dashes into an emdash, wrapping a paragraph starting
-// with `"> "` into a blockquote, or something entirely different.
-var index_es_InputRule = function InputRule(match, handler) {
-  this.match = match;
-  this.handler = typeof handler == "string" ? index_es_stringHandler(handler) : handler;
-};
-
-function index_es_stringHandler(string) {
-  return function(state, match, start, end) {
-    var insert = string;
-    if (match[1]) {
-      var offset = match[0].lastIndexOf(match[1]);
-      insert += match[0].slice(offset + match[1].length);
-      start += offset;
-      var cutOff = start - end;
-      if (cutOff > 0) {
-        insert = match[0].slice(offset - cutOff, offset) + insert;
-        start = end;
-      }
-    }
-    return state.tr.insertText(insert, start, end)
-  }
-}
-
-var index_es_MAX_MATCH = 500;
-
-// :: (config: {rules: [InputRule]}) → Plugin
-// Create an input rules plugin. When enabled, it will cause text
-// input that matches any of the given rules to trigger the rule's
-// action.
-function index_es_inputRules(ref) {
-  var rules = ref.rules;
-
-  var plugin = new index_es["Plugin"]({
-    state: {
-      init: function init() { return null },
-      apply: function apply(tr, prev) {
-        var stored = tr.getMeta(this);
-        if (stored) { return stored }
-        return tr.selectionSet || tr.docChanged ? null : prev
-      }
-    },
-
-    props: {
-      handleTextInput: function handleTextInput(view, from, to, text) {
-        return index_es_run(view, from, to, text, rules, plugin)
-      },
-      handleDOMEvents: {
-        compositionend: function (view) {
-          setTimeout(function () {
-            var ref = view.state.selection;
-            var $cursor = ref.$cursor;
-            if ($cursor) { index_es_run(view, $cursor.pos, $cursor.pos, "", rules, plugin); }
-          });
-        }
-      }
-    },
-
-    isInputRules: true
-  });
-  return plugin
-}
-
-function index_es_run(view, from, to, text, rules, plugin) {
-  if (view.composing) { return false }
-  var state = view.state, $from = state.doc.resolve(from);
-  if ($from.parent.type.spec.code) { return false }
-  var textBefore = $from.parent.textBetween(Math.max(0, $from.parentOffset - index_es_MAX_MATCH), $from.parentOffset,
-                                            null, "\ufffc") + text;
-  for (var i = 0; i < rules.length; i++) {
-    var match = rules[i].match.exec(textBefore);
-    var tr = match && rules[i].handler(state, match, from - (match[0].length - text.length), to);
-    if (!tr) { continue }
-    view.dispatch(tr.setMeta(plugin, {transform: tr, from: from, to: to, text: text}));
-    return true
-  }
-  return false
-}
-
-// :: (EditorState, ?(Transaction)) → bool
-// This is a command that will undo an input rule, if applying such a
-// rule was the last thing that the user did.
-function index_es_undoInputRule(state, dispatch) {
-  var plugins = state.plugins;
-  for (var i = 0; i < plugins.length; i++) {
-    var plugin = plugins[i], undoable = (void 0);
-    if (plugin.spec.isInputRules && (undoable = plugin.getState(state))) {
-      if (dispatch) {
-        var tr = state.tr, toUndo = undoable.transform;
-        for (var j = toUndo.steps.length - 1; j >= 0; j--)
-          { tr.step(toUndo.steps[j].invert(toUndo.docs[j])); }
-        if (undoable.text) {
-          var marks = tr.doc.resolve(undoable.from).marks();
-          tr.replaceWith(undoable.from, undoable.to, state.schema.text(undoable.text, marks));
-        } else {
-          tr.delete(undoable.from, undoable.to);
-        }
-        dispatch(tr);
-      }
-      return true
-    }
-  }
-  return false
-}
-
-// :: InputRule Converts double dashes to an emdash.
-var index_es_emDash = new index_es_InputRule(/--$/, "—");
-// :: InputRule Converts three dots to an ellipsis character.
-var index_es_ellipsis = new index_es_InputRule(/\.\.\.$/, "…");
-// :: InputRule “Smart” opening double quotes.
-var index_es_openDoubleQuote = new index_es_InputRule(/(?:^|[\s\{\[\(\<'"\u2018\u201C])(")$/, "“");
-// :: InputRule “Smart” closing double quotes.
-var index_es_closeDoubleQuote = new index_es_InputRule(/"$/, "”");
-// :: InputRule “Smart” opening single quotes.
-var index_es_openSingleQuote = new index_es_InputRule(/(?:^|[\s\{\[\(\<'"\u2018\u201C])(')$/, "‘");
-// :: InputRule “Smart” closing single quotes.
-var index_es_closeSingleQuote = new index_es_InputRule(/'$/, "’");
-
-// :: [InputRule] Smart-quote related input rules.
-var index_es_smartQuotes = [index_es_openDoubleQuote, index_es_closeDoubleQuote, index_es_openSingleQuote, index_es_closeSingleQuote];
-
-// :: (RegExp, NodeType, ?union<Object, ([string]) → ?Object>, ?([string], Node) → bool) → InputRule
-// Build an input rule for automatically wrapping a textblock when a
-// given string is typed. The `regexp` argument is
-// directly passed through to the `InputRule` constructor. You'll
-// probably want the regexp to start with `^`, so that the pattern can
-// only occur at the start of a textblock.
-//
-// `nodeType` is the type of node to wrap in. If it needs attributes,
-// you can either pass them directly, or pass a function that will
-// compute them from the regular expression match.
-//
-// By default, if there's a node with the same type above the newly
-// wrapped node, the rule will try to [join](#transform.Transform.join) those
-// two nodes. You can pass a join predicate, which takes a regular
-// expression match and the node before the wrapped node, and can
-// return a boolean to indicate whether a join should happen.
-function index_es_wrappingInputRule(regexp, nodeType, getAttrs, joinPredicate) {
-  return new index_es_InputRule(regexp, function (state, match, start, end) {
-    var attrs = getAttrs instanceof Function ? getAttrs(match) : getAttrs;
-    var tr = state.tr.delete(start, end);
-    var $start = tr.doc.resolve(start), range = $start.blockRange(), wrapping = range && Object(prosemirror_transform_dist_index_es["i" /* findWrapping */])(range, nodeType, attrs);
-    if (!wrapping) { return null }
-    tr.wrap(range, wrapping);
-    var before = tr.doc.resolve(start - 1).nodeBefore;
-    if (before && before.type == nodeType && Object(prosemirror_transform_dist_index_es["f" /* canJoin */])(tr.doc, start - 1) &&
-        (!joinPredicate || joinPredicate(match, before)))
-      { tr.join(start - 1); }
-    return tr
-  })
-}
-
-// :: (RegExp, NodeType, ?union<Object, ([string]) → ?Object>) → InputRule
-// Build an input rule that changes the type of a textblock when the
-// matched text is typed into it. You'll usually want to start your
-// regexp with `^` to that it is only matched at the start of a
-// textblock. The optional `getAttrs` parameter can be used to compute
-// the new node's attributes, and works the same as in the
-// `wrappingInputRule` function.
-function index_es_textblockTypeInputRule(regexp, nodeType, getAttrs) {
-  return new index_es_InputRule(regexp, function (state, match, start, end) {
-    var $start = state.doc.resolve(start);
-    var attrs = getAttrs instanceof Function ? getAttrs(match) : getAttrs;
-    if (!$start.node(-1).canReplaceWith($start.index(-1), $start.indexAfter(-1), nodeType)) { return null }
-    return state.tr
-      .delete(start, end)
-      .setBlockType(start, start, nodeType, attrs)
-  })
-}
-
-
-//# sourceMappingURL=index.es.js.map
-
 // CONCATENATED MODULE: ./node_modules/tiptap-commands/dist/commands.esm.js
 
     /*!
-    * tiptap-commands v1.14.6
-    * (c) 2020 überdosis GbR (limited liability)
+    * tiptap-commands v1.15.0
+    * (c) 2021 überdosis GbR (limited liability)
     * @license MIT
     */
   
@@ -69854,7 +64764,7 @@ function getMarksBetween(start, end, state) {
 }
 
 function markInputRule (regexp, markType, getAttrs) {
-  return new index_es_InputRule(regexp, (state, match, start, end) => {
+  return new InputRule(regexp, (state, match, start, end) => {
     const attrs = getAttrs instanceof Function ? getAttrs(match) : getAttrs;
     const {
       tr
@@ -69898,7 +64808,7 @@ function markInputRule (regexp, markType, getAttrs) {
 }
 
 function nodeInputRule (regexp, type, getAttrs) {
-  return new index_es_InputRule(regexp, (state, match, start, end) => {
+  return new InputRule(regexp, (state, match, start, end) => {
     const attrs = getAttrs instanceof Function ? getAttrs(match) : getAttrs;
     const {
       tr
@@ -69947,12 +64857,12 @@ function pasteRule (regexp, type, getAttrs) {
         nodes.push(child.copy(handler(child.content)));
       }
     });
-    return dist_index_es["Fragment"].fromArray(nodes);
+    return prosemirror_model_dist_index_es["Fragment"].fromArray(nodes);
   };
 
   return new index_es["Plugin"]({
     props: {
-      transformPasted: slice => new dist_index_es["Slice"](handler(slice.content), slice.openStart, slice.openEnd)
+      transformPasted: slice => new prosemirror_model_dist_index_es["Slice"](handler(slice.content), slice.openStart, slice.openEnd)
     }
   });
 }
@@ -69996,12 +64906,12 @@ function markPasteRule (regexp, type, getAttrs) {
         nodes.push(child.copy(handler(child.content, child)));
       }
     });
-    return dist_index_es["Fragment"].fromArray(nodes);
+    return prosemirror_model_dist_index_es["Fragment"].fromArray(nodes);
   };
 
   return new index_es["Plugin"]({
     props: {
-      transformPasted: slice => new dist_index_es["Slice"](handler(slice.content), slice.openStart, slice.openEnd)
+      transformPasted: slice => new prosemirror_model_dist_index_es["Slice"](handler(slice.content), slice.openStart, slice.openEnd)
     }
   });
 }
@@ -70032,7 +64942,7 @@ function removeMark (type) {
   };
 }
 
-function replaceText (range = null, type, attrs = {}) {
+function replaceText (range = null, type, attrs = {}, fragment = prosemirror_model_dist_index_es["Fragment"].empty) {
   return (state, dispatch) => {
     const {
       $from,
@@ -70047,7 +64957,7 @@ function replaceText (range = null, type, attrs = {}) {
     }
 
     if (dispatch) {
-      dispatch(state.tr.replaceWith(from, to, type.create(attrs)));
+      dispatch(state.tr.replaceWith(from, to, type.create(attrs, fragment)));
     }
 
     return true;
@@ -70124,15 +65034,15 @@ function splitToDefaultListItem(itemType) {
       if ($from.depth == 2 || $from.node(-3).type != itemType || $from.index(-2) != $from.node(-2).childCount - 1) return false;
 
       if (dispatch) {
-        let wrap = dist_index_es["Fragment"].empty;
+        let wrap = prosemirror_model_dist_index_es["Fragment"].empty;
         const keepItem = $from.index(-1) > 0; // Build a fragment containing empty versions of the structure
         // from the outer list item to the parent node of the cursor
 
-        for (let d = $from.depth - (keepItem ? 1 : 2); d >= $from.depth - 3; d--) wrap = dist_index_es["Fragment"].from($from.node(d).copy(wrap)); // Add a second list item with an empty default start node
+        for (let d = $from.depth - (keepItem ? 1 : 2); d >= $from.depth - 3; d--) wrap = prosemirror_model_dist_index_es["Fragment"].from($from.node(d).copy(wrap)); // Add a second list item with an empty default start node
 
 
-        wrap = wrap.append(dist_index_es["Fragment"].from(itemType.createAndFill()));
-        const tr = state.tr.replace($from.before(keepItem ? null : -1), $from.after(-3), new dist_index_es["Slice"](wrap, keepItem ? 3 : 2, 2));
+        wrap = wrap.append(prosemirror_model_dist_index_es["Fragment"].from(itemType.createAndFill()));
+        const tr = state.tr.replace($from.before(keepItem ? null : -1), $from.after(-3), new prosemirror_model_dist_index_es["Slice"](wrap, keepItem ? 3 : 2, 2));
         tr.setSelection(state.selection.constructor.near(tr.doc.resolve($from.pos + (keepItem ? 3 : 2))));
         dispatch(tr.scrollIntoView());
       }
@@ -70278,8 +65188,8 @@ function updateMark (type, attrs) {
 // CONCATENATED MODULE: ./node_modules/tiptap/dist/tiptap.esm.js
 
     /*!
-    * tiptap v1.29.6
-    * (c) 2020 überdosis GbR (limited liability)
+    * tiptap v1.30.0
+    * (c) 2021 überdosis GbR (limited liability)
     * @license MIT
     */
   
@@ -70993,7 +65903,7 @@ class tiptap_esm_Editor extends Emitter {
   }
 
   createSchema() {
-    return new dist_index_es["Schema"]({
+    return new prosemirror_model_dist_index_es["Schema"]({
       topNode: this.options.topNode,
       nodes: this.nodes,
       marks: this.marks
@@ -71065,14 +65975,14 @@ class tiptap_esm_Editor extends Emitter {
       const htmlString = "<div>".concat(content, "</div>");
       const parser = new window.DOMParser();
       const element = parser.parseFromString(htmlString, 'text/html').body.firstElementChild;
-      return dist_index_es["DOMParser"].fromSchema(this.schema).parse(element, parseOptions);
+      return prosemirror_model_dist_index_es["DOMParser"].fromSchema(this.schema).parse(element, parseOptions);
     }
 
     return false;
   }
 
   createView() {
-    return new EditorView(this.element, {
+    return new dist_index_es["c" /* EditorView */](this.element, {
       state: this.createState(),
       handlePaste: (...args) => {
         this.emit('paste', ...args);
@@ -71218,7 +66128,7 @@ class tiptap_esm_Editor extends Emitter {
 
   getHTML() {
     const div = document.createElement('div');
-    const fragment = dist_index_es["DOMSerializer"].fromSchema(this.schema).serializeFragment(this.state.doc.content);
+    const fragment = prosemirror_model_dist_index_es["DOMSerializer"].fromSchema(this.schema).serializeFragment(this.state.doc.content);
     div.appendChild(fragment);
     return div.innerHTML;
   }
@@ -71438,19 +66348,19 @@ var EditorMenuBar = {
 
 };
 
-function tiptap_esm_textRange(node, from, to) {
+function textRange(node, from, to) {
   const range = document.createRange();
   range.setEnd(node, to == null ? node.nodeValue.length : to);
   range.setStart(node, from || 0);
   return range;
 }
 
-function tiptap_esm_singleRect(object, bias) {
+function singleRect(object, bias) {
   const rects = object.getClientRects();
   return !rects.length ? object.getBoundingClientRect() : rects[bias < 0 ? 0 : rects.length - 1];
 }
 
-function tiptap_esm_coordsAtPos(view, pos, end = false) {
+function coordsAtPos(view, pos, end = false) {
   const {
     node,
     offset
@@ -71460,22 +66370,22 @@ function tiptap_esm_coordsAtPos(view, pos, end = false) {
 
   if (node.nodeType === 3) {
     if (end && offset < node.nodeValue.length) {
-      rect = tiptap_esm_singleRect(tiptap_esm_textRange(node, offset - 1, offset), -1);
+      rect = singleRect(textRange(node, offset - 1, offset), -1);
       side = 'right';
     } else if (offset < node.nodeValue.length) {
-      rect = tiptap_esm_singleRect(tiptap_esm_textRange(node, offset, offset + 1), -1);
+      rect = singleRect(textRange(node, offset, offset + 1), -1);
       side = 'left';
     }
   } else if (node.firstChild) {
     if (offset < node.childNodes.length) {
       const child = node.childNodes[offset];
-      rect = tiptap_esm_singleRect(child.nodeType === 3 ? tiptap_esm_textRange(child) : child, -1);
+      rect = singleRect(child.nodeType === 3 ? textRange(child) : child, -1);
       side = 'left';
     }
 
     if ((!rect || rect.top === rect.bottom) && offset) {
       const child = node.childNodes[offset - 1];
-      rect = tiptap_esm_singleRect(child.nodeType === 3 ? tiptap_esm_textRange(child) : child, 1);
+      rect = singleRect(child.nodeType === 3 ? textRange(child) : child, 1);
       side = 'right';
     }
   } else {
@@ -71570,8 +66480,8 @@ class Menu$1 {
     // We can't use EditorView.cordsAtPos here because it can't handle linebreaks correctly
     // See: https://github.com/ProseMirror/prosemirror-view/pull/47
 
-    const start = tiptap_esm_coordsAtPos(view, from);
-    const end = tiptap_esm_coordsAtPos(view, to, true); // The box in which the tooltip is positioned, to use as base
+    const start = coordsAtPos(view, from);
+    const end = coordsAtPos(view, to, true); // The box in which the tooltip is positioned, to use as base
 
     const parent = this.options.element.offsetParent;
 
@@ -71914,7 +66824,7 @@ var EditorFloatingMenu = {
 
 
 
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/UnderlineIcon.vue?vue&type=template&id=49fa0dec&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/UnderlineIcon.vue?vue&type=template&id=49fa0dec&
 var UnderlineIconvue_type_template_id_49fa0dec_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M22.5 21.248h-21a1.25 1.25 0 000 2.5h21a1.25 1.25 0 000-2.5zM1.978 2.748h1.363a.25.25 0 01.25.25v8.523a8.409 8.409 0 0016.818 0V3a.25.25 0 01.25-.25h1.363a1.25 1.25 0 000-2.5H16.3a1.25 1.25 0 000 2.5h1.363a.25.25 0 01.25.25v8.523a5.909 5.909 0 01-11.818 0V3a.25.25 0 01.25-.25H7.7a1.25 1.25 0 100-2.5H1.978a1.25 1.25 0 000 2.5z"}})])}
 var UnderlineIconvue_type_template_id_49fa0dec_staticRenderFns = []
 
@@ -71940,7 +66850,7 @@ var UnderlineIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var UnderlineIcon = (UnderlineIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/BoldIcon.vue?vue&type=template&id=8baadecc&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/BoldIcon.vue?vue&type=template&id=8baadecc&
 var BoldIconvue_type_template_id_8baadecc_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M17.194 10.962A6.271 6.271 0 0012.844.248H4.3a1.25 1.25 0 000 2.5h1.013a.25.25 0 01.25.25V21a.25.25 0 01-.25.25H4.3a1.25 1.25 0 100 2.5h9.963a6.742 6.742 0 002.93-12.786zm-4.35-8.214a3.762 3.762 0 010 7.523H8.313a.25.25 0 01-.25-.25V3a.25.25 0 01.25-.25zm1.42 18.5H8.313a.25.25 0 01-.25-.25v-7.977a.25.25 0 01.25-.25h5.951a4.239 4.239 0 010 8.477z"}})])}
 var BoldIconvue_type_template_id_8baadecc_staticRenderFns = []
 
@@ -71966,7 +66876,7 @@ var BoldIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var BoldIcon = (BoldIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/CodingIcon.vue?vue&type=template&id=459435be&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/CodingIcon.vue?vue&type=template&id=459435be&
 var CodingIconvue_type_template_id_459435be_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M9.147 21.552a1.244 1.244 0 01-.895-.378L.84 13.561a2.257 2.257 0 010-3.125l7.412-7.613a1.25 1.25 0 011.791 1.744l-6.9 7.083a.5.5 0 000 .7l6.9 7.082a1.25 1.25 0 01-.9 2.122zm5.707 0a1.25 1.25 0 01-.9-2.122l6.9-7.083a.5.5 0 000-.7l-6.9-7.082a1.25 1.25 0 011.791-1.744l7.411 7.612a2.257 2.257 0 010 3.125l-7.412 7.614a1.244 1.244 0 01-.89.38zm6.514-9.373z"}})])}
 var CodingIconvue_type_template_id_459435be_staticRenderFns = []
 
@@ -71992,7 +66902,7 @@ var CodingIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var CodingIcon = (CodingIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ItalicIcon.vue?vue&type=template&id=4520d8f2&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ItalicIcon.vue?vue&type=template&id=4520d8f2&
 var ItalicIconvue_type_template_id_4520d8f2_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M22.5.248h-7.637a1.25 1.25 0 000 2.5h1.086a.25.25 0 01.211.384L4.78 21.017a.5.5 0 01-.422.231H1.5a1.25 1.25 0 000 2.5h7.637a1.25 1.25 0 000-2.5H8.051a.25.25 0 01-.211-.384L19.22 2.98a.5.5 0 01.422-.232H22.5a1.25 1.25 0 000-2.5z"}})])}
 var ItalicIconvue_type_template_id_4520d8f2_staticRenderFns = []
 
@@ -72018,7 +66928,7 @@ var ItalicIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var ItalicIcon = (ItalicIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ListIcon.vue?vue&type=template&id=4fa95ac6&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ListIcon.vue?vue&type=template&id=4fa95ac6&
 var ListIconvue_type_template_id_4fa95ac6_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M7.75 4.5h15a1 1 0 000-2h-15a1 1 0 000 2zm15 6.5h-15a1 1 0 100 2h15a1 1 0 000-2zm0 8.5h-15a1 1 0 000 2h15a1 1 0 000-2zM2.212 17.248a2 2 0 00-1.933 1.484.75.75 0 101.45.386.5.5 0 11.483.63.75.75 0 100 1.5.5.5 0 11-.482.635.75.75 0 10-1.445.4 2 2 0 103.589-1.648.251.251 0 010-.278 2 2 0 00-1.662-3.111zm2.038-6.5a2 2 0 00-4 0 .75.75 0 001.5 0 .5.5 0 011 0 1.031 1.031 0 01-.227.645L.414 14.029A.75.75 0 001 15.248h2.5a.75.75 0 000-1.5h-.419a.249.249 0 01-.195-.406L3.7 12.33a2.544 2.544 0 00.55-1.582zM4 5.248h-.25A.25.25 0 013.5 5V1.623A1.377 1.377 0 002.125.248H1.5a.75.75 0 000 1.5h.25A.25.25 0 012 2v3a.25.25 0 01-.25.25H1.5a.75.75 0 000 1.5H4a.75.75 0 000-1.5z"}})])}
 var ListIconvue_type_template_id_4fa95ac6_staticRenderFns = []
 
@@ -72044,7 +66954,7 @@ var ListIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var ListIcon = (ListIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ListUlIcon.vue?vue&type=template&id=3f2c4006&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ListUlIcon.vue?vue&type=template&id=3f2c4006&
 var ListUlIconvue_type_template_id_3f2c4006_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('circle',{attrs:{"cx":"2.5","cy":"3.998","r":"2.5"}}),_c('path',{attrs:{"d":"M8.5 5H23a1 1 0 000-2H8.5a1 1 0 000 2z"}}),_c('circle',{attrs:{"cx":"2.5","cy":"11.998","r":"2.5"}}),_c('path',{attrs:{"d":"M23 11H8.5a1 1 0 000 2H23a1 1 0 000-2z"}}),_c('circle',{attrs:{"cx":"2.5","cy":"19.998","r":"2.5"}}),_c('path',{attrs:{"d":"M23 19H8.5a1 1 0 000 2H23a1 1 0 000-2z"}})])}
 var ListUlIconvue_type_template_id_3f2c4006_staticRenderFns = []
 
@@ -72070,7 +66980,7 @@ var ListUlIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var ListUlIcon = (ListUlIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ParagraphIcon.vue?vue&type=template&id=600154ed&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/ParagraphIcon.vue?vue&type=template&id=600154ed&
 var ParagraphIconvue_type_template_id_600154ed_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M22.5.248H7.228a6.977 6.977 0 100 13.954h2.318a.25.25 0 01.25.25V22.5a1.25 1.25 0 002.5 0V3a.25.25 0 01.25-.25h3.682a.25.25 0 01.25.25v19.5a1.25 1.25 0 002.5 0V3a.249.249 0 01.25-.25H22.5a1.25 1.25 0 000-2.5zM9.8 11.452a.25.25 0 01-.25.25H7.228a4.477 4.477 0 110-8.954h2.318A.25.25 0 019.8 3z"}})])}
 var ParagraphIconvue_type_template_id_600154ed_staticRenderFns = []
 
@@ -72096,7 +67006,7 @@ var ParagraphIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var ParagraphIcon = (ParagraphIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/QuoteIcon.vue?vue&type=template&id=4c98b3d0&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/QuoteIcon.vue?vue&type=template&id=4c98b3d0&
 var QuoteIconvue_type_template_id_4c98b3d0_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M18.559 3.932a4.942 4.942 0 100 9.883 4.609 4.609 0 001.115-.141.25.25 0 01.276.368 6.83 6.83 0 01-5.878 3.523 1.25 1.25 0 000 2.5 9.71 9.71 0 009.428-9.95V8.873a4.947 4.947 0 00-4.941-4.941zm-12.323 0a4.942 4.942 0 000 9.883 4.6 4.6 0 001.115-.141.25.25 0 01.277.368 6.83 6.83 0 01-5.878 3.523 1.25 1.25 0 000 2.5 9.711 9.711 0 009.428-9.95V8.873a4.947 4.947 0 00-4.942-4.941z"}})])}
 var QuoteIconvue_type_template_id_4c98b3d0_staticRenderFns = []
 
@@ -72122,7 +67032,7 @@ var QuoteIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var QuoteIcon = (QuoteIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/StrikethroughIcon.vue?vue&type=template&id=67f5712a&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/StrikethroughIcon.vue?vue&type=template&id=67f5712a&
 var StrikethroughIconvue_type_template_id_67f5712a_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M23.75 12.952A1.25 1.25 0 0022.5 11.7h-8.936a.492.492 0 01-.282-.09c-.722-.513-1.482-.981-2.218-1.432-2.8-1.715-4.5-2.9-4.5-4.863 0-2.235 2.207-2.569 3.523-2.569a4.54 4.54 0 013.081.764 2.662 2.662 0 01.447 1.99v.3a1.25 1.25 0 102.5 0v-.268a4.887 4.887 0 00-1.165-3.777C13.949.741 12.359.248 10.091.248c-3.658 0-6.023 1.989-6.023 5.069 0 2.773 1.892 4.512 4 5.927a.25.25 0 01-.139.458H1.5a1.25 1.25 0 000 2.5h10.977a.251.251 0 01.159.058 4.339 4.339 0 011.932 3.466c0 3.268-3.426 3.522-4.477 3.522-1.814 0-3.139-.405-3.834-1.173a3.394 3.394 0 01-.65-2.7 1.25 1.25 0 00-2.488-.246A5.76 5.76 0 004.4 21.753c1.2 1.324 3.114 2 5.688 2 4.174 0 6.977-2.42 6.977-6.022a6.059 6.059 0 00-.849-3.147.25.25 0 01.216-.377H22.5a1.25 1.25 0 001.25-1.255z"}})])}
 var StrikethroughIconvue_type_template_id_67f5712a_staticRenderFns = []
 
@@ -72148,7 +67058,7 @@ var StrikethroughIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var StrikethroughIcon = (StrikethroughIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/UndoIcon.vue?vue&type=template&id=b6691562&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/UndoIcon.vue?vue&type=template&id=b6691562&
 var UndoIconvue_type_template_id_b6691562_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M17.786 3.77a12.542 12.542 0 00-12.965-.865.249.249 0 01-.292-.045L1.937.269A.507.507 0 001.392.16a.5.5 0 00-.308.462v6.7a.5.5 0 00.5.5h6.7a.5.5 0 00.354-.854L6.783 5.115a.253.253 0 01-.068-.228.249.249 0 01.152-.181 10 10 0 019.466 1.1 9.759 9.759 0 01.094 15.809 1.25 1.25 0 001.473 2.016 12.122 12.122 0 005.013-9.961 12.125 12.125 0 00-5.127-9.9z"}})])}
 var UndoIconvue_type_template_id_b6691562_staticRenderFns = []
 
@@ -72174,7 +67084,7 @@ var UndoIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var UndoIcon = (UndoIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/RedoIcon.vue?vue&type=template&id=c865deee&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/RedoIcon.vue?vue&type=template&id=c865deee&
 var RedoIconvue_type_template_id_c865deee_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M22.608.161a.5.5 0 00-.545.108L19.472 2.86a.25.25 0 01-.292.045 12.537 12.537 0 00-12.966.865A12.259 12.259 0 006.1 23.632a1.25 1.25 0 001.476-2.018 9.759 9.759 0 01.091-15.809 10 10 0 019.466-1.1.25.25 0 01.084.409l-1.85 1.85a.5.5 0 00.354.853h6.7a.5.5 0 00.5-.5V.623a.5.5 0 00-.313-.462z"}})])}
 var RedoIconvue_type_template_id_c865deee_staticRenderFns = []
 
@@ -72200,7 +67110,7 @@ var RedoIcon_component = normalizeComponent(
 )
 
 /* harmony default export */ var RedoIcon = (RedoIcon_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/CodeBlockIcon.vue?vue&type=template&id=0be8e030&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-editor/icons/CodeBlockIcon.vue?vue&type=template&id=0be8e030&
 var CodeBlockIconvue_type_template_id_0be8e030_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('svg',{attrs:{"viewBox":"0 0 24 24"}},[_c('path',{attrs:{"d":"M9.147 21.552a1.244 1.244 0 01-.895-.378L.84 13.561a2.257 2.257 0 010-3.125l7.412-7.613a1.25 1.25 0 011.791 1.744l-6.9 7.083a.5.5 0 000 .7l6.9 7.082a1.25 1.25 0 01-.9 2.122zm5.707 0a1.25 1.25 0 01-.9-2.122l6.9-7.083a.5.5 0 000-.7l-6.9-7.082a1.25 1.25 0 011.791-1.744l7.411 7.612a2.257 2.257 0 010 3.125l-7.412 7.614a1.244 1.244 0 01-.89.38zm6.514-9.373z"}})])}
 var CodeBlockIconvue_type_template_id_0be8e030_staticRenderFns = []
 
@@ -73090,8 +68000,8 @@ function redoDepth(state) {
 // CONCATENATED MODULE: ./node_modules/tiptap-extensions/dist/extensions.esm.js
 
     /*!
-    * tiptap-extensions v1.33.1
-    * (c) 2020 überdosis GbR (limited liability)
+    * tiptap-extensions v1.33.2
+    * (c) 2021 überdosis GbR (limited liability)
     * @license MIT
     */
   
@@ -73143,7 +68053,7 @@ class extensions_esm_Blockquote extends Node {
   inputRules({
     type
   }) {
-    return [index_es_wrappingInputRule(/^\s*>\s$/, type)];
+    return [wrappingInputRule(/^\s*>\s$/, type)];
   }
 
 }
@@ -73183,7 +68093,7 @@ class extensions_esm_BulletList extends Node {
   inputRules({
     type
   }) {
-    return [index_es_wrappingInputRule(/^\s*([-+*])\s$/, type)];
+    return [wrappingInputRule(/^\s*([-+*])\s$/, type)];
   }
 
 }
@@ -73227,7 +68137,7 @@ class extensions_esm_CodeBlock extends Node {
   inputRules({
     type
   }) {
-    return [index_es_textblockTypeInputRule(/^```$/, type)];
+    return [textblockTypeInputRule(/^```$/, type)];
   }
 
 }
@@ -73268,13 +68178,13 @@ function getDecorations({
         to
       };
     }).forEach(node => {
-      const decoration = prosemirror_view_dist_index_es["a" /* Decoration */].inline(node.from, node.to, {
+      const decoration = dist_index_es["a" /* Decoration */].inline(node.from, node.to, {
         class: node.classes.join(' ')
       });
       decorations.push(decoration);
     });
   });
-  return prosemirror_view_dist_index_es["b" /* DecorationSet */].create(doc, decorations);
+  return dist_index_es["b" /* DecorationSet */].create(doc, decorations);
 }
 
 function HighlightPlugin({
@@ -73373,7 +68283,7 @@ class extensions_esm_CodeBlockHighlight extends Node {
   inputRules({
     type
   }) {
-    return [index_es_textblockTypeInputRule(/^```$/, type)];
+    return [textblockTypeInputRule(/^```$/, type)];
   }
 
   get plugins() {
@@ -73479,7 +68389,7 @@ class extensions_esm_Heading extends Node {
   inputRules({
     type
   }) {
-    return this.options.levels.map(level => index_es_textblockTypeInputRule(new RegExp("^(#{1,".concat(level, "})\\s$")), type, () => ({
+    return this.options.levels.map(level => textblockTypeInputRule(new RegExp("^(#{1,".concat(level, "})\\s$")), type, () => ({
       level
     })));
   }
@@ -73659,6 +68569,41 @@ class extensions_esm_ListItem extends Node {
 
 }
 
+function getTextBetween(node, from, to, blockSeparator, inlineSeparator, leafText = '\0') {
+  let text = '';
+  let blockSeparated = true;
+  let inlineNode = null;
+  node.content.nodesBetween(from, to, (innerNode, pos) => {
+    if (innerNode.isText) {
+      if (inlineNode) {
+        inlineNode = null;
+        return;
+      }
+
+      text += innerNode.text.slice(Math.max(from, pos) - pos, to - pos);
+      blockSeparated = !blockSeparator;
+    } else if (innerNode.isLeaf && leafText) {
+      text += leafText;
+      blockSeparated = !blockSeparator;
+    } else if (innerNode.isInline && !innerNode.isLeaf) {
+      text += inlineSeparator;
+
+      if (innerNode.textContent) {
+        text += innerNode.textContent;
+        inlineNode = innerNode;
+      }
+
+      text += inlineSeparator;
+      blockSeparated = !blockSeparated;
+    } else if (!blockSeparated && innerNode.isBlock) {
+      text += blockSeparator;
+      blockSeparated = true;
+    }
+  }, 0);
+  return text;
+} // Create a matcher that matches when a specific character is typed. Useful for @mentions and #tags.
+
+
 function triggerCharacter({
   char = '@',
   allowSpaces = false,
@@ -73678,7 +68623,7 @@ function triggerCharacter({
 
     const textFrom = $position.before();
     const textTo = $position.end();
-    const text = $position.doc.textBetween(textFrom, textTo, '\0', '\0');
+    const text = getTextBetween($position.doc, textFrom, textTo, '\0', '\0');
     let match = regexp.exec(text);
     let position;
 
@@ -73890,7 +68835,7 @@ function SuggestionsPlugin({
           decorationId
         } = this.getState(editorState);
         if (!active) return null;
-        return prosemirror_view_dist_index_es["b" /* DecorationSet */].create(editorState.doc, [prosemirror_view_dist_index_es["a" /* Decoration */].inline(range.from, range.to, {
+        return dist_index_es["b" /* DecorationSet */].create(editorState.doc, [dist_index_es["a" /* Decoration */].inline(range.from, range.to, {
           nodeName: 'span',
           class: suggestionClass,
           'data-decoration-id': decorationId
@@ -73922,6 +68867,19 @@ class extensions_esm_Mention extends Node {
     return dom.innerText.split(this.options.matcher.char).join('');
   }
 
+  createFragment(schema, label) {
+    return prosemirror_model_dist_index_es["Fragment"].fromJSON(schema, [{
+      type: 'text',
+      text: "".concat(this.options.matcher.char).concat(label)
+    }]);
+  }
+
+  insertMention(range, attrs, schema) {
+    const nodeType = schema.nodes[this.name];
+    const nodeFragment = this.createFragment(schema, attrs.label);
+    return replaceText(range, nodeType, attrs, nodeFragment);
+  }
+
   get schema() {
     return {
       attrs: {
@@ -73930,7 +68888,7 @@ class extensions_esm_Mention extends Node {
       },
       group: 'inline',
       inline: true,
-      content: 'inline*',
+      content: 'text*',
       selectable: false,
       atom: true,
       toDOM: node => ['span', {
@@ -73949,10 +68907,7 @@ class extensions_esm_Mention extends Node {
         },
         getContent: (dom, schema) => {
           const label = this.getLabel(dom);
-          return dist_index_es["Fragment"].fromJSON(schema, [{
-            type: 'text',
-            text: "".concat(this.options.matcher.char).concat(label)
-          }]);
+          return this.createFragment(schema, label);
         }
       }]
     };
@@ -73961,7 +68916,7 @@ class extensions_esm_Mention extends Node {
   commands({
     schema
   }) {
-    return attrs => replaceText(null, schema.nodes[this.name], attrs);
+    return attrs => this.insertMention(null, attrs, schema);
   }
 
   get plugins() {
@@ -73970,7 +68925,7 @@ class extensions_esm_Mention extends Node {
         range,
         attrs,
         schema
-      }) => replaceText(range, schema.nodes[this.name], attrs),
+      }) => this.insertMention(range, attrs, schema),
       appendText: ' ',
       matcher: this.options.matcher,
       items: this.options.items,
@@ -74030,7 +68985,7 @@ class extensions_esm_OrderedList extends Node {
   inputRules({
     type
   }) {
-    return [index_es_wrappingInputRule(/^(\d+)\.\s$/, type, match => ({
+    return [wrappingInputRule(/^(\d+)\.\s$/, type, match => ({
       order: +match[1]
     }), (match, node) => node.childCount + node.attrs.order === +match[1])];
   }
@@ -74111,7 +69066,10 @@ class extensions_esm_Table extends Node {
       toggleHeaderColumn: () => prosemirror_tables_dist_index_es["toggleHeaderColumn"],
       toggleHeaderRow: () => prosemirror_tables_dist_index_es["toggleHeaderRow"],
       toggleHeaderCell: () => prosemirror_tables_dist_index_es["toggleHeaderCell"],
-      setCellAttr: () => prosemirror_tables_dist_index_es["setCellAttr"],
+      setCellAttr: ({
+        name,
+        value
+      }) => Object(prosemirror_tables_dist_index_es["setCellAttr"])(name, value),
       fixTables: () => prosemirror_tables_dist_index_es["fixTables"]
     };
   }
@@ -74262,7 +69220,7 @@ class extensions_esm_TodoList extends Node {
   inputRules({
     type
   }) {
-    return [index_es_wrappingInputRule(/^\s*(\[ \])\s$/, type)];
+    return [wrappingInputRule(/^\s*(\[ \])\s$/, type)];
   }
 
 }
@@ -74436,7 +69394,7 @@ class extensions_esm_Link extends Mark {
       }],
       toDOM: node => ['a', { ...node.attrs,
         rel: 'noopener noreferrer nofollow',
-        target: this.options.target
+        target: node.attrs.target || this.options.target
       }, 0]
     };
   }
@@ -74681,7 +69639,7 @@ class extensions_esm_Focus extends Extension {
             const hasAnchor = anchor >= pos && anchor <= pos + node.nodeSize;
 
             if (hasAnchor && !node.isText) {
-              const decoration = prosemirror_view_dist_index_es["a" /* Decoration */].node(pos, pos + node.nodeSize, {
+              const decoration = dist_index_es["a" /* Decoration */].node(pos, pos + node.nodeSize, {
                 class: this.options.className
               });
               decorations.push(decoration);
@@ -74689,7 +69647,7 @@ class extensions_esm_Focus extends Extension {
 
             return this.options.nested;
           });
-          return prosemirror_view_dist_index_es["b" /* DecorationSet */].create(doc, decorations);
+          return dist_index_es["b" /* DecorationSet */].create(doc, decorations);
         }
       }
     })];
@@ -74786,7 +69744,7 @@ class extensions_esm_Placeholder extends Extension {
                 classes.push(this.options.emptyEditorClass);
               }
 
-              const decoration = prosemirror_view_dist_index_es["a" /* Decoration */].node(pos, pos + node.nodeSize, {
+              const decoration = dist_index_es["a" /* Decoration */].node(pos, pos + node.nodeSize, {
                 class: classes.join(' '),
                 'data-empty-text': typeof this.options.emptyNodeText === 'function' ? this.options.emptyNodeText(node) : this.options.emptyNodeText
               });
@@ -74795,7 +69753,7 @@ class extensions_esm_Placeholder extends Extension {
 
             return false;
           });
-          return prosemirror_view_dist_index_es["b" /* DecorationSet */].create(doc, decorations);
+          return dist_index_es["b" /* DecorationSet */].create(doc, decorations);
         }
       }
     })];
@@ -74840,7 +69798,7 @@ class extensions_esm_Search extends Extension {
   }
 
   get decorations() {
-    return this.results.map(deco => prosemirror_view_dist_index_es["a" /* Decoration */].inline(deco.from, deco.to, {
+    return this.results.map(deco => dist_index_es["a" /* Decoration */].inline(deco.from, deco.to, {
       class: this.options.findClass
     }));
   }
@@ -74978,14 +69936,14 @@ class extensions_esm_Search extends Extension {
   createDeco(doc) {
     this._search(doc);
 
-    return this.decorations ? prosemirror_view_dist_index_es["b" /* DecorationSet */].create(doc, this.decorations) : [];
+    return this.decorations ? dist_index_es["b" /* DecorationSet */].create(doc, this.decorations) : [];
   }
 
   get plugins() {
     return [new index_es["Plugin"]({
       state: {
         init() {
-          return prosemirror_view_dist_index_es["b" /* DecorationSet */].empty;
+          return dist_index_es["b" /* DecorationSet */].empty;
         },
 
         apply: (tr, old) => {
@@ -75451,14 +70409,14 @@ var Index_component = normalizeComponent(
 )
 
 /* harmony default export */ var Index = (Index_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-wizard/SwWizard.vue?vue&type=template&id=71d1650a&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-wizard/SwWizard.vue?vue&type=template&id=71d1650a&
 var SwWizardvue_type_template_id_71d1650a_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.wizardStyle.wizardContainer},[_vm._t("nav",[_c('wizard-navigation',{attrs:{"current-step":_vm.getCurrentStep,"steps":_vm.steps,"classes":_vm.wizardStyle},on:{"update:currentStep":function($event){_vm.getCurrentStep=$event},"update:current-step":function($event){_vm.getCurrentStep=$event}}})]),_c('div',{class:_vm.wizardStyle.wizardStepsContainer},[_vm._t("default")],2)],2)}
 var SwWizardvue_type_template_id_71d1650a_staticRenderFns = []
 
 
 // CONCATENATED MODULE: ./src/components/sw-wizard/SwWizard.vue?vue&type=template&id=71d1650a&
 
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-wizard/partials/SwWizardNavigation.vue?vue&type=template&id=537e194a&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-wizard/partials/SwWizardNavigation.vue?vue&type=template&id=537e194a&
 var SwWizardNavigationvue_type_template_id_537e194a_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.classes.navigationContainer},[(_vm.steps > 0)?_c('div',{class:_vm.classes.progressesContainer},[_c('div',{class:_vm.classes.progressesSubContainer},_vm._l((_vm.steps),function(number,index){return _c('div',{key:index,class:_vm.stepStyle(number),on:{"click":function($event){return _vm.$emit('update:currentStep', index + 1)}}},[(_vm.currentStep > number)?_c('svg',{class:_vm.classes.icon,attrs:{"fill":"currentColor","viewBox":"0 0 20 20"},on:{"click":function($event){return _vm.$emit('update:currentStep', index + 1)}}},[_c('path',{attrs:{"fill-rule":"evenodd","d":"M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z","clip-rule":"evenodd"}})]):_vm._e()])}),0)]):_vm._e()])}
 var SwWizardNavigationvue_type_template_id_537e194a_staticRenderFns = []
 
@@ -75653,7 +70611,7 @@ var SwWizard_component = normalizeComponent(
 )
 
 /* harmony default export */ var sw_wizard_SwWizard = (SwWizard_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-wizard/partials/SwWizardStep.vue?vue&type=template&id=95547438&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-wizard/partials/SwWizardStep.vue?vue&type=template&id=95547438&
 var SwWizardStepvue_type_template_id_95547438_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.classes.stepContainer},[(_vm.title || _vm.description)?_c('div',{class:_vm.classes.stepHeadingContainer},[(_vm.title)?_c('p',{class:_vm.classes.stepTitle},[_vm._v(" "+_vm._s(_vm.title)+" ")]):_vm._e(),(_vm.description)?_c('p',{class:_vm.classes.stepDescription},[_vm._v(" "+_vm._s(_vm.description)+" ")]):_vm._e()]):_vm._e(),_vm._t("default")],2)}
 var SwWizardStepvue_type_template_id_95547438_staticRenderFns = []
 
@@ -75718,7 +70676,7 @@ var SwWizardStep_component = normalizeComponent(
 )
 
 /* harmony default export */ var SwWizardStep = (SwWizardStep_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableComponent.vue?vue&type=template&id=259fd3aa&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableComponent.vue?vue&type=template&id=259fd3aa&
 var TableComponentvue_type_template_id_259fd3aa_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.tableComponentContainerStyle},[(_vm.showFilter && _vm.filterableColumnExists)?_c('div',{staticClass:"relative self-end"},[_c('input',{directives:[{name:"model",rawName:"v-model",value:(_vm.filter),expression:"filter"}],class:_vm.fullFilterInputClass,attrs:{"placeholder":_vm.filterPlaceholder,"type":"text"},domProps:{"value":(_vm.filter)},on:{"input":function($event){if($event.target.composing){ return; }_vm.filter=$event.target.value}}}),(_vm.filter)?_c('a',{class:_vm.filterClearStyle,on:{"click":function($event){_vm.filter = ''}}},[_vm._v("×")]):_vm._e()]):_vm._e(),_c('div',{class:_vm.tableWrapperStyle},[(_vm.loading)?_c('base-loader',{staticClass:"table-loader"}):_vm._e(),_c('table',{class:_vm.tableStyle},[(_vm.showCaption)?_c('caption',{class:_vm.tableCaptionStyle,attrs:{"role":"alert","aria-live":"polite"}},[_vm._v(" "+_vm._s(_vm.ariaCaption)+" ")]):_vm._e(),_c('thead',{class:_vm.fullTableHeadClass},[_c('tr',_vm._l((_vm.columns),function(column){return _c('table-column-header',{key:column.show || column.show,attrs:{"sort":_vm.sort,"column":column,"classes":_vm.tableTheme},on:{"click":_vm.changeSorting}})}),1)]),_c('tbody',{class:_vm.fullTableBodyClass},_vm._l((_vm.displayedRows),function(row){return _c('table-row',{key:row.vueTableComponentInternalRowId,attrs:{"row":row,"columns":_vm.columns,"classes":_vm.tableTheme},on:{"rowClick":_vm.emitRowClick}})}),1),_c('tfoot',[_vm._t("tfoot",null,{"rows":_vm.rows})],2)])],1),(_vm.displayedRows.length === 0 && !_vm.loading)?_c('div',{class:_vm.emptyTableMessageStyle},[_vm._v(" "+_vm._s(_vm.filterNoResults)+" ")]):_vm._e(),_c('div',{staticStyle:{"display":"none"}},[_vm._t("default")],2),(_vm.pagination && !_vm.loading)?_c('pagination',{attrs:{"classes":_vm.tableTheme,"pagination":_vm.pagination},on:{"pageChange":_vm.pageChange}}):_vm._e()],1)}
 var TableComponentvue_type_template_id_259fd3aa_staticRenderFns = []
 
@@ -76116,7 +71074,7 @@ var Row_Row = /*#__PURE__*/function () {
 }();
 
 
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableColumnHeader.vue?vue&type=template&id=5867f3fe&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableColumnHeader.vue?vue&type=template&id=5867f3fe&
 var TableColumnHeadervue_type_template_id_5867f3fe_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return (this.isVisible)?_c('th',{class:_vm.headerClass,attrs:{"aria-sort":_vm.ariaSort,"aria-disabled":_vm.ariaDisabled,"role":"columnheader"},on:{"click":_vm.clicked}},[_c('span',{staticClass:"asc-direction"},[_vm._v(" ↑ ")]),_c('span',{staticClass:"desc-direction"},[_vm._v(" ↓ ")]),_vm._v(" "+_vm._s(_vm.label)+" ")]):_vm._e()}
 var TableColumnHeadervue_type_template_id_5867f3fe_staticRenderFns = []
 
@@ -76235,7 +71193,7 @@ var TableColumnHeader_component = normalizeComponent(
 )
 
 /* harmony default export */ var TableColumnHeader = (TableColumnHeader_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableRow.vue?vue&type=template&id=b46a1820&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableRow.vue?vue&type=template&id=b46a1820&
 var TableRowvue_type_template_id_b46a1820_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('tr',{class:_vm.rowStyle,on:{"click":_vm.onClick}},_vm._l((_vm.visibleColumns),function(column){return _c('table-cell',{key:column.id,attrs:{"row":_vm.row,"column":column,"classes":_vm.classes,"responsive-label":column.label}})}),1)}
 var TableRowvue_type_template_id_b46a1820_staticRenderFns = []
 
@@ -76382,7 +71340,7 @@ function mergeSettings(newSettings) {
   }
 }
 /* harmony default export */ var sw_table_settings = (settings_settings);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/Pagination.vue?vue&type=template&id=47e73f7d&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/Pagination.vue?vue&type=template&id=47e73f7d&
 var Paginationvue_type_template_id_47e73f7d_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return (_vm.shouldShowPagination)?_c('nav',[_c('ul',{class:_vm.paginationContainerStyle},[_c('li',{class:_vm.firstPageDisabledStyle},[_c('a',{class:_vm.firstPageDisabledStyle,on:{"click":function($event){return _vm.pageClicked(_vm.pagination.currentPage - 1)}}},[_c('i',{class:_vm.paginationLeftIconStyle},[_vm._v("«")])])]),(_vm.hasFirst)?_c('li',{staticClass:"overflow-hidden"},[_c('a',{class:_vm.paginationPageClass(1),style:(_vm.paginationPageStyle(1)),on:{"click":function($event){return _vm.pageClicked(1)}}},[_vm._v("1")])]):_vm._e(),(_vm.hasFirstEllipsis)?_c('li',[_c('span',{staticClass:"pagination-ellipsis"},[_vm._v("…")])]):_vm._e(),_vm._l((_vm.pages),function(page){return _c('li',{key:page},[_c('a',{class:_vm.paginationPageClass(page),style:(_vm.paginationPageStyle(page)),on:{"click":function($event){return _vm.pageClicked(page)}}},[_vm._v(_vm._s(page))])])}),(_vm.hasLastEllipsis)?_c('li',[_c('span',{staticClass:"pagination-ellipsis"},[_vm._v("…")])]):_vm._e(),(_vm.hasLast)?_c('li',[_c('a',{class:_vm.paginationPageClass(this.pagination.totalPages),style:(_vm.paginationPageStyle(this.pagination.totalPages)),on:{"click":function($event){return _vm.pageClicked(_vm.pagination.totalPages)}}},[_vm._v(" "+_vm._s(_vm.pagination.totalPages)+" ")])]):_vm._e(),_c('li',[_c('a',{style:(_vm.lastPageDisabledStyle),on:{"click":function($event){return _vm.pageClicked(_vm.pagination.currentPage + 1)}}},[_c('i',{class:_vm.paginationRightIconStyle},[_vm._v("»")])])])],2)]):_vm._e()}
 var Paginationvue_type_template_id_47e73f7d_staticRenderFns = []
 
@@ -77150,7 +72108,7 @@ var TableComponent_component = normalizeComponent(
 )
 
 /* harmony default export */ var TableComponent = (TableComponent_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"fbb5abe4-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableColumn.vue?vue&type=template&id=4a7bc4d3&
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/sw-table/components/TableColumn.vue?vue&type=template&id=4a7bc4d3&
 var TableColumnvue_type_template_id_4a7bc4d3_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return (false)?undefined:_vm._e()}
 var TableColumnvue_type_template_id_4a7bc4d3_staticRenderFns = []
 
@@ -77412,7 +72370,7 @@ var nativeSlice = [].slice;
 var max = Math.max;
 
 // `Array.prototype.slice` method
-// https://tc39.github.io/ecma262/#sec-array.prototype.slice
+// https://tc39.es/ecma262/#sec-array.prototype.slice
 // fallback for not array-like ES3 strings and DOM objects
 $({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT || !USES_TO_LENGTH }, {
   slice: function slice(start, end) {
