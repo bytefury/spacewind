@@ -9,6 +9,7 @@ const FileUploadComponent = require('./components/file-upload')
 const DatepickrComponent = require('./components/datepickr')
 const TiptapEditorComponent = require('./components/tiptap-editor')
 const TableComponent = require('./components/table')
+const SelectComponent = require('./components/select')
 
 const SwWizard = require('./components/wizard')
 const SwRadio = require('./components/radio')
@@ -112,6 +113,7 @@ module.exports = plugin.withOptions(
       let SwDatepickr = DatepickrComponent(theme)
       let SwEditor = TiptapEditorComponent(theme)
       let SwTable = TableComponent(theme)
+      let SwSelect = SelectComponent(theme)
 
       addComponents(SwFileUpload)
       addComponents(SwSwitch)
@@ -121,6 +123,7 @@ module.exports = plugin.withOptions(
       addComponents(SwEditor)
       addComponents(SwTable)
       addComponents(SwWizard)
+      addComponents(SwSelect)
     }
   },
   function() {
