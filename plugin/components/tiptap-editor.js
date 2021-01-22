@@ -35,9 +35,7 @@ const tiptapEditorComponent = theme => {
         }
       },
       pre: {
-        whiteSpace: ' pre-wrap'
-      },
-      pre: {
+        whiteSpace: ' pre-wrap',
         padding: '0.7rem 1rem',
         borderRadius: '5px',
         fontSize: '0.8rem',

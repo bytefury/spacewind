@@ -1,6 +1,7 @@
 export default {
   classes: {
-    baseSelectContainer: 'base-select multiselect min-h-10',
+    baseSelectContainer:
+      'base-select multiselect min-h-10 box-content block relative w-full text-left',
     activeBaseSelectContainer: 'multiselect--active z-10',
     disabledBaseSelectContainer: 'pointer-events-none opacity-50',
     multiSelect:

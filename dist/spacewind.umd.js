@@ -61215,7 +61215,7 @@ var SwSelectvue_type_template_id_6d59efbe_staticRenderFns = []
 // CONCATENATED MODULE: ./src/themes/default/SwSelect.js
 /* harmony default export */ var SwSelect = ({
   classes: {
-    baseSelectContainer: 'base-select multiselect min-h-10',
+    baseSelectContainer: 'base-select multiselect min-h-10 box-content block relative w-full text-left',
     activeBaseSelectContainer: 'multiselect--active z-10',
     disabledBaseSelectContainer: 'pointer-events-none opacity-50',
     multiSelect: 'multiselect__select h-10 m-0 py-1 px-2 right-0 no-underline text-center cursor-pointer leading-5 block absolute box-border w-8',
