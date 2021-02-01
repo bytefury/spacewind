@@ -135,14 +135,24 @@ export default {
   },
   computed: {
     avatarStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
     },
     hasTrigger() {
       return this.$options.propsData.trigger !== undefined
     },
     hasIconSlot() {
       return !!this.$slots.icon
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwAvatar
+        ? { ...this.classes, ...this.$theme.SwAvatar.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwAvatar
+        ? { ...this.variants, ...this.$theme.SwAvatar.variants }
+        : this.variants
     }
   },
   watch: {

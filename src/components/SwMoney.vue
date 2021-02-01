@@ -59,21 +59,31 @@ export default {
   },
   computed: {
     baseStyle() {
-      let style = this.classes
+      let style = this.classesTheme
 
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
 
       if (this.invalid) {
-        style = findByKey('danger', this.variants)
+        style = findByKey('danger', this.variantsTheme)
       }
 
       if (this.disabled) {
-        style = findByKey('disabled', this.variants)
+        style = findByKey('disabled', this.variantsTheme)
       }
 
-      return style ? style : this.classes
+      return style ? style : this.classesTheme
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwMoney
+        ? { ...this.classes, ...this.$theme.SwMoney.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwMoney
+        ? { ...this.variants, ...this.$theme.SwMoney.variants }
+        : this.variants
     }
   },
   watch: {

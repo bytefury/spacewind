@@ -1,12 +1,12 @@
 <template>
-  <div :class="classes.container">
+  <div :class="classesTheme.container">
     <div>
-      <h3 :class="classes.pageTitle">
+      <h3 :class="classesTheme.pageTitle">
         {{ title }}
       </h3>
       <slot name="breadcrumbs" />
     </div>
-    <div :class="classes.actionsContainer">
+    <div :class="classesTheme.actionsContainer">
       <slot name="actions" />
     </div>
   </div>
@@ -31,6 +31,13 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    }
+  },
+  computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwPageHeader
+        ? { ...this.classes, ...this.$theme.SwPageHeader.classes }
+        : this.classes
     }
   }
 }

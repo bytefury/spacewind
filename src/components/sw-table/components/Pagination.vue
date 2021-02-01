@@ -77,6 +77,16 @@ export default {
     }
   },
   computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwTable
+        ? { ...this.classes, ...this.$theme.SwTable.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwTable
+        ? { ...this.variants, ...this.$theme.SwTable.variants }
+        : this.variants
+    },
     pages() {
       return this.pagination.totalPages === undefined ? [] : this.pageLinks()
     },
@@ -143,9 +153,9 @@ export default {
     tableTheme() {
       let style = {}
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
     }
   },
   methods: {

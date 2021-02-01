@@ -69,17 +69,27 @@ export default {
   },
   computed: {
     datepickerStyle() {
-      let style = findByKey(this.variant, this.variants)
+      let style = findByKey(this.variant, this.variantsTheme)
       if (this.invalid) {
-        style = findByKey('invalid', this.variants)
+        style = findByKey('invalid', this.variantsTheme)
       }
       if (this.disabled) {
-        style = findByKey('disabled', this.variants)
+        style = findByKey('disabled', this.variantsTheme)
       }
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
     },
     hasIconSlot() {
       return !!this.$slots.icon
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwDatePicker
+        ? { ...this.classes, ...this.$theme.SwDatePicker.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwDatePicker
+        ? { ...this.variants, ...this.$theme.SwDatePicker.variants }
+        : this.variants
     }
   }
 }

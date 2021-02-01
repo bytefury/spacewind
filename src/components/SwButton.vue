@@ -112,15 +112,15 @@ export default {
       return this.tagName
     },
     iconStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
     },
     buttonStyle() {
       let classes = []
-      let style = findByKey(this.variant, this.variants)
+      let style = findByKey(this.variant, this.variantsTheme)
       let size = findByKey(this.size, this.sizes)
 
-      classes.push(style ? style.button : this.classes.button)
+      classes.push(style ? style.button : this.classesTheme.button)
 
       if (size && size.button) {
         classes.push(size.button)
@@ -130,7 +130,7 @@ export default {
         classes.push(
           style && style.disabledClass
             ? style.disabledClass
-            : this.classes.disabledClass
+            : this.classesTheme.disabledClass
         )
       }
       return classes
@@ -139,7 +139,7 @@ export default {
       let classes = []
       let size = findByKey(this.size, this.sizes)
 
-      classes.push(this.classes.loadingIcon)
+      classes.push(this.classesTheme.loadingIcon)
 
       if (size && size.loadingIcon) {
         classes.push(size.loadingIcon)
@@ -152,6 +152,16 @@ export default {
     },
     hasLoaderSlot() {
       return !!this.$slots.loader
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwButton
+        ? { ...this.classes, ...this.$theme.SwButton.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwButton
+        ? { ...this.variants, ...this.$theme.SwButton.variants }
+        : this.variants
     }
   }
 }

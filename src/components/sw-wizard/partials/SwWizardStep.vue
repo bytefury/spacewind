@@ -1,10 +1,10 @@
 <template>
-  <div :class="classes.stepContainer">
-    <div v-if="title || description" :class="classes.stepHeadingContainer">
-      <p v-if="title" :class="classes.stepTitle">
+  <div :class="classesTheme.stepContainer">
+    <div v-if="title || description" :class="classesTheme.stepHeadingContainer">
+      <p v-if="title" :class="classesTheme.stepTitle">
         {{ title }}
       </p>
-      <p v-if="description" :class="classes.stepDescription">
+      <p v-if="description" :class="classesTheme.stepDescription">
         {{ description }}
       </p>
     </div>
@@ -30,6 +30,13 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    }
+  },
+  computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwWizard
+        ? { ...this.classes, ...this.$theme.SwWizard.classes }
+        : this.classes
     }
   }
 }

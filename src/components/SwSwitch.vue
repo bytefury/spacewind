@@ -1,9 +1,9 @@
 <template>
-  <div :class="classes.container">
+  <div :class="classesTheme.container">
     <input
       :id="uniqueId"
       v-model="checkValue"
-      :class="classes.switch"
+      :class="classesTheme.switch"
       type="checkbox"
       :disabled="disabled"
       @input="handleInput"
@@ -11,7 +11,7 @@
       @keyup="handleKeyupEnter"
       @blur="handleFocusOut"
     />
-    <label :for="uniqueId" :class="classes.label">
+    <label :for="uniqueId" :class="classesTheme.label">
       <span class="switch-circle"></span>
     </label>
   </div>
@@ -56,6 +56,11 @@ export default {
           .toString(36)
           .substr(2, 9)
       )
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwSwitch
+        ? { ...this.classes, ...this.$theme.SwSwitch.classes }
+        : this.classes
     }
   },
   watch: {

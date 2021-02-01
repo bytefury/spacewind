@@ -28,12 +28,22 @@ export default {
   },
   computed: {
     dividerStyle() {
-      let style = null
+      let style = this.classesTheme
 
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
-      return style ? style : this.classes
+      return style
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwDivider
+        ? { ...this.classes, ...this.$theme.SwDivider.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwDivider
+        ? { ...this.variants, ...this.$theme.SwDivider.variants }
+        : this.variants
     }
   }
 }

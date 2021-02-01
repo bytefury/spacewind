@@ -5,7 +5,7 @@
       :key="column.id"
       :row="row"
       :column="column"
-      :classes="classes"
+      :classes="classesTheme"
       :responsive-label="column.label"
     ></table-cell>
   </tr>
@@ -35,11 +35,16 @@ export default {
     }
   },
   computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwTable
+        ? { ...this.classes, ...this.$theme.SwTable.classes }
+        : this.classes
+    },
     visibleColumns() {
       return this.columns.filter(column => !column.hidden)
     },
     rowStyle() {
-      return this.classes.trStyles
+      return this.classesTheme.trStyles
     }
   },
   methods: {

@@ -122,11 +122,21 @@ export default {
   },
   computed: {
     inputGroupStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
     },
     hasTooltipIconSlot() {
       return !!this.$slots.tooltipIcon
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwInputGroup
+        ? { ...this.classes, ...this.$theme.SwInputGroup.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwInputGroup
+        ? { ...this.variants, ...this.$theme.SwInputGroup.variants }
+        : this.variants
     }
   }
 }

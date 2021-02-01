@@ -73,16 +73,16 @@
 </template>
 
 <script>
-import Column from '../classes/Column'
-import expiringStorage from '../expiring-storage'
-import Row from '../classes/Row'
-import TableColumnHeader from './TableColumnHeader'
-import TableRow from './TableRow'
-import settings from '../settings'
-import Pagination from './Pagination'
-import { classList, pick } from '../helpers'
-import { findByKey } from '../../../helpers/utilities'
-import SwTable from '../../../themes/default/SwTable'
+import Column from './sw-table/classes/Column'
+import expiringStorage from './sw-table/expiring-storage'
+import Row from './sw-table/classes/Row'
+import TableColumnHeader from './sw-table/components/TableColumnHeader'
+import TableRow from './sw-table/components/TableRow'
+import settings from './sw-table/settings'
+import Pagination from './sw-table/components/Pagination'
+import { classList, pick } from './sw-table/helpers'
+import { findByKey } from '../helpers/utilities'
+import SwTable from '../themes/default/SwTable'
 const { classes, variants } = SwTable
 
 export default {
@@ -139,16 +139,6 @@ export default {
   }),
 
   computed: {
-    classesTheme() {
-      return this.$theme && this.$theme.SwTable
-        ? { ...this.classes, ...this.$theme.SwTable.classes }
-        : this.classes
-    },
-    variantsTheme() {
-      return this.$theme && this.$theme.SwTable
-        ? { ...this.variants, ...this.$theme.SwTable.variants }
-        : this.variants
-    },
     fullTableClass() {
       return classList('table-component__table', this.tableClass)
     },
@@ -261,6 +251,16 @@ export default {
         style = findByKey(this.variant, this.variantsTheme)
       }
       return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwTable
+        ? { ...this.classes, ...this.$theme.SwTable.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwTable
+        ? { ...this.variants, ...this.$theme.SwTable.variants }
+        : this.variants
     }
   },
 
@@ -282,11 +282,10 @@ export default {
 
   created() {
     this.sort.order = this.sortOrder
-
-    this.restoreState()
   },
 
   async mounted() {
+    this.restoreState()
     this.sort.fieldName = this.sortBy
     const columnComponents = this.$slots.default
       .filter(column => column.componentInstance)

@@ -32,6 +32,11 @@ export default {
     },
     visibleElements() {
       return this.optimizedHeight / this.optionHeight
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwSelect
+        ? { ...this.classes, ...this.$theme.SwSelect.classes }
+        : this.classes
     }
   },
   watch: {
@@ -56,7 +61,7 @@ export default {
             index === this.pointer && this.showPointer,
           'multiselect__option--selected': this.isSelected(option)
         },
-        this.classes.multiselectOption
+        this.classesTheme.multiselectOption
       ]
     },
     groupHighlight(index, selectedGroup) {
@@ -64,7 +69,7 @@ export default {
         return [
           'multiselect__option--group',
           'multiselect__option--disabled',
-          this.classes.multiselectOption
+          this.classesTheme.multiselectOption
         ]
       }
 
@@ -84,9 +89,9 @@ export default {
                 group
               )
             },
-            this.classes.multiselectOption
+            this.classesTheme.multiselectOption
           ]
-        : ['multiselect__option--disabled', this.classes.multiselectOption]
+        : ['multiselect__option--disabled', this.classesTheme.multiselectOption]
     },
     addPointerElement({ key } = 'Enter') {
       /* istanbul ignore else */

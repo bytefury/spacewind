@@ -55,11 +55,21 @@ export default {
   },
   computed: {
     getTabStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
     },
     getAllTabs() {
       return this.tabs.filter(tab => tab.title)
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwTabs
+        ? { ...this.classes, ...this.$theme.SwTabs.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwTabs
+        ? { ...this.variants, ...this.$theme.SwTabs.variants }
+        : this.variants
     }
   },
   watch: {

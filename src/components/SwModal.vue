@@ -67,8 +67,18 @@ export default {
       return this.$slots && this.$slots.header ? true : false
     },
     modalStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwModal
+        ? { ...this.classes, ...this.$theme.SwModal.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwModal
+        ? { ...this.variants, ...this.$theme.SwModal.variants }
+        : this.variants
     }
   },
   watch: {

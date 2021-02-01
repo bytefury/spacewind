@@ -320,8 +320,18 @@ export default {
   },
   computed: {
     getEditorStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwEditor
+        ? { ...this.classes, ...this.$theme.SwEditor.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwEditor
+        ? { ...this.variants, ...this.$theme.SwEditor.variants }
+        : this.variants
     }
   },
   watch: {

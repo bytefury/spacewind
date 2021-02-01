@@ -18,6 +18,7 @@
 
 <script>
 import SwDropdown from '../../themes/default/SwDropdown'
+import ClickOutside from 'vue-click-outside'
 import { findByKey } from '../../helpers/utilities'
 // import SwTransition from '../SwTransition'
 import { createPopper } from '@popperjs/core'
@@ -25,6 +26,9 @@ const { classes, variants } = SwDropdown
 
 export default {
   name: 'SwDrodown',
+  directives: {
+    ClickOutside
+  },
   components: {
     // SwTransition
   },
@@ -81,9 +85,19 @@ export default {
   },
   computed: {
     dropdownStyle() {
-      let style = findByKey(this.variant, this.variants)
+      let style = findByKey(this.variant, this.variantsTheme)
 
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwDrodown
+        ? { ...this.classes, ...this.$theme.SwDrodown.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwDrodown
+        ? { ...this.variants, ...this.$theme.SwDrodown.variants }
+        : this.variants
     }
   },
   watch: {
@@ -104,10 +118,18 @@ export default {
     }
   },
   mounted() {
+    // this.$children.forEach(child => {
+    //   if (child.$children.length) {
+    //     this.children = child.$children
+    //   }
+    // })
     if (this.show) {
       this.createPopperInstance()
     }
-
+    // this.children.forEach(child => {
+    //   console.log(child, this.variant, this.dropdownStyle)
+    //   child.theme = this.dropdownStyle
+    // })
     this.$children.forEach(child => {
       child.theme = this.dropdownStyle
     })

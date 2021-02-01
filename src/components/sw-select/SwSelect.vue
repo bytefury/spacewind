@@ -353,6 +353,11 @@ export default {
     }
   },
   computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwSelect
+        ? { ...this.classes, ...this.$theme.SwSelect.classes }
+        : this.classes
+    },
     isSingleLabelVisible() {
       return (
         (this.singleValue || this.singleValue === 0) &&
@@ -426,13 +431,13 @@ export default {
       )
     },
     multiSelectStyle() {
-      let style = [this.classes.baseSelectContainer]
+      let style = [this.classesTheme.baseSelectContainer]
       if (this.isOpen) {
-        style.push(this.classes.activeBaseSelectContainer)
+        style.push(this.classesTheme.activeBaseSelectContainer)
       }
 
       if (this.disabled) {
-        style.push(this.classes.disabledBaseSelectContainer)
+        style.push(this.classesTheme.disabledBaseSelectContainer)
       }
       if (this.isAbove) {
         style.push('multiselect--above')
@@ -441,65 +446,65 @@ export default {
       return style
     },
     multiselectSelectStyle() {
-      let style = [this.classes.multiSelect]
+      let style = [this.classesTheme.multiSelect]
 
       if (this.disabled) {
-        style.push(this.classes.disabledMultiSelect)
+        style.push(this.classesTheme.disabledMultiSelect)
       } else {
-        style.push(this.classes.multiSelect)
+        style.push(this.classesTheme.multiSelect)
       }
 
       return style
     },
     multiSelectTagsStyle() {
-      let style = [this.classes.multiSelectTags]
+      let style = [this.classesTheme.multiSelectTags]
       let tagStyle = null
       if (this.invalid) {
-        style.push(this.classes.multiSelectTagsInvalid)
+        style.push(this.classesTheme.multiSelectTagsInvalid)
       } else {
-        style.push(this.classes.multiSelectTagsDefaultColor)
+        style.push(this.classesTheme.multiSelectTagsDefaultColor)
       }
 
       if (this.disabled) {
-        style.push(this.classes.disabledMultiSelectTags)
+        style.push(this.classesTheme.disabledMultiSelectTags)
       }
       style.push(
-        tagStyle ? tagStyle.multiSelectTags : this.classes.multiSelectTags
+        tagStyle ? tagStyle.multiSelectTags : this.classesTheme.multiSelectTags
       )
       return style
     },
     multiselectTagsWrapStyle() {
-      return [this.classes.multiselectTagsWrap]
+      return [this.classesTheme.multiselectTagsWrap]
     },
     multiselectTagStyle() {
-      return [this.classes.multiselectTag]
+      return [this.classesTheme.multiselectTag]
     },
     multiselectTagIconStyle() {
-      return [this.classes.multiselectTagIcon]
+      return [this.classesTheme.multiselectTagIcon]
     },
     multiselectStrongStyle() {
-      return [this.classes.multiselectStrong]
+      return [this.classesTheme.multiselectStrong]
     },
     multiselectSpinnerStyle() {
-      return [this.classes.multiselectSpinner]
+      return [this.classesTheme.multiselectSpinner]
     },
     multiselectInputStyle() {
-      return [this.classes.multiselectInput]
+      return [this.classesTheme.multiselectInput]
     },
     multiselectSingleStyle() {
-      return [this.classes.multiselectSingle]
+      return [this.classesTheme.multiselectSingle]
     },
     multiselectContentWrapperStyle() {
-      return [this.classes.multiselectContentWrapper]
+      return [this.classesTheme.multiselectContentWrapper]
     },
     multiselectContentStyle() {
-      return [this.classes.multiselectContent]
+      return [this.classesTheme.multiselectContent]
     },
     multiselectOptionStyle() {
-      return [this.classes.multiselectOption]
+      return [this.classesTheme.multiselectOption]
     },
     multiselectElementStyle() {
-      return [this.classes.multiselectElement]
+      return [this.classesTheme.multiselectElement]
     }
   }
 }
