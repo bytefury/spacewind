@@ -1,6 +1,6 @@
 <template>
-  <div v-click-outside="clickOutsideMenu" :class="classes.container">
-    <div :class="classes.activator" @click="toggleSearchMenu">
+  <div v-click-outside="clickOutsideMenu" :class="classesTheme.container">
+    <div :class="classesTheme.activator" @click="toggleSearchMenu">
       <slot name="activator" />
     </div>
     <transition
@@ -20,6 +20,7 @@
 
 <script>
 import SwPopup from '../themes/default/SwPopup'
+import ClickOutside from 'vue-click-outside'
 import { installComponent } from '../helpers/utilities'
 const { classes } = SwPopup
 
@@ -27,6 +28,9 @@ export default {
   name: 'SwPopup',
   install(Vue, theme) {
     installComponent(Vue, theme, this)
+  },
+  directives: {
+    ClickOutside
   },
   props: {
     classes: {
@@ -55,7 +59,7 @@ export default {
   },
   computed: {
     aboveStyle() {
-      return this.classes.above
+      return this.classesTheme.above
     },
     isAbove() {
       if (this.openDirection === 'above' || this.openDirection === 'top') {
@@ -70,11 +74,16 @@ export default {
       }
     },
     baseStyle() {
-      let style = [this.classes.base]
+      let style = [this.classesTheme.base]
       if (this.isAbove) {
-        style.push(this.classes.above)
+        style.push(this.classesTheme.above)
       }
       return style
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwPopup
+        ? { ...this.classes, ...this.$theme.SwPopup.classes }
+        : this.classes
     }
   },
   methods: {

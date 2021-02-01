@@ -33,10 +33,20 @@ export default {
       let style = null
 
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
 
-      return style ? style : this.classes
+      return style ? style : this.classesTheme
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwLabel
+        ? { ...this.classes, ...this.$theme.SwLabel.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwLabel
+        ? { ...this.variants, ...this.$theme.SwLabel.variants }
+        : this.variants
     }
   }
 }

@@ -37,9 +37,19 @@ export default {
   },
   computed: {
     transitionStyle() {
-      let style = findByKey(this.variant, this.variants)
+      let style = findByKey(this.variant, this.variantsTheme)
 
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwTransition
+        ? { ...this.classes, ...this.$theme.SwTransition.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwTransition
+        ? { ...this.variants, ...this.$theme.SwTransition.variants }
+        : this.variants
     }
   }
 }

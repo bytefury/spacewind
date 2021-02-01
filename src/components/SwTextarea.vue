@@ -52,18 +52,28 @@ export default {
     textAreaStyle() {
       let style = null
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
 
       if (this.invalid) {
-        style = findByKey('danger', this.variants)
+        style = findByKey('danger', this.variantsTheme)
       }
 
       if (this.disabled) {
-        style = findByKey('disabled', this.variants)
+        style = findByKey('disabled', this.variantsTheme)
       }
 
-      return style ? style : this.classes
+      return style ? style : this.classesTheme
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwTextarea
+        ? { ...this.classes, ...this.$theme.SwTextarea.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwTextarea
+        ? { ...this.variants, ...this.$theme.SwTextarea.variants }
+        : this.variants
     }
   }
 }

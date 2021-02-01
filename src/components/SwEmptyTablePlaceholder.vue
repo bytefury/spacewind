@@ -1,17 +1,17 @@
 <template>
-  <div :class="classes.container">
-    <div :class="classes.slotContainer">
+  <div :class="classesTheme.container">
+    <div :class="classesTheme.slotContainer">
       <slot></slot>
     </div>
-    <div :class="classes.titleContainer">
-      <label :class="classes.title">{{ title }}</label>
+    <div :class="classesTheme.titleContainer">
+      <label :class="classesTheme.title">{{ title }}</label>
     </div>
-    <div :class="classes.descriptionContainer">
-      <label :class="classes.description">
+    <div :class="classesTheme.descriptionContainer">
+      <label :class="classesTheme.description">
         {{ description }}
       </label>
     </div>
-    <div :class="classes.actionsContainer">
+    <div :class="classesTheme.actionsContainer">
       <slot name="actions" />
     </div>
   </div>
@@ -44,6 +44,13 @@ export default {
     classes: {
       type: Object,
       default: () => classes
+    }
+  },
+  computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwEmptyTablePlaceholder
+        ? { ...this.classes, ...this.$theme.SwEmptyTablePlaceholder.classes }
+        : this.classes
     }
   }
 }

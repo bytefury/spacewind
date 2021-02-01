@@ -66,14 +66,14 @@ export default {
           'table-component__th table-component__th--sort',
           this.column.headerClass,
           this.headerStyle,
-          this.classes.thSortStyles
+          this.classesTheme.thSortStyles
         )
       }
       return classList(
         `table-component__th table-component__th--sort-${this.sort.order}`,
         this.column.headerClass,
         this.headerStyle,
-        this.classes.thSortStyles
+        this.classesTheme.thSortStyles
       )
     },
 
@@ -88,7 +88,12 @@ export default {
       return this.column.label
     },
     headerStyle() {
-      return this.classes.thStyles
+      return this.classesTheme.thStyles
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwTable
+        ? { ...this.classes, ...this.$theme.SwTable.classes }
+        : this.classes
     }
   },
 

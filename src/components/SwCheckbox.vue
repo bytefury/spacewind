@@ -87,8 +87,8 @@ export default {
       return this.modelValue === this.trueValue
     },
     checkBoxStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
     },
     lebelStyle() {
       let size = findByKey(this.size, this.sizes)
@@ -116,6 +116,16 @@ export default {
       } else {
         this.$emit('change', isChecked ? this.trueValue : this.falseValue)
       }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwCheckbox
+        ? { ...this.classes, ...this.$theme.SwCheckbox.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwCheckbox
+        ? { ...this.variants, ...this.$theme.SwCheckbox.variants }
+        : this.variants
     }
   }
 }

@@ -40,15 +40,25 @@ export default {
     cardStyle() {
       let style = {}
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
     },
     hasHeaderSlot() {
       return !!this.$slots['header']
     },
     hasFooterSlot() {
       return !!this.$slots['footer']
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwCard
+        ? { ...this.classes, ...this.$theme.SwCard.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwCard
+        ? { ...this.variants, ...this.$theme.SwCard.variants }
+        : this.variants
     }
   }
 }

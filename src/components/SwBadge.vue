@@ -39,8 +39,18 @@ export default {
   },
   computed: {
     currentClass() {
-      let style = findByKey(this.variant, this.variants)
-      return style ? style : this.classes
+      let style = findByKey(this.variant, this.variantsTheme)
+      return style ? style : this.classesTheme
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwBadge
+        ? { ...this.classes, ...this.$theme.SwBadge.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwBadge
+        ? { ...this.variants, ...this.$theme.SwBadge.variants }
+        : this.variants
     }
   }
 }

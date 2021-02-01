@@ -76,8 +76,8 @@ export default {
   },
   computed: {
     radioButtonStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
     },
     lebelStyle() {
       let size = findByKey(this.size, this.sizes)
@@ -89,6 +89,16 @@ export default {
     },
     shouldBeChecked() {
       return this.modelValue == this.value
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwRadio
+        ? { ...this.classes, ...this.$theme.SwRadio.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwRadio
+        ? { ...this.variants, ...this.$theme.SwRadio.variants }
+        : this.variants
     }
   },
   methods: {

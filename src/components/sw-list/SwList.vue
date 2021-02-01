@@ -36,9 +36,19 @@ export default {
   computed: {
     listStyle() {
       this.setChilds()
-      let style = findByKey(this.variant, this.variants)
+      let style = findByKey(this.variant, this.variantsTheme)
 
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwList
+        ? { ...this.classes, ...this.$theme.SwList.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwList
+        ? { ...this.variants, ...this.$theme.SwList.variants }
+        : this.variants
     }
   },
   mounted() {
@@ -48,8 +58,8 @@ export default {
   methods: {
     setChilds() {
       this.items.forEach(item => {
-        item.classes = this.classes
-        item.variants = this.variants
+        item.classes = this.classesTheme
+        item.variants = this.variantsTheme
         item.variant = this.variant
         item.isLoading = false
       })

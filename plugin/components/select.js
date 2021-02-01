@@ -1,5 +1,9 @@
 const selectComponent = theme => {
   return {
+    '.multiselect': {
+      'min-height': '40px',
+      color: '#35495e'
+    },
     '.multiselect__spinner': {
       right: '1px',
       top: '1px'
@@ -162,7 +166,7 @@ const selectComponent = theme => {
         '&.multiselect__option--selected': {
           'background-color': theme('colors.primary.100'),
           color: '#040405',
-          // font-size: 1rem,
+          cursor: 'text',
           'font-weight': 'normal !important',
 
           ' &::after': {

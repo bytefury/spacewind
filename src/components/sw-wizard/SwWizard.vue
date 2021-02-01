@@ -53,8 +53,18 @@ export default {
   },
   computed: {
     wizardStyle() {
-      let style = findByKey(this.variant, this.variants)
-      return { ...this.classes, ...style }
+      let style = findByKey(this.variant, this.variantsTheme)
+      return { ...this.classesTheme, ...style }
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwWizard
+        ? { ...this.classes, ...this.$theme.SwWizard.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwWizard
+        ? { ...this.variants, ...this.$theme.SwWizard.variants }
+        : this.variants
     },
     getCurrentStep: {
       get: function() {

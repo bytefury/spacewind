@@ -1,6 +1,6 @@
 <template>
   <nav>
-    <ol :class="classes.listContainer">
+    <ol :class="classesTheme.listContainer">
       <slot />
     </ol>
   </nav>
@@ -27,6 +27,13 @@ export default {
       breadcrumbItems: []
     }
   },
+  computed: {
+    classesTheme() {
+      return this.$theme && this.$theme.SwBreadcrumb
+        ? { ...this.classes, ...this.$theme.SwBreadcrumb.classes }
+        : this.classes
+    }
+  },
   mounted() {
     this.breadcrumbItems = this.$children
     this.setChilds()
@@ -34,7 +41,7 @@ export default {
   methods: {
     setChilds() {
       this.breadcrumbItems.forEach(item => {
-        item.classes = this.classes
+        item.classes = this.classesTheme
       })
     }
   }

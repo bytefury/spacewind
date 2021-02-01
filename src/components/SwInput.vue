@@ -83,18 +83,18 @@ export default {
     inputStyle() {
       let style = {}
       if (this.variant) {
-        style = findByKey(this.variant, this.variants)
+        style = findByKey(this.variant, this.variantsTheme)
       }
 
       if (this.invalid) {
-        style = findByKey('danger', this.variants)
+        style = findByKey('danger', this.variantsTheme)
       }
 
       if (this.disabled) {
-        style = findByKey('disabled', this.variants)
+        style = findByKey('disabled', this.variantsTheme)
       }
 
-      return { ...this.classes, ...style }
+      return { ...this.classesTheme, ...style }
     },
     getBaseInputStyle() {
       if (this.hasLeftIconSlot || this.prefix)
@@ -122,6 +122,16 @@ export default {
     },
     hasRightIconSlot() {
       return !!this.$slots.rightIcon
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwInput
+        ? { ...this.classes, ...this.$theme.SwInput.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwInput
+        ? { ...this.variants, ...this.$theme.SwInput.variants }
+        : this.variants
     }
   },
   watch: {
