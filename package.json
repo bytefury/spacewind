@@ -1,6 +1,6 @@
 {
   "name": "@bytefury/spacewind",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": false,
   "main": "./dist/spacewind.umd.js",
   "unpkg": "./dist/spacewind.umd.min.js",
