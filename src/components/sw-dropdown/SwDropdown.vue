@@ -25,7 +25,7 @@ import { createPopper } from '@popperjs/core'
 const { classes, variants } = SwDropdown
 
 export default {
-  name: 'SwDrodown',
+  name: 'SwDropdown',
   directives: {
     ClickOutside
   },
@@ -90,13 +90,13 @@ export default {
       return { ...this.classesTheme, ...style }
     },
     classesTheme() {
-      return this.$theme && this.$theme.SwDrodown
-        ? { ...this.classes, ...this.$theme.SwDrodown.classes }
+      return this.$theme && this.$theme.SwDropdown
+        ? { ...this.classes, ...this.$theme.SwDropdown.classes }
         : this.classes
     },
     variantsTheme() {
-      return this.$theme && this.$theme.SwDrodown
-        ? { ...this.variants, ...this.$theme.SwDrodown.variants }
+      return this.$theme && this.$theme.SwDropdown
+        ? { ...this.variants, ...this.$theme.SwDropdown.variants }
         : this.variants
     }
   },

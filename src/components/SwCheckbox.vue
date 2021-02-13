@@ -97,6 +97,16 @@ export default {
     inputStyle() {
       let size = findByKey(this.size, this.sizes)
       return [this.checkBoxStyle.input, size.input]
+    },
+    classesTheme() {
+      return this.$theme && this.$theme.SwCheckbox
+        ? { ...this.classes, ...this.$theme.SwCheckbox.classes }
+        : this.classes
+    },
+    variantsTheme() {
+      return this.$theme && this.$theme.SwCheckbox
+        ? { ...this.variants, ...this.$theme.SwCheckbox.variants }
+        : this.variants
     }
   },
   methods: {
@@ -116,16 +126,6 @@ export default {
       } else {
         this.$emit('change', isChecked ? this.trueValue : this.falseValue)
       }
-    },
-    classesTheme() {
-      return this.$theme && this.$theme.SwCheckbox
-        ? { ...this.classes, ...this.$theme.SwCheckbox.classes }
-        : this.classes
-    },
-    variantsTheme() {
-      return this.$theme && this.$theme.SwCheckbox
-        ? { ...this.variants, ...this.$theme.SwCheckbox.variants }
-        : this.variants
     }
   }
 }
