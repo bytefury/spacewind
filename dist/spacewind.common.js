@@ -56776,12 +56776,12 @@ var SwCard_component = normalizeComponent(
 )
 
 /* harmony default export */ var components_SwCard = (SwCard_component.exports);
-// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwCheckbox.vue?vue&type=template&id=65e37f26&
-var SwCheckboxvue_type_template_id_65e37f26_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.checkBoxStyle.container},[_c('input',_vm._b({class:_vm.inputStyle,attrs:{"id":_vm.id,"type":"checkbox"},domProps:{"checked":_vm.shouldBeChecked,"value":_vm.value},on:{"change":_vm.updateInput,"keyup":function (e) { return _vm.$emit('keyup', e); },"blur":function (e) { return _vm.$emit('blur', e); }}},'input',_vm.$attrs,false)),(_vm.label)?_c('label',{class:_vm.lebelStyle,attrs:{"for":_vm.id}},[_vm._v(_vm._s(_vm.label))]):_vm._e()])}
-var SwCheckboxvue_type_template_id_65e37f26_staticRenderFns = []
+// CONCATENATED MODULE: ./node_modules/cache-loader/dist/cjs.js?{"cacheDirectory":"node_modules/.cache/vue-loader","cacheIdentifier":"409d4670-vue-loader-template"}!./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/cache-loader/dist/cjs.js??ref--0-0!./node_modules/vue-loader/lib??vue-loader-options!./src/components/SwCheckbox.vue?vue&type=template&id=438d94a1&
+var SwCheckboxvue_type_template_id_438d94a1_render = function () {var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{class:_vm.checkBoxStyle.container},[_c('input',_vm._b({class:_vm.inputStyle,attrs:{"id":_vm.id,"type":"checkbox"},domProps:{"checked":_vm.shouldBeChecked,"value":_vm.value},on:{"change":_vm.updateInput,"keyup":function (e) { return _vm.$emit('keyup', e); },"blur":function (e) { return _vm.$emit('blur', e); }}},'input',_vm.$attrs,false)),(_vm.label)?_c('label',{class:_vm.lebelStyle,attrs:{"for":_vm.id}},[_vm._v(_vm._s(_vm.label))]):_vm._e()])}
+var SwCheckboxvue_type_template_id_438d94a1_staticRenderFns = []
 
 
-// CONCATENATED MODULE: ./src/components/SwCheckbox.vue?vue&type=template&id=65e37f26&
+// CONCATENATED MODULE: ./src/components/SwCheckbox.vue?vue&type=template&id=438d94a1&
 
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.includes.js
 var es_array_includes = __webpack_require__("caad");
@@ -56990,6 +56990,12 @@ var SwCheckboxvue_type_script_lang_js_classes = SwCheckbox.classes,
     inputStyle: function inputStyle() {
       var size = findByKey(this.size, this.sizes);
       return [this.checkBoxStyle.input, size.input];
+    },
+    classesTheme: function classesTheme() {
+      return this.$theme && this.$theme.SwCheckbox ? _objectSpread2(_objectSpread2({}, this.classes), this.$theme.SwCheckbox.classes) : this.classes;
+    },
+    variantsTheme: function variantsTheme() {
+      return this.$theme && this.$theme.SwCheckbox ? _objectSpread2(_objectSpread2({}, this.variants), this.$theme.SwCheckbox.variants) : this.variants;
     }
   },
   methods: {
@@ -57009,12 +57015,6 @@ var SwCheckboxvue_type_script_lang_js_classes = SwCheckbox.classes,
       } else {
         this.$emit('change', isChecked ? this.trueValue : this.falseValue);
       }
-    },
-    classesTheme: function classesTheme() {
-      return this.$theme && this.$theme.SwCheckbox ? _objectSpread2(_objectSpread2({}, this.classes), this.$theme.SwCheckbox.classes) : this.classes;
-    },
-    variantsTheme: function variantsTheme() {
-      return this.$theme && this.$theme.SwCheckbox ? _objectSpread2(_objectSpread2({}, this.variants), this.$theme.SwCheckbox.variants) : this.variants;
     }
   }
 });
@@ -57030,8 +57030,8 @@ var SwCheckboxvue_type_script_lang_js_classes = SwCheckbox.classes,
 
 var SwCheckbox_component = normalizeComponent(
   components_SwCheckboxvue_type_script_lang_js_,
-  SwCheckboxvue_type_template_id_65e37f26_render,
-  SwCheckboxvue_type_template_id_65e37f26_staticRenderFns,
+  SwCheckboxvue_type_template_id_438d94a1_render,
+  SwCheckboxvue_type_template_id_438d94a1_staticRenderFns,
   false,
   null,
   null,
