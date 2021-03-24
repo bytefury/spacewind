@@ -1,59 +1,59 @@
 {
-  "name": "@bytefury/spacewind",
-  "version": "0.5.2",
-  "private": false,
-  "main": "./dist/spacewind.umd.js",
-  "unpkg": "./dist/spacewind.umd.min.js",
-  "description": "UI Component Library for Vue & TailwindCSS",
-  "author": {
-    "name": "Bytefury",
-    "email": "info@bytefury.com"
-  },
-  "repository": "https://github.com/bytefury/spacewind",
-  "bugs": "https://github.com/bytefury/spacewind/issues",
-  "keywords": [
-    "tailwindcss",
-    "tailwindadmin",
-    "vuetailwindui",
-    "uitheme"
-  ],
-  "license": "MIT",
-  "scripts": {
-    "build-bundle": "vue-cli-service build --target lib --name spacewind ./src/index.js"
-  },
-  "dependencies": {
-    "@popperjs/core": "^2.5.3",
-    "autoprefixer": "^10.2.3",
-    "core-js": "^3.6.5",
-    "lodash": "^4.17.19",
-    "moment": "^2.27.0",
-    "postcss": "^8.2.4",
-    "tailwindcss": "^2.0.2",
-    "tiptap": "^1.29.6",
-    "tiptap-extensions": "^1.32.7",
-    "v-money": "^0.8.1",
-    "v-tooltip": "^2.0.3",
-    "vue": "^2.6.11",
-    "vue-avatar-cropper": "^1.0.7",
-    "vue-click-outside": "^1.1.0",
-    "vue-flatpickr-component": "^8.1.6",
-    "vue2-dropzone": "^3.6.0"
-  },
-  "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.4.0",
-    "@vue/cli-plugin-eslint": "~4.4.0",
-    "@vue/cli-service": "~4.4.0",
-    "@vue/eslint-config-prettier": "^6.0.0",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^6.7.2",
-    "eslint-plugin-prettier": "^3.1.3",
-    "eslint-plugin-vue": "^6.2.2",
-    "prettier": "^1.19.1",
-    "sass": "^1.26.5",
-    "sass-loader": "^8.0.2",
-    "vue-template-compiler": "^2.6.11"
-  },
-  "resolutions": {
-    "prosemirror-model": "1.9.1"
-  }
+    "name": "@bytefury/spacewind",
+    "version": "0.5.3",
+    "private": false,
+    "main": "./dist/spacewind.umd.js",
+    "unpkg": "./dist/spacewind.umd.min.js",
+    "description": "UI Component Library for Vue & TailwindCSS",
+    "author": {
+        "name": "Bytefury",
+        "email": "info@bytefury.com"
+    },
+    "repository": "https://github.com/bytefury/spacewind",
+    "bugs": "https://github.com/bytefury/spacewind/issues",
+    "keywords": [
+        "tailwindcss",
+        "tailwindadmin",
+        "vuetailwindui",
+        "uitheme"
+    ],
+    "license": "MIT",
+    "scripts": {
+        "build-bundle": "vue-cli-service build --target lib --name spacewind ./src/index.js"
+    },
+    "dependencies": {
+        "@popperjs/core": "^2.5.3",
+        "autoprefixer": "^10.2.3",
+        "core-js": "^3.6.5",
+        "lodash": "^4.17.19",
+        "moment": "^2.27.0",
+        "postcss": "^8.2.4",
+        "tailwindcss": "^2.0.2",
+        "tiptap": "^1.29.6",
+        "tiptap-extensions": "^1.32.7",
+        "v-money": "^0.8.1",
+        "v-tooltip": "^2.0.3",
+        "vue": "^2.6.11",
+        "vue-avatar-cropper": "^1.0.7",
+        "vue-click-outside": "^1.1.0",
+        "vue-flatpickr-component": "^8.1.6",
+        "vue2-dropzone": "^3.6.0"
+    },
+    "devDependencies": {
+        "@vue/cli-plugin-babel": "~4.4.0",
+        "@vue/cli-plugin-eslint": "~4.4.0",
+        "@vue/cli-service": "~4.4.0",
+        "@vue/eslint-config-prettier": "^6.0.0",
+        "babel-eslint": "^10.1.0",
+        "eslint": "^6.7.2",
+        "eslint-plugin-prettier": "^3.1.3",
+        "eslint-plugin-vue": "^6.2.2",
+        "prettier": "^1.19.1",
+        "sass": "^1.26.5",
+        "sass-loader": "^8.0.2",
+        "vue-template-compiler": "^2.6.11"
+    },
+    "resolutions": {
+        "prosemirror-model": "1.9.1"
+    }
 }

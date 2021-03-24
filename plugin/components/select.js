@@ -135,7 +135,6 @@ const selectComponent = theme => {
     },
 
     '.multiselect__content-wrapper': {
-      'max-height': '240px',
       '-webkit-overflow-scrolling': 'touch'
     },
 

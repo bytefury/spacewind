@@ -109,7 +109,6 @@
       <div
         v-show="isOpen"
         ref="list"
-        :style="{ maxHeight: optimizedHeight + 'px' }"
         :class="multiselectContentWrapperStyle"
         tabindex="-1"
         @focus="activate"
@@ -405,9 +404,11 @@ export default {
       return ''
     },
     contentStyle() {
-      return this.options.length
-        ? { display: 'inline-block' }
-        : { display: 'block' }
+      let styles = { maxHeight: this.optimizedHeight + 'px' }
+
+      styles.display = this.options.length ? 'inline-block' : 'block'
+
+      return styles
     },
     isAbove() {
       if (this.openDirection === 'above' || this.openDirection === 'top') {

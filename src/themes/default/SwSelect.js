@@ -25,9 +25,9 @@ export default {
     multiselectSingle:
       'multiselect__single relative inline-block border-none leading-5 rounded text-gray-800 w-full box-border align-top pl-1 pt-1 mb-2 text-sm',
     multiselectContentWrapper:
-      'multiselect__content-wrapper z-10 absolute block bg-white w-full overflow-auto border border-solid border-gray-300 border-t-0 rounded-bl rounded-br',
+      'multiselect__content-wrapper z-10 absolute block bg-white w-full border border-solid border-gray-300 border-t-0 rounded-bl rounded-br',
     multiselectContent:
-      'multiselect__content list-none inline-block p-0 m-0 min-w-full align-top',
+      'multiselect__content list-none inline-block p-0 m-0 min-w-full align-top overflow-y-auto',
     multiselectOption:
       'multiselect__option block p-3 no-underline leading-4 normal-case align-middle relative cursor-pointer whitespace-nowrap text-sm',
     multiselectElement: 'multiselect__element block'
