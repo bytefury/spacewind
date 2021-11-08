@@ -652,7 +652,7 @@ export default {
       }
 
       const index =
-        typeof option === 'object'
+        (typeof option === 'object' && this.trackBy)
           ? this.valueKeys.indexOf(option[this.trackBy])
           : this.valueKeys.indexOf(option)
 
